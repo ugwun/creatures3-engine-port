@@ -1,0 +1,591 @@
+/* ── Reset & base ──────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Marathon "Bright-Fi" palette */
+  --white: #FFFFFF;
+  --off-white: #F2F0EC;
+  --slate: #E8E5DF;
+  --black: #000000;
+  --near-black: #0A0A0A;
+  --orange: #FF5F00;
+  /* Electric/Hazard Orange — primary accent */
+  --orange-dim: rgba(255, 95, 0, 0.12);
+  --magenta: #FF00FF;
+  /* Hot Pink / Cyber Magenta — secondary accent */
+  --magenta-dim: rgba(255, 0, 255, 0.10);
+
+  /* Category colours — kept vivid for legibility on white */
+  --cat-error: #DD0000;
+  --cat-shutdown: #FF5F00;
+  --cat-network: #0055FF;
+  --cat-world: #008000;
+  --cat-caos: #7700CC;
+  --cat-sound: #007799;
+  --cat-crash: #FF00FF;
+
+  --border: var(--black);
+  --border-thin: rgba(0, 0, 0, 0.18);
+
+  --sidebar-w: 196px;
+  --header-h: 60px;
+
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--off-white);
+  color: var(--black);
+  font-family: var(--font-ui);
+}
+
+/* ── Utility: no-radius sharp containers ──────────────────────────────── */
+.panel {
+  border: 1px solid var(--border);
+  background: var(--white);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+#header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-h);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  background: var(--black);
+  border-bottom: 2px solid var(--orange);
+  z-index: 100;
+}
+
+#header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0 20px;
+}
+
+#header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Logo */
+#logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#logo-mark {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--orange);
+  flex-shrink: 0;
+}
+
+#logo-mark svg {
+  display: block;
+}
+
+#logo-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--white);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+#logo-sub {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* Status pill — rectangular in Marathon style */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  transition: all .3s ease;
+  font-family: var(--font-ui);
+}
+
+.pill--connected {
+  color: #00CC44;
+  background: rgba(0, 204, 68, .1);
+}
+
+.pill--disconnected {
+  color: #CC0000;
+  background: rgba(204, 0, 0, .1);
+}
+
+.pill--connecting {
+  color: var(--orange);
+  background: var(--orange-dim);
+}
+
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .25;
+  }
+}
+
+/* Stats bar */
+#stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stat:first-child {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stat-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+/* Override error count to orange */
+#stat-errors {
+  color: var(--orange);
+}
+
+/* Search */
+#search {
+  width: 220px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+#search:focus {
+  border-color: var(--orange);
+}
+
+#search::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Buttons — industrial, sharp-cornered */
+.btn {
+  padding: 6px 13px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+
+.btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: var(--orange-dim);
+}
+
+.btn.active {
+  border-color: var(--magenta);
+  color: var(--magenta);
+  background: var(--magenta-dim);
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+#sidebar {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--white);
+  border-right: 2px solid var(--black);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sidebar-section {
+  border-bottom: 1px solid var(--black);
+  padding: 12px 14px;
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.sidebar-title {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  color: var(--black);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--black);
+}
+
+.cat-divider {
+  display: none;
+}
+
+/* replaced by sidebar-section borders */
+
+.cat-toggle,
+.opt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--black);
+  cursor: pointer;
+  padding: 5px 4px;
+  user-select: none;
+  transition: background .1s;
+  letter-spacing: 0.3px;
+}
+
+.cat-toggle:hover,
+.opt-toggle:hover {
+  background: var(--slate);
+}
+
+.cat-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--accent, #888);
+  flex-shrink: 0;
+  /* Square dots for Marathon geometric aesthetic */
+}
+
+.cat-toggle input[type="checkbox"],
+.opt-toggle input[type="checkbox"] {
+  accent-color: var(--orange);
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+#cat-all {
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+/* ── Log area ─────────────────────────────────────────────────────────── */
+#log-container {
+  position: fixed;
+  top: var(--header-h);
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--off-white);
+  padding: 0;
+}
+
+#log-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Thin accent strip on left of each row — thicker for Marathon */
+.log-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 16px 3px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background .08s;
+  animation: rowIn .1s ease-out;
+}
+
+.log-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-3px);
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.log-row.cat-error {
+  border-left-color: var(--cat-error);
+}
+
+.log-row.cat-shutdown {
+  border-left-color: var(--cat-shutdown);
+}
+
+.log-row.cat-network {
+  border-left-color: var(--cat-network);
+}
+
+.log-row.cat-world {
+  border-left-color: var(--cat-world);
+}
+
+.log-row.cat-caos {
+  border-left-color: var(--cat-caos);
+}
+
+.log-row.cat-sound {
+  border-left-color: var(--cat-sound);
+}
+
+.log-row.cat-crash {
+  border-left-color: var(--cat-crash);
+}
+
+.log-row.cat-other {
+  border-left-color: rgba(0, 0, 0, 0.2);
+}
+
+/* System banners */
+.log-row.cat-banner {
+  border-left-color: transparent;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.3);
+  background: var(--slate);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  letter-spacing: 2px;
+  font-size: 10px;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Error rows get a faint orange tint */
+.log-row.cat-error {
+  background: rgba(221, 0, 0, 0.04);
+}
+
+.log-row.cat-crash {
+  background: rgba(255, 0, 255, 0.04);
+}
+
+.log-ts {
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 72px;
+  letter-spacing: 0.5px;
+}
+
+.log-cat {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  flex-shrink: 0;
+  min-width: 46px;
+  text-align: center;
+  font-family: var(--font-ui);
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Category-coloured cat badges */
+.cat-error .log-cat {
+  background: var(--cat-error);
+  color: var(--white);
+}
+
+.cat-shutdown .log-cat {
+  background: var(--cat-shutdown);
+  color: var(--white);
+}
+
+.cat-network .log-cat {
+  background: var(--cat-network);
+  color: var(--white);
+}
+
+.cat-world .log-cat {
+  background: var(--cat-world);
+  color: var(--white);
+}
+
+.cat-caos .log-cat {
+  background: var(--cat-caos);
+  color: var(--white);
+}
+
+.cat-sound .log-cat {
+  background: var(--cat-sound);
+  color: var(--white);
+}
+
+.cat-crash .log-cat {
+  background: var(--cat-crash);
+  color: var(--white);
+}
+
+.cat-other .log-cat {
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--white);
+}
+
+.log-msg {
+  flex: 1;
+  word-break: break-all;
+  color: var(--near-black);
+}
+
+.cat-error .log-msg {
+  color: var(--cat-error);
+}
+
+.cat-crash .log-msg {
+  color: var(--cat-crash);
+}
+
+/* Compact mode */
+body.compact .log-row {
+  padding: 1px 16px 1px 14px;
+  line-height: 1.45;
+  font-size: 11px;
+}
+
+/* Hidden rows (filter) */
+.log-row.hidden {
+  display: none;
+}
+
+/* ── Pause overlay ──────────────────────────────────────────────────── */
+#pause-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  z-index: 200;
+}
+
+#pause-badge {
+  background: var(--black);
+  border: 2px solid var(--magenta);
+  color: var(--magenta);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  font-family: var(--font-ui);
+  box-shadow: 4px 4px 0 var(--magenta);
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}

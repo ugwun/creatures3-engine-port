@@ -1,0 +1,29 @@
+# Build directory
+build/
+
+# Logs
+*.log
+
+# Temporary and generated files
+depend
+src_files.txt
+test_unaligned/
+
+# macOS system files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# CMake and CTest artifacts
+.cache/
+Testing/
+
+# Engine runtime log output
+creatures_engine_logfile.txt
+
+# Monitor — Node.js dependencies (install via npm install)
+monitor/node_modules/
