@@ -4,6 +4,12 @@ This repository contains a refactored version of the Creatures 3 / Docking Stati
 
 ![Docking Station Creatures 3 running on MacOS](DS_C3_macos.png)
 
+## Demo Video
+
+[![AI Learning in Real Time — Creatures 3 & the Embodiment Crisis](ai_learning_in_real_time_thumbnail.jpg)](https://www.youtube.com/watch?v=LyVzUs_rTQ4)
+
+*Creatures 3* is a blueprint for embodied AI. While modern LLMs hit the **Embodiment Crisis**, acting like "smart amnesiacs" in the physical world, Norns learn through **Affective Learning**, driven by internal homeostasis rather than brute-force token prediction. The port demonstrated here was built on macOS using Google Antigravity IDE, showing how 1990s artificial life research offers a path toward robots that understand the thermodynamic consequences of their actions.
+
 ## What is this?
 
 This is an **unofficial macOS port** of the Creatures 3 / Docking Station game engine. It allows the game to run natively on macOS (including Apple Silicon / ARM64), which the original release does not support.
