@@ -41,6 +41,11 @@ add_executable(test_FilePath
 add_executable(test_Maths test_Maths.cpp ../engine/Maths.cpp)
 
 # ---------------------------------------------------------------------------
+# test_TickRate — game tick-rate calculation utilities (header-only, no deps)
+# ---------------------------------------------------------------------------
+add_executable(test_TickRate test_TickRate.cpp)
+
+# ---------------------------------------------------------------------------
 # test_SimpleLexer
 # ---------------------------------------------------------------------------
 add_executable(test_SimpleLexer test_SimpleLexer.cpp ../common/SimpleLexer.cpp)
@@ -160,6 +165,7 @@ foreach(target
     test_Vector2D
     test_FilePath
     test_Maths
+    test_TickRate
     test_SimpleLexer
     test_CreaturesArchive
     test_Configurator
@@ -181,6 +187,7 @@ foreach(target
     test_Vector2D
     test_FilePath
     test_Maths
+    test_TickRate
     test_SimpleLexer
     test_Configurator
     test_Catalogue
@@ -247,3 +254,4 @@ gtest_discover_tests(test_AgentManager)
 gtest_discover_tests(test_Genome)
 gtest_discover_tests(test_HistoryHandlers)
 gtest_discover_tests(test_AppHandlers)
+gtest_discover_tests(test_TickRate)

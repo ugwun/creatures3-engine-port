@@ -122,6 +122,8 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 |---|---|
 | `--game-dir <path>` | Set the game asset directory |
 | `-d <path>` | Alias for `--game-dir` |
+| `--gamespeed <N>` | Game speed multiplier (float, default 1). E.g. `3` = 3× speed, `0.5` = half speed |
+| `-s <N>` | Alias for `--gamespeed` |
 | `--help`, `-h` | Print usage and exit |
 
 > [!NOTE]
@@ -141,7 +143,7 @@ For full details see [`./monitor/README.md`](./monitor/README.md).
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **314 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **333 tests**.
 
 ### Running the tests
 
@@ -170,6 +172,7 @@ cd build && ctest --output-on-failure
 | `test_AgentHandlers` | Agent CAOS handler logic (`IWorldServices&`) |
 | `test_AppHandlers` | App CAOS handler logic (`IApp&`) |
 | `test_Genome` | DNA parser: gene iteration, crossover, mutation |
+| `test_TickRate` | Game tick-rate calculation (interval scaling, sleep duration) |
 
 ### Writing a new test
 
@@ -289,7 +292,7 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 ```
 
 ### Other
-- [ ] It seems game ticks are too fast, or somehow out of sync. The game appears to be running too fast.
+- [x] ~~It seems game ticks are too fast, or somehow out of sync. The game appears to be running too fast.~~ Fixed: replaced `SDL_Delay(20)` with tick-rate-aware sleep using `GetWorldTickInterval()` (50ms / 20Hz).
 - [ ] When clicking on an agent with the hand, the click is registered with all agents within that exact position. For example, when use clicks on the rightmost question mark, which opens the world menu, and if this question mark happens to be on top of a lift button, the lift button is activated.
 - [ ] The "hand" agent (representing the user) is not able to talk by pressing Enter key.
 - [ ] Sounds stop playing after few minutes.

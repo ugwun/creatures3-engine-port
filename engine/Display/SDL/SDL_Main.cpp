@@ -19,7 +19,9 @@
 // #include "../../../common/CStyleException.h"
 #include "../../App.h"
 #include "../../C2eServices.h" // for theFlightRecorder
+#include "TickRateUtils.h"
 
+#include <cstdlib> // atof
 #include <time.h>
 #include <unistd.h> // chdir / getcwd
 
@@ -147,6 +149,7 @@ const unsigned int theClientServerBufferSize = 1024 * 1024;
 static bool ourRunning;
 // static bool ourTerminateApplication;
 static bool ourQuit;
+static float gameSpeedMultiplier = 1.0f;
 
 // exter
 // HWND theMainWindow = 0;
@@ -189,11 +192,14 @@ int main(int argc, char *argv[]) {
                 "Options:\n"
                 "  --game-dir <path>   Change working directory to <path>\n"
                 "  -d <path>           Alias for --game-dir\n"
+                "  --gamespeed <N>     Game speed multiplier (float, default 1)\n"
+                "  -s <N>              Alias for --gamespeed\n"
                 "  --help, -h          Show this help message\n"
                 "\n"
-                "Example:\n"
+                "Examples:\n"
                 "  ./build/lc2e --game-dir \"/Users/me/Creatures Docking "
                 "Station/Docking Station\"\n"
+                "  ./build/lc2e -d \"/path/to/game\" --gamespeed 3\n"
                 "\n"
                 "If --game-dir is not specified, the current working directory "
                 "is used.\n");
@@ -206,6 +212,12 @@ int main(int argc, char *argv[]) {
           return 1;
         }
         fprintf(stderr, "[lc2e] Game directory: %s\n", gameDir);
+      } else if ((arg == "--gamespeed" || arg == "-s") && i + 1 < argc) {
+        gameSpeedMultiplier = (float)atof(argv[++i]);
+        if (gameSpeedMultiplier <= 0.0f)
+          gameSpeedMultiplier = 1.0f;
+        fprintf(stderr, "[lc2e] Game speed multiplier: %.2fx\n",
+                gameSpeedMultiplier);
       }
     }
 
@@ -231,13 +243,26 @@ int main(int argc, char *argv[]) {
       }
 
       // Advance the simulation and render - equivalent to WM_TICK on Windows
+      uint32_t tickStart = SDL_GetTicks();
       if (!ourQuit) {
         theApp.UpdateApp();
         theApp.GetInputManager().SysFlushEventBuffer();
       }
 
-      // ~50 fps cap matching the engine's 50ms world tick interval
-      SDL_Delay(20);
+      // Sleep for the remainder of the tick interval, mirroring the Windows
+      // Ticker() thread (Window.cpp:421-447).  GetWorldTickInterval() returns
+      // 50ms (20 ticks/sec) — the standard Creatures engine rate.
+      if (theApp.GetFastestTicks()) {
+        // WOLF mode (CAOS command) — run as fast as possible.
+        SDL_Delay(1);
+      } else {
+        uint32_t effectiveInterval = ComputeEffectiveTickInterval(
+            theApp.GetWorldTickInterval(), gameSpeedMultiplier);
+        uint32_t elapsed = SDL_GetTicks() - tickStart;
+        uint32_t sleepMs = ComputeSleepDuration(effectiveInterval, elapsed);
+        if (sleepMs > 0)
+          SDL_Delay(sleepMs);
+      }
     }
   }
   // We catch all exceptions in release mode for robustness.
