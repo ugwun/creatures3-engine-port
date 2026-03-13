@@ -44,6 +44,7 @@
 // for stat()
 #include <sys/stat.h>
 #include <unistd.h>
+#include "Display/SDL/SDL_Main.h"
 #endif
 
 #include <fstream>
@@ -324,11 +325,7 @@ void App::UpdateApp() {
   }
   if (myQuitNextTick) {
     theFlightRecorder.Log(16, "Signalling termination...\n");
-#ifdef SignalTerminateApplication
     SignalTerminateApplication();
-#else
-#warning "TODO: Implement SignalTerminateApplication"
-#endif
     myQuitNextTick = false;
   }
 

@@ -299,7 +299,7 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 - [ ] When the "hand with question mark" is selected from the upper left side of the screen, and when the user clicks on an agent, the hand doesn't show proper naming for an agent, just some code-like text.
 - [ ] Within the initial menu, when delete a world is selected, the world is not deleted.
 - [ ] Within the initial menu, the menu doesn't show different images for the different types of worlds: Only Docking Station world vs Docking Station + Creatures 3 world. The symbol used for representing the worlds is the Docking Station symbol in both cases. Update: the world icons change based on which type of world was selected last. If the user creates a Creatures 3 world, all icons changes to the Creatures 3 world icon, and vice versa.
-- [ ] In the main menu, when Quit is clicked, the menu itself disapears, but the application window doesn't close.
+- [x] In the main menu, when Quit is clicked, the menu itself disapears, but the application window doesn't close.
 - [ ] In Docking Station, in "Comms Room", there are no agents visible, therefore no agents are available to import.
 - [ ] Fullscreen doesn't work.
 - [ ] Camera transmition, from the "Camera" agents is not working. For example, the user should see transmission from cameras in the Docking Station's Comms Room or in the Creatures 3 Bridge. Currently, the camera view is just black.

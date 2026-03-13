@@ -37,6 +37,7 @@
 
 #ifndef _WIN32
 #include <unistd.h> // for getlogin()
+#include "SDL/SDL_Main.h"
 #endif
 
 #ifdef _MSC_VER
@@ -74,11 +75,7 @@ void ErrorMessageHandler::ShowErrorMessage(const std::string &message,
   if (ret == ErrorDialog::ED_QUIT) {
     theFlightRecorder.Log(16, "Quit button for the ShowErrorMessage() "
                               "clicked... Signalling Termination...\n");
-#ifndef SignalTerminateApplication
-#warning "TODO: terminate application here"
-#else
     SignalTerminateApplication();
-#endif
   } else if (ret == ErrorDialog::ED_BRUTAL_ABORT) {
     theFlightRecorder.Log(16, "Erkity, BRUTAL ABORT!!!!!!!");
 #ifdef _WIN32
