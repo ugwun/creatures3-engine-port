@@ -14,6 +14,7 @@
 #include "../Display/MainCamera.h"
 #include "../InputManager.h"
 #include "../World.h"
+#include "PointerAgent_Logic.h"
 
 // Needed for highlite
 
@@ -612,22 +613,33 @@ void PointerAgent::ScanInputEvents() {
         return;
       }
 
-      // Try IsTouching first (physical bounds check), then fall back to
-      // Find() result (visual hit test). For compound agents, visual bounds
-      // from sprite parts can extend well beyond the base agent's physical
-      // position, causing IsTouching to miss agents that Find() correctly
-      // identifies.
-      a = IsTouching(attrActivateable, attrActivateable);
-      if (a.IsInvalid()) {
-        // IsTouching missed — fall back to the Find() result if it's
-        // activateable. This handles compound agents whose visual parts
-        // extend beyond their physical bounding box.
-        AgentHandle findResult = Find();
-        if (findResult.IsValid() &&
-            (findResult.GetAgentReference().GetAttributes() &
-             attrActivateable)) {
-          a = findResult;
+      // Resolve which agent should receive the activate message.
+      // Uses PointerLogic::ResolveClickTarget() — a pure function
+      // extracted for testability.
+      {
+        AgentHandle isTouchingResult;
+        AgentHandle findFallback;
+        bool findIsActivateable = false;
+        bool fallbackIsActivateable = false;
+
+        if (a.IsValid()) {
+          findIsActivateable =
+              (a.GetAgentReference().GetAttributes() & attrActivateable) != 0;
         }
+        if (a.IsInvalid()) {
+          isTouchingResult = IsTouching(attrActivateable, attrActivateable);
+          if (isTouchingResult.IsInvalid()) {
+            findFallback = Find();
+            fallbackIsActivateable =
+                findFallback.IsValid() &&
+                (findFallback.GetAgentReference().GetAttributes() &
+                 attrActivateable) != 0;
+          }
+        }
+
+        a = PointerLogic::ResolveClickTarget(a, isTouchingResult, findFallback,
+                                             findIsActivateable,
+                                             fallbackIsActivateable);
       }
 
       if (a.IsValid()) {

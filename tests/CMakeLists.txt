@@ -234,6 +234,21 @@ target_include_directories(test_AppHandlers PRIVATE
 target_link_libraries(test_AppHandlers PRIVATE test_stubs GTest::gtest_main)
 
 # ---------------------------------------------------------------------------
+# test_PointerAgent — click-target resolution logic (PointerAgent_Logic.cpp)
+# ---------------------------------------------------------------------------
+add_executable(test_PointerAgent
+  test_PointerAgent.cpp
+  ../engine/Agents/PointerAgent_Logic.cpp
+  stub_AgentHandle.cpp
+)
+target_include_directories(test_PointerAgent PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_PointerAgent PRIVATE GTest::gtest_main)
+
+# ---------------------------------------------------------------------------
 # Test discovery
 # ---------------------------------------------------------------------------
 include(GoogleTest)
@@ -254,4 +269,5 @@ gtest_discover_tests(test_AgentManager)
 gtest_discover_tests(test_Genome)
 gtest_discover_tests(test_HistoryHandlers)
 gtest_discover_tests(test_AppHandlers)
+gtest_discover_tests(test_PointerAgent)
 gtest_discover_tests(test_TickRate)

@@ -51,6 +51,7 @@ set(SRC_FILES
   engine/Agents/MessageQueue.cpp
   engine/Agents/OutputPort.cpp
   engine/Agents/PointerAgent.cpp
+  engine/Agents/PointerAgent_Logic.cpp
   engine/Agents/Port.cpp
   engine/Agents/PortBundle.cpp
   engine/Agents/QuoteFactory.cpp
