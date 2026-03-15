@@ -11,7 +11,8 @@
 
 CreatureHistory::CreatureHistory()
 	: myGender(-1), myGenus(-1), myVariant(-1),
-	  myCrossoverMutationCount(-1), myCrossoverCrossCount(-1)
+	  myCrossoverMutationCount(-1), myCrossoverCrossCount(-1),
+	  myWarpHoleVeteran(true), myDSUser(false)
 {
 }
 
@@ -94,6 +95,22 @@ CreaturesArchive &operator>>( CreaturesArchive &archive, CreatureHistory &creatu
 	archive >> creatureHistory.myLifeEvents;
 	archive >> creatureHistory.myCrossoverMutationCount;
 	archive >> creatureHistory.myCrossoverCrossCount;
+
+	// DS v39 extra fields
+	if (archive.GetFileVersion() >= 23) {
+		int warpVet, dsUser;
+		archive >> warpVet;
+		creatureHistory.myWarpHoleVeteran = (warpVet != 0);
+		archive >> dsUser;
+		creatureHistory.myDSUser = (dsUser != 0);
+	} else {
+		creatureHistory.myWarpHoleVeteran = true;
+		creatureHistory.myDSUser = false;
+	}
+
+	if (archive.GetFileVersion() >= 28) {
+		archive >> creatureHistory.myNetworkUser;
+	}
 
 	return archive;
 }

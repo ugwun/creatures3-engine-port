@@ -2,6 +2,8 @@
 #pragma warning(disable:4786 4503)
 #endif
 
+#include <cstdio>
+
 #include "LifeEvent.h"
 #include "../../CreaturesArchive.h"
 
@@ -45,6 +47,26 @@ CreaturesArchive &operator>>( CreaturesArchive &archive, LifeEvent &lifeEvent )
 
 	archive >> lifeEvent.myWorldName;
 	archive >> lifeEvent.myWorldUniqueIdentifier;
+
+	// DS v39 extra fields
+	if (archive.GetFileVersion() >= 16) {
+		archive >> lifeEvent.myDSWorldUniqueIdentifier;
+	}
+
+	if (archive.GetFileVersion() >= 23) {
+		int displayed;
+		archive >> displayed;
+		lifeEvent.myDisplayedInTheWomb = (displayed != 0);
+	} else {
+		lifeEvent.myDisplayedInTheWomb = true;
+	}
+
+	if (archive.GetFileVersion() >= 28) {
+		archive >> lifeEvent.myNetworkUser;
+	}
+
+	fprintf(stderr, "[DESER] LifeEvent read: type=%d worldTick=%u stage=%d\n",
+		(int)lifeEvent.myEventType, lifeEvent.myWorldTick, lifeEvent.myLifeStage);
 
 	return archive;
 }

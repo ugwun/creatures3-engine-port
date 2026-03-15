@@ -38,6 +38,11 @@ public:
 	int myCrossoverMutationCount;
 	int myCrossoverCrossCount;
 
+	// DS v39 extra fields (not present in C3 v12)
+	bool myWarpHoleVeteran; // v >= 23, defaults to true
+	bool myDSUser;          // v >= 23, defaults to false
+	std::string myNetworkUser; // v >= 28
+
 	std::vector<LifeEvent> myLifeEvents;
 };
 

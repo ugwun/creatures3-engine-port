@@ -643,6 +643,17 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     std::vector<std::string>::const_iterator monIter;
     int monIndex;
 
+    // DS .DFAM files: the glist stores raw monikers (e.g. "001-aqua-...7npj8")
+    // but the PRAY chunks are named with the full import moniker suffix
+    // (e.g. "001-aqua-...7npj8.DFAM.genetics"). Compute the suffix from
+    // the difference between the import moniker and the first gene name.
+    std::string chunkSuffix;
+    if (!geneNames.empty() && moniker.length() > geneNames[0].length() &&
+        moniker.substr(0, geneNames[0].length()) == geneNames[0]) {
+      chunkSuffix = moniker.substr(geneNames[0].length());
+      fprintf(stderr, "[IMPO] Detected chunk suffix: '%s'\n", chunkSuffix.c_str());
+    }
+
     std::vector<CreatureHistory> histories(geneNames.size());
     for (monIndex = 0; monIndex < geneNames.size(); ++monIndex) {
       fprintf(stderr, "[IMPO] geneNames[%d] = '%s'\n", monIndex, geneNames[monIndex].c_str());
@@ -653,9 +664,16 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
               geneNames[monIndex], histories[monIndex], false);
 
       // Test if this moniker is in the PRAY system.
-      std::string geneticsChunkName = geneNames[monIndex] + ".genetics";
+      // Try with suffix first (for .DFAM files), then without.
+      std::string geneticsChunkName = geneNames[monIndex] + chunkSuffix + ".genetics";
       int chunkResult = theApp.GetResourceManager().CheckChunk(geneticsChunkName);
       fprintf(stderr, "[IMPO] CheckChunk('%s') = %d\n", geneticsChunkName.c_str(), chunkResult);
+      if (chunkResult == 0 && !chunkSuffix.empty()) {
+        // Fallback: try without suffix (original C3 format)
+        geneticsChunkName = geneNames[monIndex] + ".genetics";
+        chunkResult = theApp.GetResourceManager().CheckChunk(geneticsChunkName);
+        fprintf(stderr, "[IMPO] CheckChunk fallback('%s') = %d\n", geneticsChunkName.c_str(), chunkResult);
+      }
       if (chunkResult == 0) {
         fprintf(stderr, "[IMPO] RETURNING 3 - genetics chunk not found!\n");
         return 3; // One or more genetics files required are missing from the
@@ -672,9 +690,14 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
          ++monIter, ++monIndex) {
       fprintf(stderr, "[IMPO]   genetics[%d] = '%s'\n", monIndex, monIter->c_str());
       {
+        // Use chunk suffix for .DFAM files
+        std::string chunkName = *monIter + chunkSuffix + ".genetics";
+        if (theApp.GetResourceManager().CheckChunk(chunkName) == 0 && !chunkSuffix.empty()) {
+          chunkName = *monIter + ".genetics"; // fallback to original format
+        }
         const PrayChunkPtr &gC =
-            theApp.GetResourceManager().GetChunk(*monIter + ".genetics");
-        fprintf(stderr, "[IMPO]   chunk size=%d\n", (int)gC->GetSize());
+            theApp.GetResourceManager().GetChunk(chunkName);
+        fprintf(stderr, "[IMPO]   chunk '%s' size=%d\n", chunkName.c_str(), (int)gC->GetSize());
         std::string geneticsName = GenomeStore::Filename(*monIter);
         fprintf(stderr, "[IMPO]   writing to '%s'\n", geneticsName.c_str());
         File f;

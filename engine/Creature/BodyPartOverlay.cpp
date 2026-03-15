@@ -255,6 +255,12 @@ bool BodyPartOverlay::Read( CreaturesArchive &ar )
 		for(int32 i =0; i< NUM_LAYERS; i++)
 		{
 		ar >>  myClothingSetForEachLayer[i];
+		// DS v39 (v > 24) stores an extra int32 per layer (clothing variant)
+		if(version > 24)
+		{
+			int32 extraLayerField;
+			ar >> extraLayerField;
+		}
 		}
 	}
 	else

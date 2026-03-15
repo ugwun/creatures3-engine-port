@@ -54,6 +54,11 @@ public:
 	std::string myWorldName;
 	std::string myWorldUniqueIdentifier;
 
+	// DS v39 extra fields (not present in C3 v12)
+	std::string myDSWorldUniqueIdentifier; // v >= 16
+	bool myDisplayedInTheWomb;              // v >= 23, defaults to true
+	std::string myNetworkUser;              // v >= 28
+
 	friend CreaturesArchive &operator<<( CreaturesArchive &archive, LifeEvent const &lifeEvent );
 	friend CreaturesArchive &operator>>( CreaturesArchive &archive, LifeEvent &lifeEvent );
 
