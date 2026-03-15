@@ -83,7 +83,9 @@ CreaturesArchive::CreaturesArchive(std::iostream &stream, Mode mode,
       throw Exception("CRA0002: Not a creatures archive");
     }
 
+    fprintf(stderr, "[ARCHIVE] Hint OK, stream good=%d, reading version...\n", myStream.good());
     Read(myVersion);
+    fprintf(stderr, "[ARCHIVE] Version read: %d (bNoVersion=%d)\n", myVersion, bNoVersion);
     if (!bNoVersion) {
       if (myVersion != GetCurrentVersion()) {
         std::string str = ErrorMessageHandler::Format(

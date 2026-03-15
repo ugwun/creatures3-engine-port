@@ -45,9 +45,11 @@
 #include <string>
 #include <strstream>
 #include <vector>
+#include <stdexcept>
+#include <sstream>
 
 #ifndef C2E_OLD_CPP_LIB
-#include <sstream>
+// Additional sstream already included above
 #endif
 
 // #include <direct.h>
@@ -622,8 +624,13 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
         theApp.GetResourceManager().GetChunk(moniker + ".glist.creature");
     fprintf(stderr, "[IMPO] Got glist chunk, size=%d\n", (int)geneListChunk->GetSize());
 
-    std::strstream geneStream((char *)geneListChunk->GetData(),
-                              geneListChunk->GetSize());
+    // NOTE: Must use stringstream, not strstream. strstream(char*, int)
+    // with default in|out mode creates strstreambuf(s, n, s) which sets
+    // the get area to [s, s) — empty! This causes stream.good()=0 after
+    // reading the archive hint, corrupting all subsequent reads.
+    std::string geneData((const char *)geneListChunk->GetData(),
+                         geneListChunk->GetSize());
+    std::stringstream geneStream(geneData);
 
     fprintf(stderr, "[IMPO] Creating geneListArchive...\n");
     CreaturesArchive geneListArchive(geneStream, CreaturesArchive::Load, true);
@@ -638,6 +645,7 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
 
     std::vector<CreatureHistory> histories(geneNames.size());
     for (monIndex = 0; monIndex < geneNames.size(); ++monIndex) {
+      fprintf(stderr, "[IMPO] geneNames[%d] = '%s'\n", monIndex, geneNames[monIndex].c_str());
       geneListArchive >> histories[monIndex];
       successReconcile =
           successReconcile &&
@@ -645,22 +653,30 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
               geneNames[monIndex], histories[monIndex], false);
 
       // Test if this moniker is in the PRAY system.
-      if (theApp.GetResourceManager().CheckChunk(geneNames[monIndex] +
-                                                 ".genetics") == 0)
+      std::string geneticsChunkName = geneNames[monIndex] + ".genetics";
+      int chunkResult = theApp.GetResourceManager().CheckChunk(geneticsChunkName);
+      fprintf(stderr, "[IMPO] CheckChunk('%s') = %d\n", geneticsChunkName.c_str(), chunkResult);
+      if (chunkResult == 0) {
+        fprintf(stderr, "[IMPO] RETURNING 3 - genetics chunk not found!\n");
         return 3; // One or more genetics files required are missing from the
                   // PRAY maps.
+      }
     }
 
-    fprintf(stderr, "[IMPO] Histories reconciled, doStuff=%d\n", doStuff);
+    fprintf(stderr, "[IMPO] Histories reconciled, doStuff=%d, successReconcile=%d\n", doStuff, successReconcile);
     if (!doStuff)
       return successReconcile ? 0 : 1;
 
+    fprintf(stderr, "[IMPO] Installing %d genetics files...\n", (int)geneNames.size());
     for (monIter = geneNames.begin(), monIndex = 0; monIter != geneNames.end();
          ++monIter, ++monIndex) {
+      fprintf(stderr, "[IMPO]   genetics[%d] = '%s'\n", monIndex, monIter->c_str());
       {
         const PrayChunkPtr &gC =
             theApp.GetResourceManager().GetChunk(*monIter + ".genetics");
+        fprintf(stderr, "[IMPO]   chunk size=%d\n", (int)gC->GetSize());
         std::string geneticsName = GenomeStore::Filename(*monIter);
+        fprintf(stderr, "[IMPO]   writing to '%s'\n", geneticsName.c_str());
         File f;
         f.Create(geneticsName);
         f.Write(gC->GetData(), gC->GetSize());
@@ -668,22 +684,29 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
 
         FilePath filepath(*monIter + ".gen", GENETICS_DIR);
         theApp.GetWorld().MarkFileCreated(filepath);
+        fprintf(stderr, "[IMPO]   file created OK\n");
       }
 
-      if (successReconcile) // We already know this will work.
+      if (successReconcile) { // We already know this will work.
+        fprintf(stderr, "[IMPO]   ReconcileImportedHistory(true) for index %d\n", monIndex);
         theApp.GetWorld().GetHistoryStore().ReconcileImportedHistory(
             geneNames[monIndex], histories[monIndex], true);
+        fprintf(stderr, "[IMPO]   reconciliation done\n");
+      }
     }
+    fprintf(stderr, "[IMPO] All genetics files installed\n");
 
     AgentHandle handle;
 
     // Get that Chunk :)
-
+    fprintf(stderr, "[IMPO] Getting creature chunk '%s.creature'\n", moniker.c_str());
     const PrayChunkPtr &creatureChunk =
         theApp.GetResourceManager().GetChunk(moniker + ".creature");
 
-    std::strstream stream((char *)creatureChunk->GetData(),
-                          creatureChunk->GetSize());
+    // Same strstream fix as geneStream above — use stringstream.
+    std::string creatureData((const char *)creatureChunk->GetData(),
+                             creatureChunk->GetSize());
+    std::stringstream stream(creatureData);
 
     fprintf(stderr, "[IMPO] Creating creature archive, chunk size=%d\n", (int)creatureChunk->GetSize());
     // Pass bNoVersion=true to accept archives of any version (including DS v39)
@@ -693,9 +716,10 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     archive.SetCloningACreature(true);
     fprintf(stderr, "[IMPO] Reading creature handle...\n");
     archive >> handle;
-    fprintf(stderr, "[IMPO] Creature handle read OK\n");
+    fprintf(stderr, "[IMPO] Creature handle read OK, valid=%d\n", handle.IsValid());
 
     if (!successReconcile) {
+      fprintf(stderr, "[IMPO] Cloning genome store (no reconcile path)\n");
       // need to clone everything in the genome store
       GenomeStore &theStore = handle.GetCreatureReference().GetGenomeStore();
       theStore.ClonedEntirely();
@@ -723,9 +747,11 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
       }
     }
 
+    fprintf(stderr, "[IMPO] Registering clone...\n");
     theAgentManager.RegisterClone(handle);
     vm.SetTarg(handle);
 
+    fprintf(stderr, "[IMPO] Remaking skeleton...\n");
     handle.GetCreatureReference().RemakeSkeletonAfterSerialisation();
 
     if (successReconcile)
@@ -735,6 +761,7 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
             .GetCreatureHistory(*monIter)
             .AddEvent(LifeEvent::typeImported, "", "");
 
+    fprintf(stderr, "[IMPO] Processing photo history...\n");
     CreatureHistory &history =
         theApp.GetWorld().GetHistoryStore().GetCreatureHistory(moniker);
     int count = history.Count();
@@ -786,11 +813,23 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
                                      .c_str();
       theApp.GetWorld().MoveFileToPorch(creatureFile);
     }
+    fprintf(stderr, "[IMPO] Rescanning folders...\n");
     theApp.GetResourceManager().RescanFolders();
-    //		handle.GetCreatureReference().SetNormalPlane(
+    fprintf(stderr, "[IMPO] Import complete!\n");
+    //	  handle.GetCreatureReference().SetNormalPlane(
     //theAgentManager.UniqueCreaturePlane( handle ) );
   } catch (PrayException &pe) {
+    fprintf(stderr, "[IMPO] EXCEPTION (PrayException): %s\n", pe.GetMessage().c_str());
     vm.ThrowRunError(helper_Convert(pe));
+  } catch (BasicException &be) {
+    fprintf(stderr, "[IMPO] EXCEPTION (BasicException): %s\n", be.what());
+    vm.ThrowRunError(0);
+  } catch (std::exception &e) {
+    fprintf(stderr, "[IMPO] EXCEPTION (std::exception): %s\n", e.what());
+    vm.ThrowRunError(0);
+  } catch (...) {
+    fprintf(stderr, "[IMPO] EXCEPTION (unknown type)\n");
+    vm.ThrowRunError(0);
   }
 
   return successReconcile ? 0 : 1;
