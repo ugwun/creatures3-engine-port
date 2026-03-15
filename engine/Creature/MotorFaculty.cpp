@@ -328,6 +328,13 @@ bool MotorFaculty::Read(CreaturesArchive &archive)
 			archive >> myInvoluntaryActions[i].latency;
 			archive.ReadFloatRefTarget( myInvoluntaryActions[i].locus );
 		}
+
+		// DS v39 (v > 36) adds an extra bool (stored as int32) at the end
+		if(version > 36)
+		{
+			int32 extraMotorInt;
+			archive >> extraMotorInt;
+		}
 	}
 	else
 	{

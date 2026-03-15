@@ -1832,6 +1832,17 @@ bool LinguisticFaculty::Read(CreaturesArchive &archive)
 		}
 
 		archive >> myStackCount;
+
+		// DS v39 (v >= 35) adds 4 extra fields: 2 ints + 2 floats
+		if(version >= 35)
+		{
+			int32 extraInt1, extraInt2;
+			float extraFloat1, extraFloat2;
+			archive >> extraInt1;
+			archive >> extraInt2;
+			archive >> extraFloat1;
+			archive >> extraFloat2;
+		}
 	}
 	else
 	{

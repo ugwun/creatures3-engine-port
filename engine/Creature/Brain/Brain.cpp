@@ -783,13 +783,6 @@ bool Brain::Read(CreaturesArchive &archive)
 		if(!base::Read( archive ))
 			return false;
 
-		// DS v39 (v > 35) adds an extra bool to Brain
-		if(version > 35)
-		{
-			bool extraBrainBool;
-			archive >> extraBrainBool;
-		}
-
 		archive >> myLobes >> myTracts;
 		archive >> myBrainComponents;
 
@@ -805,6 +798,13 @@ bool Brain::Read(CreaturesArchive &archive)
 			archive >> myAssistanceKnowledge[i].attentionId;
 			archive >> myAssistanceKnowledge[i].decisionId;
 			archive >> myAssistanceKnowledge[i].strength;
+		}
+
+		// DS v39 (v > 35) adds an extra bool (stored as int32) at the end
+		if(version > 35)
+		{
+			int32 extraBrainInt;
+			archive >> extraBrainInt;
 		}
 	}
 	else

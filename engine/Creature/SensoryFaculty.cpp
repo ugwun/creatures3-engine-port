@@ -831,6 +831,12 @@ bool SensoryFaculty::Read(CreaturesArchive &archive) {
     archive >> myFriendsAndFoeMonikers;
     archive >> myFriendsAndFoeLastEncounters;
     archive >> myAddedAFriendOnThisUpdate;
+
+    // DS v39 (v >= 20) adds a vector<int> of category representative algorithms
+    if (version >= 20) {
+      std::vector<int> dummyCategoryRepAlgorithms;
+      archive >> dummyCategoryRepAlgorithms;
+    }
   } else {
     _ASSERT(false);
     return false;
