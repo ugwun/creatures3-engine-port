@@ -2112,8 +2112,21 @@ bool Agent::Read(CreaturesArchive &ar) {
     for (i = 0; i < 3; ++i)
       ar >> myDefaultClickActionCycles[i];
 
-    if (!myVirtualMachine.Read(ar))
-      return false;
+    // DS v39 (v >= 15) serializes CAOSMachine as deques of PersistentObjects
+    // C3 v12 serializes it inline via myVirtualMachine.Read()
+    if (version >= 15) {
+      // Read two deques of CAOSMachine pointers (script stack + macro stack)
+      // We read them but only use the first entry if available
+      std::deque<PersistentObject*> scriptStack;
+      std::deque<PersistentObject*> macroStack;
+      ar >> scriptStack;
+      ar >> macroStack;
+      // The first entry in scriptStack is essentially our VirtualMachine state
+      // For now we accept a minimal/reset VM state
+    } else {
+      if (!myVirtualMachine.Read(ar))
+        return false;
+    }
     if (!myPorts.Read(ar))
       return false;
 
@@ -2123,6 +2136,25 @@ bool Agent::Read(CreaturesArchive &ar) {
     for (i = 0; i < varcount; ++i)
       myGlobalVariables[i].Read(ar);
 
+    // DS v39 (v > 20) additionally stores globals as a map<CAOSVar, CAOSVar>
+    if (version > 20) {
+      // Read the map - we need to consume the bytes even if we don't use them
+      uint32 mapSize;
+      ar >> mapSize;
+      for (uint32 m = 0; m < mapSize; ++m) {
+        CAOSVar key, value;
+        key.Read(ar);
+        value.Read(ar);
+        // Apply to our globals array if key is integer index
+        if (key.GetType() == CAOSVar::typeInteger) {
+          int idx = key.GetInteger();
+          if (idx >= 0 && idx < GLOBAL_VARIABLE_COUNT) {
+            myGlobalVariables[idx] = value;
+          }
+        }
+      }
+    }
+
     ar >> myGenomeStore;
 
     ar >> myAgentType;
@@ -2130,26 +2162,128 @@ bool Agent::Read(CreaturesArchive &ar) {
     if (!myVoice.Read(ar))
       return false;
 
-    ar >> myImpendingDoom;
-    ar >> myCurrentWidth;
-    ar >> myCurrentHeight;
-    ar >> myResetLines;
+    if (version >= 15) {
+      // DS v39 field order after Voice::Read — significantly different from C3
+      // Ghidra Agent::Read lines 5486-5540
 
-    ar >> myDrawMirroredFlag;
+      // myImpendingDoom (read as int, stored as bool)
+      int32 impendingDoomInt;
+      ar >> impendingDoomInt;
+      myImpendingDoom = (impendingDoomInt != 0);
 
-    // obsolete stuff, or stuff I'm not sure about (benc)
-    //	SOUNDHANDLE	mySoundHandle;	// Controlled Sound (-1=Not playing)
-    //	DWORD mySoundName;			// Name of active sound (0=none)
-    //	BOOL mySoundLooping;			// Controlled sound is looping
+      // myCurrentWidth/Height are FLOATS in DS, ints in C3
+      float currentWidthFloat, currentHeightFloat;
+      ar >> currentWidthFloat;
+      ar >> currentHeightFloat;
+      myCurrentWidth = (int)currentWidthFloat;
+      myCurrentHeight = (int)currentHeightFloat;
 
-    ar >> mySoundName;
-    ar >> mySoundLooping;
+      // myResetLines (read as int, stored as bool)
+      int32 resetLinesInt;
+      ar >> resetLinesInt;
+      myResetLines = (resetLinesInt != 0);
 
-    ar >> myWidthTemp >> myHeightTemp;
+      // myDrawMirroredFlag (read as int, stored as bool)
+      int32 drawMirroredInt;
+      ar >> drawMirroredInt;
+      myDrawMirroredFlag = (drawMirroredInt != 0);
 
-    // bytecount - num of bytes to skip over (to allow extensions)
-    ar >> tmp_int;
-    //	ar.Skip( tmp_int );
+      // v > 25: extra bool BETWEEN drawMirrored and sound fields
+      if (version > 25) {
+        int32 dummyInt;
+        ar >> dummyInt;
+      }
+
+      // mySoundName (uint32) and mySoundLooping (int->bool)
+      ar >> mySoundName;
+      int32 soundLoopingInt;
+      ar >> soundLoopingInt;
+      mySoundLooping = (soundLoopingInt != 0);
+
+      // myWidthTemp/HeightTemp are FLOATS in DS
+      float widthTempFloat, heightTempFloat;
+      ar >> widthTempFloat;
+      ar >> heightTempFloat;
+      myWidthTemp = (int)widthTempFloat;
+      myHeightTemp = (int)heightTempFloat;
+
+      // v > 21: Presence::Read — read INLINE, NOT as PersistentObject*
+      // Presence contains: 3 Angles (float+Vector2D each = 12 bytes)
+      //                    1 Circle (Vector2D+float = 12 bytes)
+      //                    2 ints, 1 float, 1 Vector2D
+      if (version > 21) {
+        // Angle 1: float + Vector2D
+        float angleFloat1; Vector2D angleVec1;
+        ar >> angleFloat1; ar >> angleVec1;
+        // Vector2D
+        Vector2D presVec1;
+        ar >> presVec1;
+        // Angle 2: float + Vector2D
+        float angleFloat2; Vector2D angleVec2;
+        ar >> angleFloat2; ar >> angleVec2;
+        // Circle: Vector2D + float
+        Vector2D circleCenter; float circleRadius;
+        ar >> circleCenter; ar >> circleRadius;
+        // Angle 3: float + Vector2D
+        float angleFloat3; Vector2D angleVec3;
+        ar >> angleFloat3; ar >> angleVec3;
+        // 2 ints + 1 float + 1 Vector2D
+        int32 presInt1, presInt2; float presFloat1; Vector2D presVec2;
+        ar >> presInt1; ar >> presInt2;
+        ar >> presFloat1; ar >> presVec2;
+      }
+
+      // v > 24: extra bool
+      if (version > 24) {
+        int32 dummyInt;
+        ar >> dummyInt;
+      }
+
+      // v >= 27: myAttentionId
+      if (version >= 27) {
+        int32 attentionId;
+        ar >> attentionId;
+      } else {
+        // v < 27: set to -1
+      }
+
+      // v >= 36: extra position/size fields
+      if (version >= 36) {
+        float extraFloat1, extraFloat2;
+        ar >> extraFloat1;
+        ar >> extraFloat2;
+        Vector2D extraVec;
+        ar >> extraVec;
+        Box extraBox;
+        ar >> extraBox;
+        // v >= 37: extra bool
+        if (version >= 37) {
+          int32 extraBoolInt;
+          ar >> extraBoolInt;
+        }
+      }
+
+      // bytecount - num of bytes to skip over (to allow extensions)
+      ar >> tmp_int;
+
+    } else {
+      // C3 v12: original field order
+      ar >> myImpendingDoom;
+      ar >> myCurrentWidth;
+      ar >> myCurrentHeight;
+      ar >> myResetLines;
+
+      ar >> myDrawMirroredFlag;
+
+      ar >> mySoundName;
+      ar >> mySoundLooping;
+
+      ar >> myWidthTemp >> myHeightTemp;
+
+      // bytecount - num of bytes to skip over (to allow extensions)
+      ar >> tmp_int;
+      //	ar.Skip( tmp_int );
+    }
 
   } else {
     _ASSERT(false);

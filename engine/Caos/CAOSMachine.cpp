@@ -891,8 +891,33 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     ar >> myCommandIP;
     ar >> myState;
     ar >> myLockedFlag;
-    // assorted agents
-    ar >> myTarg >> myOwner >> myFrom >> myIT >> myCamera;
+
+    if (version >= 15) {
+      // DS v39: field order is myOwner, myIT, then myTarg (as CAOSVar)
+      ar >> myOwner;
+      ar >> myIT;
+
+      if (version >= 18) {
+        // myTarg is stored as a CAOSVar, not a raw AgentHandle
+        CAOSVar targVar;
+        ar >> targVar;
+        if (targVar.GetType() == CAOSVar::typeAgent) {
+          myTarg = targVar.GetAgent();
+        }
+      } else {
+        // v15-17: read as AgentHandle, convert
+        AgentHandle targHandle;
+        ar >> targHandle;
+        myTarg = targHandle;
+      }
+
+      ar >> myFrom;
+      ar >> myCamera;
+    } else {
+      // C3 v12: original field order
+      ar >> myTarg >> myOwner >> myFrom >> myIT >> myCamera;
+    }
+
     ar >> myPart >> myP1 >> myP2;
 
     // The currently running macro
@@ -909,6 +934,17 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     for (i = 0; i < stacksize; ++i) {
       ar >> temphandle;
       myAgentStack.push_back(temphandle);
+    }
+
+    // DS v39 (v >= 38) adds a vector of command strings
+    if (version >= 38) {
+      int stringCount;
+      ar >> stringCount;
+      for (i = 0; i < stringCount; ++i) {
+        std::string cmdStr;
+        ar >> cmdStr;
+        // Consume but don't store - C3 doesn't have this member
+      }
     }
 
     // script-local variables... VA00-VA99

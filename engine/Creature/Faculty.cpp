@@ -53,7 +53,19 @@ bool Faculty::Read(CreaturesArchive &archive)
 
 	if(version >= 3)
 	{
-		archive >> myCreature;
+		// In v >= 15 (DS), the creature handle is set later via Init(),
+		// not read from the archive. In v < 15 (C3), it's read here.
+		if(version < 15)
+		{
+			archive >> myCreature;
+		}
+
+		// v39 (DS) adds an extra bool field to Faculty
+		if(version > 38)
+		{
+			bool dummy;
+			archive >> dummy;
+		}
 	}
 	else
 	{

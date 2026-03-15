@@ -77,6 +77,19 @@ protected:
 
 	virtual void Get( const int type, PolyVar& data ) const;
 	virtual void Set( const int type, const PolyVar& data );
+
+	// Comparison operator needed for map<CAOSVar, CAOSVar> in DS v39
+	bool operator<(const CAOSVar& other) const {
+		if (myType != other.myType)
+			return myType < other.myType;
+		switch (myType) {
+			case typeInteger: return myData.pv_int < other.myData.pv_int;
+			case typeFloat: return myData.pv_float < other.myData.pv_float;
+			case typeString: return *myData.pv_string < *other.myData.pv_string;
+			case typeAgent: return false; // agents can't be meaningfully ordered
+			default: return false;
+		}
+	}
 };
 
 

@@ -694,6 +694,15 @@ bool EntityImage::Read(CreaturesArchive &archive)
 
 		archive >> myReadArchivedGalleryFlag;
 
+		// DS v39 (v > 21) adds two extra uint32 fields here
+		// (likely default gallery width/height or similar)
+		if(version > 21)
+		{
+			uint32 extraField1, extraField2;
+			archive >> extraField1;
+			archive >> extraField2;
+		}
+
 		if(myReadArchivedGalleryFlag)
 		{
 
@@ -725,6 +734,15 @@ bool EntityImage::Read(CreaturesArchive &archive)
 		archive >> myFrameCount;
 		archive >> myCurrentWidth >> myCurrentHeight;
 		archive >> myVisibleFlag;
+
+		// DS v39 (v > 24) adds alpha blending support
+		if(version > 24)
+		{
+			bool alphaBlended;
+			int32 alphaBlendValue;
+			archive >> alphaBlended;
+			archive >> alphaBlendValue;
+		}
 	}
 	else
 	{

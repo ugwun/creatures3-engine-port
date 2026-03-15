@@ -622,7 +622,7 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     std::strstream geneStream((char *)geneListChunk->GetData(),
                               geneListChunk->GetSize());
 
-    CreaturesArchive geneListArchive(geneStream, CreaturesArchive::Load);
+    CreaturesArchive geneListArchive(geneStream, CreaturesArchive::Load, true);
     geneListArchive >> geneNames;
 
     // Now restore those genetic files...
@@ -678,7 +678,8 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     std::strstream stream((char *)creatureChunk->GetData(),
                           creatureChunk->GetSize());
 
-    CreaturesArchive archive(stream, CreaturesArchive::Load);
+    // Pass bNoVersion=true to accept archives of any version (including DS v39)
+    CreaturesArchive archive(stream, CreaturesArchive::Load, true);
     archive.SetAgentArchiveStyle(CreaturesArchive::ONE_AGENT_ONLY_NULL_OTHERS);
     archive.SetCloningACreature(true);
     archive >> handle;
