@@ -102,6 +102,21 @@ std::string ErrorMessageHandler::Format(std::string, int, std::string, ...) {
 
 PersistentObject *PersistentObject::New(char const *) { return nullptr; }
 
+// FlightRecorder mock (CreaturesArchive.cpp now uses theFlightRecorder.Log)
+#include "engine/FlightRecorder.h"
+FlightRecorder theFlightRecorder;
+FlightRecorder::FlightRecorder() : myOutFile(nullptr), myEnabledCategories(0) {
+  myOutFilename[0] = '\0';
+#ifndef _WIN32
+  myUDPSocket = -1;
+  myUDPPort = 0;
+#endif
+}
+FlightRecorder::~FlightRecorder() {}
+void FlightRecorder::Log(uint32, const char *, ...) {}
+void FlightRecorder::SetOutFile(const char *) {}
+void FlightRecorder::SetCategories(uint32) {}
+
 // AgentHandle/NULLHANDLE stubs (CreaturesArchive serialises agents)
 #include "engine/Agents/AgentHandle.h"
 AgentHandle NULLHANDLE;

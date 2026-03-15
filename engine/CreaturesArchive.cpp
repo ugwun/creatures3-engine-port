@@ -29,6 +29,7 @@
 #endif
 
 #include "CreaturesArchive.h"
+#include "C2eServices.h"
 #include "Display/Position.h"
 #include "PersistentObject.h"
 #include <string>
@@ -483,6 +484,7 @@ void CreaturesArchive::Read(RECT &rect) {
 void CreaturesArchive::Read(void *buffer, size_t count) {
   // Let's do it...
   int read = 0;
+  bool streamEnded = false;
   while (read < count) {
     // If there is some data in the buffer left, use it...
     if (myLastUncompressedDataRead < myStreamBuffer.next_out) {
@@ -495,6 +497,8 @@ void CreaturesArchive::Read(void *buffer, size_t count) {
     }
     if (read == count)
       return; // No need to process more...
+    if (streamEnded)
+      return; // No more data available from inflate
     // Okay then, I've used up all the output...
     myLastUncompressedDataRead = myUncompressedDataBuffer;
     myStreamBuffer.next_out = myUncompressedDataBuffer;
@@ -508,13 +512,22 @@ void CreaturesArchive::Read(void *buffer, size_t count) {
           myStreamBuffer.next_in = myCompressedDataBuffer;
           myStream.read((char *)myCompressedDataBuffer, BUFFER_SIZE);
           myStreamBuffer.avail_in = myStream.gcount();
+          if (myStreamBuffer.avail_in == 0)
+            break; // No more compressed data available
         }
-        inflate(&myStreamBuffer, 0);
+        int ret = inflate(&myStreamBuffer, 0);
+        if (ret == Z_STREAM_END) {
+          streamEnded = true;
+          break;
+        }
       }
     } else {
       // Erm, we have no more in the stream, but there may be data in the buffer
       // left
-      inflate(&myStreamBuffer, 0);
+      int ret = inflate(&myStreamBuffer, 0);
+      if (ret == Z_STREAM_END || myStreamBuffer.avail_in == 0) {
+        streamEnded = true;
+      }
     }
   }
 }
@@ -523,6 +536,9 @@ void CreaturesArchive::Read(PersistentObject *&object) {
   // First, read in the id of the persistent object
   int id;
   Read(id);
+
+  theFlightRecorder.Log(1, "CreaturesArchive::Read(PO*&) id=%d", id);
+  fprintf(stderr, "[DESER] PO id=%d\n", id);
 
   // Check for a null pointer first
   if (id == NULL_ARCHIVE_OBJECT) {
@@ -559,6 +575,17 @@ void CreaturesArchive::Read(PersistentObject *&object) {
     myClassVector.push_back(className);
   }
 
+  theFlightRecorder.Log(1, "  -> creating class '%s' (classID=%d)", className.c_str(), classID);
+  fprintf(stderr, "[DESER]   creating '%s' (classID=%d)\n", className.c_str(), classID);
+
+  // DS v14+ renamed "Creature" to "SkeletalCreature". C3 only has "Creature"
+  // registered, so we need to remap when reading v14+ archives.
+  if (className == "SkeletalCreature") {
+    className = "Creature";
+    theFlightRecorder.Log(1, "  -> remapped SkeletalCreature -> Creature");
+    fprintf(stderr, "[DESER]   remapped SkeletalCreature -> Creature\n");
+  }
+
   // Create an object of the class name's type
   object = PersistentObject::New(className.c_str());
 
@@ -582,9 +609,16 @@ void CreaturesArchive::Read(PersistentObject *&object) {
     std::string magic;
     Read(magic);
     ASSERT(magic == "OBST");
+    theFlightRecorder.Log(1, "  -> calling %s::Read()", className.c_str());
+    fprintf(stderr, "[DESER]   calling %s::Read()\n", className.c_str());
     object->Read(*this);
+    theFlightRecorder.Log(1, "  -> %s::Read() completed", className.c_str());
+    fprintf(stderr, "[DESER]   %s::Read() completed\n", className.c_str());
     Read(magic);
     ASSERT(magic == "OBEN");
+  } else {
+    theFlightRecorder.Log(1, "  -> FAILED to create class '%s'", className.c_str());
+    fprintf(stderr, "[DESER]   FAILED to create '%s'\n", className.c_str());
   }
 }
 

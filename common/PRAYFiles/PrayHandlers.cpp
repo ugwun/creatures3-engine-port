@@ -613,17 +613,23 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
   if (theApp.GetResourceManager().CheckChunk(moniker + ".creature") == 0)
     return 2; // That Moniker is not in the PRAY mappings
 
+  fprintf(stderr, "[IMPO] Starting import for moniker: %s\n", moniker.c_str());
+
   try {
     // First read in list of stored genetic files...
     std::vector<std::string> geneNames;
     const PrayChunkPtr &geneListChunk =
         theApp.GetResourceManager().GetChunk(moniker + ".glist.creature");
+    fprintf(stderr, "[IMPO] Got glist chunk, size=%d\n", (int)geneListChunk->GetSize());
 
     std::strstream geneStream((char *)geneListChunk->GetData(),
                               geneListChunk->GetSize());
 
+    fprintf(stderr, "[IMPO] Creating geneListArchive...\n");
     CreaturesArchive geneListArchive(geneStream, CreaturesArchive::Load, true);
+    fprintf(stderr, "[IMPO] geneListArchive created (v=%d), reading geneNames...\n", geneListArchive.GetFileVersion());
     geneListArchive >> geneNames;
+    fprintf(stderr, "[IMPO] Got %d gene names\n", (int)geneNames.size());
 
     // Now restore those genetic files...
 
@@ -645,6 +651,7 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
                   // PRAY maps.
     }
 
+    fprintf(stderr, "[IMPO] Histories reconciled, doStuff=%d\n", doStuff);
     if (!doStuff)
       return successReconcile ? 0 : 1;
 
@@ -678,11 +685,15 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     std::strstream stream((char *)creatureChunk->GetData(),
                           creatureChunk->GetSize());
 
+    fprintf(stderr, "[IMPO] Creating creature archive, chunk size=%d\n", (int)creatureChunk->GetSize());
     // Pass bNoVersion=true to accept archives of any version (including DS v39)
     CreaturesArchive archive(stream, CreaturesArchive::Load, true);
+    fprintf(stderr, "[IMPO] Creature archive created (v=%d)\n", archive.GetFileVersion());
     archive.SetAgentArchiveStyle(CreaturesArchive::ONE_AGENT_ONLY_NULL_OTHERS);
     archive.SetCloningACreature(true);
+    fprintf(stderr, "[IMPO] Reading creature handle...\n");
     archive >> handle;
+    fprintf(stderr, "[IMPO] Creature handle read OK\n");
 
     if (!successReconcile) {
       // need to clone everything in the genome store
