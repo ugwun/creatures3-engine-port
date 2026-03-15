@@ -89,9 +89,16 @@ void HistoryStore::WipeCreatureHistory(const std::string& moniker)
 bool HistoryStore::ReconcileImportedHistory(const std::string& moniker, CreatureHistory& importedHistory, bool performReconciliation)
 {
 #ifdef _DEBUG
-	// Last event in imported file should always be an export event
-	LifeEvent* lastImportedEvent = importedHistory.GetLifeEvent(importedHistory.Count() - 1);
-	ASSERT(lastImportedEvent->myEventType == LifeEvent::typeExported);
+	// Original C3 asserted the last event is an export event, but DS starter
+	// families (.DFAM) are pre-generated and never exported from a game, so
+	// their last event may be typeBorn, typeNewLifeStage, etc.
+	if (importedHistory.Count() > 0) {
+		LifeEvent* lastImportedEvent = importedHistory.GetLifeEvent(importedHistory.Count() - 1);
+		if (lastImportedEvent->myEventType != LifeEvent::typeExported) {
+			fprintf(stderr, "[IMPO] ReconcileImportedHistory: last event is %d, not typeExported (OK for .DFAM starter families)\n",
+				(int)lastImportedEvent->myEventType);
+		}
+	}
 #endif
 
 	int ooww = GetOutOfWorldState(moniker);
