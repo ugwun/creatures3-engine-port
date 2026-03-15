@@ -271,3 +271,21 @@ gtest_discover_tests(test_HistoryHandlers)
 gtest_discover_tests(test_AppHandlers)
 gtest_discover_tests(test_PointerAgent)
 gtest_discover_tests(test_TickRate)
+
+# ---------------------------------------------------------------------------
+# test_V39Serialization — v39-specific deserialization branch tests
+# ---------------------------------------------------------------------------
+add_executable(test_V39Serialization
+  test_V39Serialization.cpp
+  stub_V39_CreatureHistory.cpp
+  ../engine/CreaturesArchive.cpp
+  ../engine/Caos/CAOSVar.cpp
+  ../engine/Creature/History/LifeEvent.cpp
+)
+target_include_directories(test_V39Serialization PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_V39Serialization PRIVATE GTest::gtest_main ZLIB::ZLIB)
+gtest_discover_tests(test_V39Serialization)

@@ -83,9 +83,7 @@ CreaturesArchive::CreaturesArchive(std::iostream &stream, Mode mode,
       throw Exception("CRA0002: Not a creatures archive");
     }
 
-    fprintf(stderr, "[ARCHIVE] Hint OK, stream good=%d, reading version...\n", myStream.good());
     Read(myVersion);
-    fprintf(stderr, "[ARCHIVE] Version read: %d (bNoVersion=%d)\n", myVersion, bNoVersion);
     if (!bNoVersion) {
       if (myVersion != GetCurrentVersion()) {
         std::string str = ErrorMessageHandler::Format(
@@ -540,7 +538,6 @@ void CreaturesArchive::Read(PersistentObject *&object) {
   Read(id);
 
   theFlightRecorder.Log(1, "CreaturesArchive::Read(PO*&) id=%d", id);
-  fprintf(stderr, "[DESER] PO id=%d\n", id);
 
   // Check for a null pointer first
   if (id == NULL_ARCHIVE_OBJECT) {
@@ -578,14 +575,12 @@ void CreaturesArchive::Read(PersistentObject *&object) {
   }
 
   theFlightRecorder.Log(1, "  -> creating class '%s' (classID=%d)", className.c_str(), classID);
-  fprintf(stderr, "[DESER]   creating '%s' (classID=%d)\n", className.c_str(), classID);
 
   // DS v14+ renamed "Creature" to "SkeletalCreature". C3 only has "Creature"
   // registered, so we need to remap when reading v14+ archives.
   if (className == "SkeletalCreature") {
     className = "Creature";
     theFlightRecorder.Log(1, "  -> remapped SkeletalCreature -> Creature");
-    fprintf(stderr, "[DESER]   remapped SkeletalCreature -> Creature\n");
   }
 
   // Create an object of the class name's type
@@ -612,15 +607,12 @@ void CreaturesArchive::Read(PersistentObject *&object) {
     Read(magic);
     ASSERT(magic == "OBST");
     theFlightRecorder.Log(1, "  -> calling %s::Read()", className.c_str());
-    fprintf(stderr, "[DESER]   calling %s::Read()\n", className.c_str());
     object->Read(*this);
     theFlightRecorder.Log(1, "  -> %s::Read() completed", className.c_str());
-    fprintf(stderr, "[DESER]   %s::Read() completed\n", className.c_str());
     Read(magic);
     ASSERT(magic == "OBEN");
   } else {
     theFlightRecorder.Log(1, "  -> FAILED to create class '%s'", className.c_str());
-    fprintf(stderr, "[DESER]   FAILED to create '%s'\n", className.c_str());
   }
 }
 

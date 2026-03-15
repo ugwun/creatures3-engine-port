@@ -888,7 +888,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
   int32 version = ar.GetFileVersion();
   if (version >= 3) {
     theFlightRecorder.Log(1, "CAOSMachine::Read: v=%d, reading initial fields", version);
-    fprintf(stderr, "[DESER] CAOSMachine::Read v=%d\n", version);
     ar >> myIP;
     ar >> myCommandIP;
     ar >> myState;
@@ -896,7 +895,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
 
     if (version >= 15) {
       theFlightRecorder.Log(1, "CAOSMachine::Read: v>=15 handle reorder");
-      fprintf(stderr, "[DESER] CAOSMachine: handle reorder\n");
       // DS v39: field order is myOwner, myIT, then myTarg (as CAOSVar)
       ar >> myOwner;
       ar >> myIT;
@@ -925,12 +923,10 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     ar >> myPart >> myP1 >> myP2;
 
     theFlightRecorder.Log(1, "CAOSMachine::Read: reading myMacro");
-    fprintf(stderr, "[DESER] CAOSMachine: myMacro\n");
     // The currently running macro
     ar >> myMacro;
 
     theFlightRecorder.Log(1, "CAOSMachine::Read: reading int stack");
-    fprintf(stderr, "[DESER] CAOSMachine: int stack\n");
 
     myStack.clear();
     ar >> stacksize;
@@ -940,7 +936,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     }
 
     theFlightRecorder.Log(1, "CAOSMachine::Read: reading agent handle stack");
-    fprintf(stderr, "[DESER] CAOSMachine: handle stack\n");
     ar >> stacksize;
     for (i = 0; i < stacksize; ++i) {
       ar >> temphandle;
@@ -948,7 +943,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     }
 
     theFlightRecorder.Log(1, "CAOSMachine::Read: checking v>=38 strings (v=%d)", version);
-    fprintf(stderr, "[DESER] CAOSMachine: v38 strings check\n");
     // DS v39 (v >= 38) adds a vector of command strings
     if (version >= 38) {
       int stringCount;
@@ -961,12 +955,10 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     }
 
     theFlightRecorder.Log(1, "CAOSMachine::Read: reading local vars");
-    fprintf(stderr, "[DESER] CAOSMachine: local vars\n");
     // script-local variables... VA00-VA99
     ar >> varcount;
     _ASSERT(varcount <= LOCAL_VARIABLE_COUNT);
     theFlightRecorder.Log(1, "CAOSMachine::Read: varcount=%d", varcount);
-    fprintf(stderr, "[DESER] CAOSMachine: varcount=%d\n", varcount);
 
     for (i = 0; i < varcount; ++i) {
       if (!myLocalVariables[i].Read(ar))
@@ -975,7 +967,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
 
     // ar >> myCurrentCmd;
     theFlightRecorder.Log(1, "CAOSMachine::Read: reading command name string");
-    fprintf(stderr, "[DESER] CAOSMachine: cmd name string\n");
     std::string tempOp;
     ar >> tempOp;
     for (i = 0; i < ourCommandNames.size(); i++) {
