@@ -53,8 +53,12 @@ void CompoundHandlers::Command_PTXT(CAOSMachine &vm) {
 
   CompoundAgent &agent = vm.GetTarg().GetCompoundAgentReference();
 
-  if (!agent.ValidatePart(vm.GetPart()))
-    vm.ThrowRunError(CAOSMachine::sidInvalidPart, vm.GetPart());
+  if (!agent.ValidatePart(vm.GetPart())) {
+    // DS scripts frequently reference parts that may not exist due to
+    // complex script interactions (e.g. comms screen cleanup races).
+    // Log and skip rather than stopping the script.
+    return;
+  }
 
   CompoundPart *part = agent.GetPart(vm.GetPart());
   if (!(part->GetType() & CompoundPart::partText))

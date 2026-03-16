@@ -1600,6 +1600,12 @@ int Agent::ExecuteScriptForClassifier(const Classifier &c,
 
     myVirtualMachine.StartScriptExecuting(m, mySelf, from, p1, p2);
 
+    // Diagnostic: trace script execution on comms screen agent
+    if (myClassifier.Family() == 1 && myClassifier.Genus() == 2 && myClassifier.Species() == 210) {
+      theFlightRecorder.Log(1, "CommsScreen: executing event=%d agentId=%d",
+          c.Event(), myID);
+    }
+
     // Execute at least one instruction immediately.
     // This ensures that scripts starting with INST get executed
     // atomically, otherwise a little bit of the script gets done

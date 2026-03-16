@@ -7,6 +7,7 @@
 #include "CompoundAgent.h"
 #include "../World.h"
 #include "UIPart.h"
+#include "../C2eServices.h" // theFlightRecorder
 
 CREATURES_IMPLEMENT_SERIAL(CompoundAgent)
 
@@ -43,6 +44,12 @@ bool CompoundAgent::AddPart(int id, CompoundPart *part) {
 
   myParts[id] = part;
 
+  // Diagnostic: trace part creation on comms screen agent
+  if (myClassifier.Family() == 1 && myClassifier.Genus() == 2 && myClassifier.Species() == 210) {
+    theFlightRecorder.Log(1, "CommsScreen::AddPart: part=%d partsSize=%d",
+        id, (int)myParts.size());
+  }
+
   part->SetParent(this);
   // sort out position and plane relative to part0
   if (id != 0) {
@@ -60,6 +67,10 @@ bool CompoundAgent::AddPart(int id, CompoundPart *part) {
 }
 
 void CompoundAgent::DestroyPart(int id) {
+  if (myClassifier.Family() == 1 && myClassifier.Genus() == 2 && myClassifier.Species() == 210) {
+    theFlightRecorder.Log(1, "CommsScreen::DestroyPart: part=%d partsSize=%d",
+        id, (int)myParts.size());
+  }
   if (id >= 1 && id < myParts.size() && myParts[id]) {
     delete myParts[id];
     myParts[id] = NULL;
@@ -212,11 +223,41 @@ void CompoundAgent::HandleUI(Message *msg) {
 
   base::HandleUI(msg);
 
-  PartIterator it;
-  for (it = myParts.begin(); it != myParts.end(); ++it) {
-    if (*it) {
-      if ((*it)->GetType() & CompoundPart::partUI)
-        ((UIPart *)(*it))->HandleUI(msg);
+  // For MOUSEDOWN events, find only the highest-indexed matching button.
+  // The original DS had pixel-precise sprites that didn't overlap, but our
+  // bounding-box hit testing can cause overlap (e.g. comms screen parts 3 & 5).
+  // Firing multiple overlapping buttons causes script races (e.g. chat cleanup
+  // destroying injector parts).  Only fire the last matching button, which
+  // corresponds to the highest-priority (most recently added) control.
+  if (msg->GetMsg() == SCRIPTUIMOUSEDOWN) {
+    UIPart *bestMatch = nullptr;
+    AgentHandle fromAgent = msg->GetFrom();
+    if (fromAgent.IsValid()) {
+      // Get mouse hotspot — same logic as UIPart::GetHotSpot
+      Vector2D hotspot;
+      if (fromAgent.IsPointerAgent())
+        hotspot = thePointer.GetPointerAgentReference().GetHotSpot();
+      else
+        hotspot = fromAgent.GetAgentReference().GetPosition();
+
+      for (PartIterator it = myParts.begin(); it != myParts.end(); ++it) {
+        if (*it && ((*it)->GetType() & CompoundPart::partButton)) {
+          UIButton *btn = static_cast<UIButton *>(*it);
+          if (btn->IsOver(hotspot))
+            bestMatch = btn;
+        }
+      }
+    }
+    if (bestMatch)
+      bestMatch->HandleUI(msg);
+  } else {
+    // For non-MOUSEDOWN events (hover, etc.), dispatch to all UI parts normally
+    PartIterator it;
+    for (it = myParts.begin(); it != myParts.end(); ++it) {
+      if (*it) {
+        if ((*it)->GetType() & CompoundPart::partUI)
+          ((UIPart *)(*it))->HandleUI(msg);
+      }
     }
   }
 }
@@ -405,8 +446,11 @@ int CompoundAgent::ClickAction(int x, int y) // xy in world coords
 bool CompoundAgent::SetAnim(const uint8 *anim, int length, int partid) {
   _ASSERT(!myGarbaged);
 
-  if (!ValidatePart(partid))
+  if (!ValidatePart(partid)) {
+    theFlightRecorder.Log(1, "CompoundAgent::SetAnim FAIL: partid=%d partsSize=%d partNull=%d agentId=%d",
+        partid, (int)myParts.size(), (partid >= 0 && partid < (int)myParts.size()) ? (myParts[partid] == NULL ? 1 : 0) : -1, myID);
     return false;
+  }
 
   return (myParts[partid]->SetAnim(anim, length));
 }

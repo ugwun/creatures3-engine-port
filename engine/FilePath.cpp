@@ -51,6 +51,26 @@ std::string FilePath::GetFullPath() const {
     std::string primary = theApp.GetDirectory(myDirectory) + myName;
 
 #ifndef _WIN32
+    // DS sprite files use .c16 (compressed 16-bit) while the CAOS pat:
+    // commands hardcode .s16.  Check primary path first, then try .c16
+    // fallback in the primary directory before falling back to auxiliary.
+    if (access(primary.c_str(), F_OK) != 0 && myDirectory == IMAGES_DIR) {
+      int dotPos = myName.find_last_of(".");
+      if (dotPos != -1) {
+        std::string ext = myName.substr(dotPos);
+        if (ext == ".s16" || ext == ".S16") {
+          std::string c16Name = myName.substr(0, dotPos) + ".c16";
+          std::string priC16 = theApp.GetDirectory(myDirectory) + c16Name;
+          if (access(priC16.c_str(), F_OK) == 0)
+            return priC16;
+          c16Name = myName.substr(0, dotPos) + ".C16";
+          priC16 = theApp.GetDirectory(myDirectory) + c16Name;
+          if (access(priC16.c_str(), F_OK) == 0)
+            return priC16;
+        }
+      }
+    }
+
     // Check if the file exists at the primary path.  If not, try the
     // auxiliary directory (e.g. ../Creatures 3/Images/) which is where
     // C3 game assets live when running Docking Station docked.

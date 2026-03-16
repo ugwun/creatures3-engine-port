@@ -18,6 +18,7 @@
 #include "../FileLocaliser.h"
 #include "PrayStructs.h"
 #include "PrayException.h"
+#include "../../engine/C2eServices.h" // theFlightRecorder
 
 #ifdef _WIN32
 #include "../zlib113/zlib.h"
@@ -71,6 +72,8 @@ void PrayManager::RescanFolders()
 		{
 			AddFile(*fit);
 		}
+		theFlightRecorder.Log(4, "PrayManager::RescanFolders: scanned dir='%s' ext='%s' found %d files",
+			(*it).c_str(), (*eit).c_str(), (int)files.size());
 	}
 }
 
@@ -327,6 +330,8 @@ void PrayManager::GetChunks(std::string thisType, std::vector<std::string>& this
 		if ((*it).second.second == thisType)
 			thisVec.push_back((*it).first);
 	}
+	theFlightRecorder.Log(4, "PrayManager::GetChunks: type='%s' found %d chunks",
+		thisType.c_str(), (int)thisVec.size());
 }
 
 void PrayManager::AddChunkToFile(std::string thisName, std::string thisType, std::string thisFile,

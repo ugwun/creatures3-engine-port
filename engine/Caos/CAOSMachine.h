@@ -410,6 +410,98 @@ public:
   // DS: Allow scripts to write the FROM agent handle (seta from _p1_).
   void SetFrom(AgentHandle &newfrom) { myFrom = newfrom; }
 
+  // Accessors for P1/P2 — needed by synchronous CALL implementation
+  CAOSVar GetP1() const { return myP1; }
+  CAOSVar GetP2() const { return myP2; }
+
+  // State bundle for synchronous subroutine calls (CALL command).
+  // Captures the full VM context so a subroutine can run and the
+  // caller can resume exactly where it left off.
+  struct CallState {
+    MacroScript *macro;
+    int ip;
+    CAOSVar p1, p2;
+    bool instFlag;
+    bool lockedFlag;
+    AgentHandle owner;
+    AgentHandle targ;
+    AgentHandle from;
+    AgentHandle it;
+    Camera *camera;
+    int part;
+    std::vector<int> stack;
+    std::vector<AgentHandle> agentStack;
+    CAOSVar localVars[100]; // LOCAL_VARIABLE_COUNT
+  };
+
+  // Save the current VM state into a CallState bundle.
+  void SaveCallState(CallState &state) {
+    state.macro = myMacro;
+    state.ip = myIP;
+    state.p1 = myP1;
+    state.p2 = myP2;
+    state.instFlag = myInstFlag;
+    state.lockedFlag = myLockedFlag;
+    state.owner = myOwner;
+    state.targ = myTarg;
+    state.from = myFrom;
+    state.it = myIT;
+    state.camera = myCamera;
+    state.part = myPart;
+    state.stack = myStack;
+    state.agentStack = myAgentStack;
+    for (int i = 0; i < LOCAL_VARIABLE_COUNT; ++i)
+      state.localVars[i] = myLocalVariables[i];
+  }
+
+  // Restore a previously saved CallState, resuming the caller script.
+  void RestoreCallState(const CallState &state) {
+    // The subroutine's endm called StopScriptExecuting() which cleared
+    // everything. Rebuild state from the saved bundle.
+    myMacro = state.macro;
+    if (myMacro)
+      myMacro->Lock(); // re-lock the caller's macro
+    myIP = state.ip;
+    myP1 = state.p1;
+    myP2 = state.p2;
+    myInstFlag = state.instFlag;
+    myLockedFlag = state.lockedFlag;
+    myOwner = state.owner;
+    myTarg = state.targ;
+    myFrom = state.from;
+    myIT = state.it;
+    myCamera = state.camera;
+    myPart = state.part;
+    myStack = state.stack;
+    myAgentStack = state.agentStack;
+    for (int i = 0; i < LOCAL_VARIABLE_COUNT; ++i)
+      myLocalVariables[i] = state.localVars[i];
+    myState = stateFetch;
+  }
+
+  // Set up the VM to run a subroutine script (for CALL command).
+  // Unlike StartScriptExecuting, this does NOT clear existing state.
+  void BeginSubroutine(MacroScript *m, const CAOSVar &p1,
+                       const CAOSVar &p2) {
+    myMacro = m;
+    myMacro->Lock();
+    myIP = 0;
+    myP1 = p1;
+    myP2 = p2;
+    myState = stateFetch;
+    // Clear stack for the subroutine's own loop/flow context
+    myStack.clear();
+    myAgentStack.clear();
+    // Reset local variables for the subroutine's own scope
+    for (int i = 0; i < LOCAL_VARIABLE_COUNT; ++i) {
+      if (myLocalVariables[i].GetType() == CAOSVar::typeAgent)
+        myLocalVariables[i].SetInteger(0);
+      else
+        myLocalVariables[i].BecomeAZeroedIntegerOnYourNextRead();
+    }
+    // targ/ownr/from/it/lock/inst carry over from caller (saved in CallState)
+  }
+
   void SetCamera(Camera *newCamera) { // if this is null then it's OK it means
                                       // use the main camera
     // for subsequent camera commands

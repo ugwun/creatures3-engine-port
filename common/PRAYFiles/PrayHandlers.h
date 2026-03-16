@@ -43,6 +43,8 @@ private:
   static int IntegerRV_PRAY_IMPO(CAOSMachine &vm);
   static int IntegerRV_PRAY_EXPO(CAOSMachine &vm);
   static int IntegerRV_PRAY_MAKE(CAOSMachine &vm);
+  // DS: PRAY KILL moniker - cancel a pending PRAY download. Offline stub.
+  static int IntegerRV_PRAY_KILL(CAOSMachine &vm);
 
   static void StringRV_PRAY_PREV(CAOSMachine &vm, std::string &str);
   static void StringRV_PRAY_NEXT(CAOSMachine &vm, std::string &str);
@@ -50,6 +52,8 @@ private:
   // DS: PRAY FORE resource_type last_known - forward-iterate PRAY resource
   // list. Same signature as NEXT ("ss"), returns next chunk name from the list.
   static void StringRV_PRAY_FORE(CAOSMachine &vm, std::string &str);
+  // DS: PRAY BACK resource_type last_known - backward-iterate PRAY resource list.
+  static void StringRV_PRAY_BACK(CAOSMachine &vm, std::string &str);
 
   // Helper functions
 

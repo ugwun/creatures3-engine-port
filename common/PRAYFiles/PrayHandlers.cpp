@@ -99,7 +99,7 @@ int PrayHandlers::IntegerRV_PRAY(CAOSMachine &vm) {
       IntegerRV_PRAY_COUN, IntegerRV_PRAY_AGTI, IntegerRV_PRAY_DEPS,
       IntegerRV_PRAY_FILE, IntegerRV_PRAY_TEST, IntegerRV_PRAY_INJT,
       IntegerRV_PRAY_SIZE, IntegerRV_PRAY_EXPO, IntegerRV_PRAY_IMPO,
-      IntegerRV_PRAY_MAKE};
+      IntegerRV_PRAY_MAKE, IntegerRV_PRAY_KILL};
   int thisrv;
   thisrv = vm.FetchOp();
   return (subhandlers[thisrv])(vm);
@@ -149,7 +149,8 @@ int PrayHandlers::IntegerRV_PRAY_MAKE(CAOSMachine &vm) {
 void PrayHandlers::StringRV_PRAY(CAOSMachine &vm, std::string &str) {
   static StringRVHandler substrings[] = {StringRV_PRAY_PREV, StringRV_PRAY_NEXT,
                                          StringRV_PRAY_AGTS,
-                                         StringRV_PRAY_FORE};
+                                         StringRV_PRAY_FORE,
+                                         StringRV_PRAY_BACK};
   int thisst;
   thisst = vm.FetchOp();
   (substrings[thisst])(vm, str);
@@ -601,6 +602,36 @@ void PrayHandlers::StringRV_PRAY_FORE(CAOSMachine &vm, std::string &str) {
   if (it == chunks.end())
     it = chunks.begin();
   str = *it;
+}
+
+// DS: PRAY BACK resource_type last_known
+// Backward-iterate the PRAY resource list of the given type, starting before
+// 'last_known'. Returns the name of the previous chunk, or "" if at the start.
+// This is the reverse complement of PRAY FORE.
+void PrayHandlers::StringRV_PRAY_BACK(CAOSMachine &vm, std::string &str) {
+  std::string type, name;
+  vm.FetchStringRV(type);
+  vm.FetchStringRV(name);
+  std::vector<std::string> chunks;
+  theApp.GetResourceManager().GetChunks(type, chunks);
+  if (chunks.empty()) {
+    str = "";
+    return;
+  }
+  std::vector<std::string>::iterator it = helper_find(chunks, name);
+  if (it == chunks.begin()) {
+    it = chunks.end();
+  }
+  str = *(--it);
+}
+
+// DS: PRAY KILL moniker
+// Cancel a pending PRAY download. This is a DS online-only command.
+// Offline stub: consume the moniker argument and return 0 (success).
+int PrayHandlers::IntegerRV_PRAY_KILL(CAOSMachine &vm) {
+  std::string moniker;
+  vm.FetchStringRV(moniker);
+  return 0;
 }
 
 int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {

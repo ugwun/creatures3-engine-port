@@ -40,6 +40,7 @@
 #include "AgentHandlers.h"
 #include "CAOSMachine.h"
 #include "Lexer.h"
+#include "../C2eServices.h" // theFlightRecorder
 
 #ifndef _WIN32
 #include "../unix/FileFuncs.h"
@@ -234,10 +235,17 @@ void AgentHandlers::Command_ANIM(CAOSMachine &vm) {
   count = vm.FetchInteger();
   p = (const unsigned char *)vm.FetchRawData(count, 1);
 
-  if (!vm.GetTarg().GetAgentReference().SetAnim(p, count, vm.GetPart()))
-    vm.ThrowRunError(
-        CAOSMachine::sidInvalidAnimOrPart, vm.GetPart(),
-        vm.GetTarg().GetAgentReference().GetBaseImage(vm.GetPart()));
+  if (!vm.GetTarg().GetAgentReference().SetAnim(p, count, vm.GetPart())) {
+    // DS scripts frequently reference parts that may not exist yet or have
+    // been destroyed (e.g. comms screen agent injector).  Log a warning
+    // instead of stopping the entire script so that subsequent logic
+    // (like the DSAG agent list population) can still run.
+    theFlightRecorder.Log(1,
+        "ANIM: skipping invalid part %d (base %d) on agent %d",
+        vm.GetPart(),
+        vm.GetTarg().GetAgentReference().GetBaseImage(vm.GetPart()),
+        vm.GetTarg().GetAgentReference().GetUniqueID());
+  }
 }
 
 void AgentHandlers::Command_FRAT(CAOSMachine &vm) {
@@ -1575,7 +1583,48 @@ void AgentHandlers::Command_CALL(CAOSMachine &vm) {
   int ev = vm.FetchIntegerRV();
   CAOSVar p1 = vm.FetchGenericRV();
   CAOSVar p2 = vm.FetchGenericRV();
-  SendMessage(theApp.GetWorld(), vm.GetOwner(), vm.GetTarg(), ev, p1, p2, 0);
+
+  // CALL is a synchronous subroutine call in DS: the calling script
+  // pauses, the target script (same classifier, event=ev) runs to
+  // completion on TARG, then the caller resumes.
+  //
+  // The C3 engine originally implemented this as SendMessage (fire-and-
+  // forget), which caused call 1011 cleanup subroutines to be deferred
+  // and run AFTER part creation instead of before, destroying the comms
+  // screen agent list parts.
+  AgentHandle targ = vm.GetTarg();
+  if (targ.IsInvalid())
+    return;
+
+  Agent &agent = targ.GetAgentReference();
+  Classifier c = agent.GetClassifier();
+  c.SetEvent(ev);
+
+  MacroScript *targetScript =
+      theApp.GetWorld().GetScriptorium().FindScript(c);
+  if (targetScript == NULL)
+    return; // No script found for this event — silently ignore
+
+  // If CALL targets OWNR (same agent), execute synchronously by
+  // saving and restoring VM state.  If targeting a different agent,
+  // fall back to async message (matching original C3 behavior for
+  // cross-agent calls).
+  if (targ == vm.GetOwner()) {
+    // Save full caller state (macro, IP, P1, P2, lock, inst, targ,
+    // local vars, stack)
+    CAOSMachine::CallState savedState;
+    vm.SaveCallState(savedState);
+
+    // Set up subroutine without destroying caller state
+    vm.BeginSubroutine(targetScript, p1, p2);
+    vm.UpdateVM(-1); // run to completion
+
+    // Restore full caller state
+    vm.RestoreCallState(savedState);
+  } else {
+    // Cross-agent call: send as message (async)
+    SendMessage(theApp.GetWorld(), vm.GetOwner(), targ, ev, p1, p2, 0);
+  }
 }
 
 // DROP -- drop the object currently held by the pointer agent.
