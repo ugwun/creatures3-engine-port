@@ -324,6 +324,14 @@ bool Creature::Read(CreaturesArchive &archive) {
     myMusicFaculty = (MusicFaculty *)(myFaculties[7]);
     myLifeFaculty = (LifeFaculty *)(myFaculties[8]);
 
+    // DS v15+ archives no longer serialize the faculty's creature handle
+    // (Faculty::Read skips it for version >= 15). We must set it here
+    // so faculties can access their owning creature.
+    if (version >= 15) {
+      for (int fi = 0; fi < noOfFaculties; fi++)
+        myFaculties[fi]->Init(mySelf);
+    }
+
     // resolve known agents in this world and time stamp (must be done after
     // life cos it is called within)
     mySensoryFaculty->ResolveFriendAndFoe();

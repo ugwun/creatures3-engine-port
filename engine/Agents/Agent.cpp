@@ -2027,7 +2027,6 @@ bool Agent::Read(CreaturesArchive &ar) {
   int varcount;
   int tmp_int;
 
-  theFlightRecorder.Log(1, "Agent::Read() v=%d", version);
 
   if (version >= 3) {
 
@@ -2114,7 +2113,6 @@ bool Agent::Read(CreaturesArchive &ar) {
     for (i = 0; i < 3; ++i)
       ar >> myDefaultClickActionCycles[i];
 
-    theFlightRecorder.Log(1, "Agent::Read: pre-CAOSMachine (v=%d)", version);
     // DS v39 (v >= 15) serializes CAOSMachine as deques of PersistentObjects
     // C3 v12 serializes it inline via myVirtualMachine.Read()
     if (version >= 15) {
@@ -2130,11 +2128,9 @@ bool Agent::Read(CreaturesArchive &ar) {
       if (!myVirtualMachine.Read(ar))
         return false;
     }
-    theFlightRecorder.Log(1, "Agent::Read: pre-PortBundle");
     if (!myPorts.Read(ar))
       return false;
 
-    theFlightRecorder.Log(1, "Agent::Read: pre-globals (varcount)");
 
     ar >> varcount;
     ASSERT(varcount <= GLOBAL_VARIABLE_COUNT);
@@ -2161,16 +2157,13 @@ bool Agent::Read(CreaturesArchive &ar) {
       }
     }
 
-    theFlightRecorder.Log(1, "Agent::Read: pre-GenomeStore");
     ar >> myGenomeStore;
 
     ar >> myAgentType;
 
-    theFlightRecorder.Log(1, "Agent::Read: pre-Voice");
     if (!myVoice.Read(ar))
       return false;
 
-    theFlightRecorder.Log(1, "Agent::Read: post-Voice, v=%d", version);
 
     if (version >= 15) {
       // DS v39 field order after Voice::Read — significantly different from C3
@@ -2222,7 +2215,6 @@ bool Agent::Read(CreaturesArchive &ar) {
       //                    1 Circle (Vector2D+float = 12 bytes)
       //                    2 ints, 1 float, 1 Vector2D
       if (version > 21) {
-        theFlightRecorder.Log(1, "Agent::Read: reading Presence inline (v>21)");
         // Angle 1: float + Vector2D
         float angleFloat1; Vector2D angleVec1;
         ar >> angleFloat1; ar >> angleVec1;
@@ -2242,7 +2234,6 @@ bool Agent::Read(CreaturesArchive &ar) {
         int32 presInt1, presInt2; float presFloat1; Vector2D presVec2;
         ar >> presInt1; ar >> presInt2;
         ar >> presFloat1; ar >> presVec2;
-        theFlightRecorder.Log(1, "Agent::Read: Presence done");
       }
 
       // v > 24: extra bool
@@ -2276,9 +2267,7 @@ bool Agent::Read(CreaturesArchive &ar) {
       }
 
       // bytecount - num of bytes to skip over (to allow extensions)
-      theFlightRecorder.Log(1, "Agent::Read: reading bytecount (end)");
       ar >> tmp_int;
-      theFlightRecorder.Log(1, "Agent::Read: DONE (v>=15 path), bytecount=%d", tmp_int);
 
     } else {
       // C3 v12: original field order

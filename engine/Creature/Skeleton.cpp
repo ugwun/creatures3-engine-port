@@ -273,9 +273,16 @@ void Skeleton::HandleMovementWhenAutonomous() {
   UpdatePositionsWithRespectToDownFoot();
   CommitPositions();
 
-  _ASSERT(theApp.GetWorld().GetMap().IsCreatureLocationValidInRoomSystem(
+  if (!theApp.GetWorld().GetMap().IsCreatureLocationValidInRoomSystem(
       myExtremes[BODY_LIMB_LEFT_LEG], myExtremes[BODY_LIMB_RIGHT_LEG], myMinY,
-      myPermiability));
+      myPermiability)) {
+    // Creature is at an invalid room position (e.g. imported from DS metaroom
+    // coordinates that don't exist in the current map). Try to relocate to a
+    // safe position rather than crashing.
+    if (!MoveToSafePlaceGivenCurrentLocation()) {
+      myInvalidPosition = true;
+    }
+  }
 
   if (collision) {
     myLastWallHit = wall;
@@ -748,9 +755,13 @@ void Skeleton::UpdateFeet() {
     UpdatePositionsWithRespectToDownFoot();
   CommitPositions();
 
-  _ASSERT(theApp.GetWorld().GetMap().IsCreatureLocationValidInRoomSystem(
+  if (!theApp.GetWorld().GetMap().IsCreatureLocationValidInRoomSystem(
       myExtremes[BODY_LIMB_LEFT_LEG], myExtremes[BODY_LIMB_RIGHT_LEG], myMinY,
-      myPermiability));
+      myPermiability)) {
+    if (!MoveToSafePlaceGivenCurrentLocation()) {
+      myInvalidPosition = true;
+    }
+  }
 
   if (fall) {
     // Stop walking, start falling

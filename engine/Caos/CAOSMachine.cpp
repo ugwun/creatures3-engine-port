@@ -887,14 +887,12 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
 
   int32 version = ar.GetFileVersion();
   if (version >= 3) {
-    theFlightRecorder.Log(1, "CAOSMachine::Read: v=%d, reading initial fields", version);
     ar >> myIP;
     ar >> myCommandIP;
     ar >> myState;
     ar >> myLockedFlag;
 
     if (version >= 15) {
-      theFlightRecorder.Log(1, "CAOSMachine::Read: v>=15 handle reorder");
       // DS v39: field order is myOwner, myIT, then myTarg (as CAOSVar)
       ar >> myOwner;
       ar >> myIT;
@@ -922,11 +920,9 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
 
     ar >> myPart >> myP1 >> myP2;
 
-    theFlightRecorder.Log(1, "CAOSMachine::Read: reading myMacro");
     // The currently running macro
     ar >> myMacro;
 
-    theFlightRecorder.Log(1, "CAOSMachine::Read: reading int stack");
 
     myStack.clear();
     ar >> stacksize;
@@ -935,14 +931,12 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
       myStack.push_back(tmp_int);
     }
 
-    theFlightRecorder.Log(1, "CAOSMachine::Read: reading agent handle stack");
     ar >> stacksize;
     for (i = 0; i < stacksize; ++i) {
       ar >> temphandle;
       myAgentStack.push_back(temphandle);
     }
 
-    theFlightRecorder.Log(1, "CAOSMachine::Read: checking v>=38 strings (v=%d)", version);
     // DS v39 (v >= 38) adds a vector of command strings
     if (version >= 38) {
       int stringCount;
@@ -954,11 +948,9 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
       }
     }
 
-    theFlightRecorder.Log(1, "CAOSMachine::Read: reading local vars");
     // script-local variables... VA00-VA99
     ar >> varcount;
     _ASSERT(varcount <= LOCAL_VARIABLE_COUNT);
-    theFlightRecorder.Log(1, "CAOSMachine::Read: varcount=%d", varcount);
 
     for (i = 0; i < varcount; ++i) {
       if (!myLocalVariables[i].Read(ar))
@@ -966,7 +958,6 @@ bool CAOSMachine::Read(CreaturesArchive &ar) {
     }
 
     // ar >> myCurrentCmd;
-    theFlightRecorder.Log(1, "CAOSMachine::Read: reading command name string");
     std::string tempOp;
     ar >> tempOp;
     for (i = 0; i < ourCommandNames.size(); i++) {

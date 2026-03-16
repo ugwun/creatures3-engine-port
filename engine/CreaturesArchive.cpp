@@ -537,7 +537,6 @@ void CreaturesArchive::Read(PersistentObject *&object) {
   int id;
   Read(id);
 
-  theFlightRecorder.Log(1, "CreaturesArchive::Read(PO*&) id=%d", id);
 
   // Check for a null pointer first
   if (id == NULL_ARCHIVE_OBJECT) {
@@ -574,13 +573,11 @@ void CreaturesArchive::Read(PersistentObject *&object) {
     myClassVector.push_back(className);
   }
 
-  theFlightRecorder.Log(1, "  -> creating class '%s' (classID=%d)", className.c_str(), classID);
 
   // DS v14+ renamed "Creature" to "SkeletalCreature". C3 only has "Creature"
   // registered, so we need to remap when reading v14+ archives.
   if (className == "SkeletalCreature") {
     className = "Creature";
-    theFlightRecorder.Log(1, "  -> remapped SkeletalCreature -> Creature");
   }
 
   // Create an object of the class name's type
@@ -606,13 +603,10 @@ void CreaturesArchive::Read(PersistentObject *&object) {
     std::string magic;
     Read(magic);
     ASSERT(magic == "OBST");
-    theFlightRecorder.Log(1, "  -> calling %s::Read()", className.c_str());
     object->Read(*this);
-    theFlightRecorder.Log(1, "  -> %s::Read() completed", className.c_str());
     Read(magic);
     ASSERT(magic == "OBEN");
   } else {
-    theFlightRecorder.Log(1, "  -> FAILED to create class '%s'", className.c_str());
   }
 }
 

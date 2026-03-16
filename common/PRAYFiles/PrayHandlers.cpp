@@ -81,7 +81,7 @@ int PrayHandlers::IntegerRV_PRAY_TEST(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
   return -1;
 }
@@ -163,7 +163,7 @@ int PrayHandlers::IntegerRV_PRAY_SIZE(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
   // Woohoo - failure!!!
   return -1; // -1 == failure :)
@@ -243,7 +243,7 @@ int PrayHandlers::IntegerRV_PRAY_INJT(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
   // Woohoo - success!!!
   return 0; // 0 == success :)
@@ -255,7 +255,7 @@ void PrayHandlers::SubCommand_PRAY_REFR(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
 }
 
@@ -332,7 +332,7 @@ int PrayHandlers::IntegerRV_PRAY_AGTI(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
 
   return def;
@@ -507,7 +507,7 @@ int PrayHandlers::Dependency_Helper(CAOSMachine &vm, std::string &name,
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
 
   return 0;
@@ -576,7 +576,7 @@ void PrayHandlers::StringRV_PRAY_AGTS(CAOSMachine &vm, std::string &str) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error in PRAY operation");
   }
 }
 
@@ -717,6 +717,12 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     archive.SetCloningACreature(true);
     archive >> handle;
 
+    if (handle.IsInvalid()) {
+      // Creature deserialization completed but the handle is NULL.
+      // This can happen if the creature agent was marked as garbage during Read().
+      throw BasicException("Creature import failed: deserialized agent handle is NULL");
+    }
+
     if (!successReconcile) {
       // need to clone everything in the genome store
       GenomeStore &theStore = handle.GetCreatureReference().GetGenomeStore();
@@ -727,7 +733,10 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
       // this could be different from the history in the world, if
       // we are importing a hatched version of a Norn that is still
       // in its egg in the world, for example
-      for (int i = 0; i < theStore.GetSlotCount(); i++) {
+      int slotCount = theStore.GetSlotCount();
+      int geneCount = (int)geneNames.size();
+      int loopCount = (slotCount < geneCount) ? slotCount : geneCount;
+      for (int i = 0; i < loopCount; i++) {
         if (!theStore.MonikerAsString(i).empty()) {
           // delete the temporary gene file if not referenced
           if (theAgentManager.FindAgentForMoniker(geneNames[i]).IsInvalid()) {
@@ -749,6 +758,13 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
     vm.SetTarg(handle);
 
     handle.GetCreatureReference().RemakeSkeletonAfterSerialisation();
+
+    // Ensure the creature is at a valid room position. DS import scripts may
+    // place creatures at metaroom coordinates (e.g. 1180, 9207) that don't
+    // exist in the current map configuration.
+    if (!handle.GetAgentReference().TestRoomSystemLocation()) {
+      handle.GetAgentReference().MoveToSafePlaceGivenCurrentLocation();
+    }
 
     if (successReconcile)
       for (monIter = geneNames.begin(); monIter != geneNames.end(); ++monIter)
@@ -814,11 +830,11 @@ int PrayHandlers::IntegerRV_PRAY_IMPO(CAOSMachine &vm) {
   } catch (PrayException &pe) {
     vm.ThrowRunError(helper_Convert(pe));
   } catch (BasicException &be) {
-    vm.ThrowRunError(0);
+    vm.ThrowRunError(be);
   } catch (std::exception &e) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError(e.what());
   } catch (...) {
-    vm.ThrowRunError(0);
+    throw CAOSMachine::RunError("Unknown error during creature import");
   }
 
   return successReconcile ? 0 : 1;
