@@ -727,16 +727,27 @@ int CreatureHandlers::IntegerRV_CATI(CAOSMachine &vm) {
 
 void CreatureHandlers::StringRV_CATX(CAOSMachine &vm, std::string &str) {
   int id = vm.FetchIntegerRV();
-  str = SensoryFaculty::GetCategoryName(id);
+  // Read directly from the catalogue to avoid stale SensoryFaculty cache.
+  int count = theCatalogue.GetArrayCountForTag("Agent Categories");
+  if (id >= 0 && id < count)
+    str = theCatalogue.Get("Agent Categories", id);
+  else
+    str = "";
 }
 
-// DS-specific: returns the category ID of the TARG agent's classifier.
-// Equivalent to CATI but operates on TARG instead of explicit
-// family/genus/species.
+// DS-specific: returns the category ID of the TARG agent.
+// If CATO has been called, returns the stored value.
+// Otherwise, computes from classifier (returning -1 if no match).
 int CreatureHandlers::IntegerRV_CATA(CAOSMachine &vm) {
   vm.ValidateTarg();
+  int cat = vm.GetTarg().GetAgentReference().GetCategory();
+  if (cat >= 0)
+    return cat;
+  // No explicit CATO override — fall back to classifier lookup.
   Classifier c = vm.GetTarg().GetAgentReference().GetClassifier();
-  return SensoryFaculty::GetCategoryIdOfClassifier(&c);
+  int id = SensoryFaculty::GetCategoryIdOfClassifier(&c);
+  // Map C3 error sentinel (39) to DS uncategorized (-1).
+  return id == SensoryFaculty::ourCatagoryIdError ? -1 : id;
 }
 
 AgentHandle CreatureHandlers::AgentRV_IITT(CAOSMachine &vm) {

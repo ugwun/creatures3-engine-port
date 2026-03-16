@@ -256,6 +256,7 @@ void Agent::Init() {
   mySoundLooping = FALSE;
 
   myPermiability = 50;
+  myCategory = -1;  // DS: uncategorized until CATO sets it
   myLastWallHit = -1;
   myGeneralRange = 500.0f; // how far away agents can hear and see things
                            // by default.  Can change with RNGE command.

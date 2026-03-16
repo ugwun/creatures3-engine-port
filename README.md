@@ -143,7 +143,7 @@ For full details see [`./monitor/README.md`](./monitor/README.md).
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **345 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **347 tests**.
 
 ### Running the tests
 
@@ -165,7 +165,7 @@ cd build && ctest --output-on-failure
 | `test_Classifier` | Family/genus/species/event matching |
 | `test_Scriptorium` | Script install / find / zap store |
 | `test_Configurator` | INI-style config file handler |
-| `test_Catalogue` | Localised string table |
+| `test_Catalogue` | Localised string table (incl. OVERRIDE corruption regression) |
 | `test_AgentManager` | `IAgentManager` interface |
 | `test_MapHandlers` | Map CAOS handler logic (`IMap&`) |
 | `test_GeneralHandlers` | General CAOS handler logic (`IWorldServices&`) |
@@ -301,7 +301,7 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 - [ ] Music doesn't load at all.
 - [ ] Creatures 3 sounds are not playing, only Docking Station sounds are playing.
 - [x] ~~When a world is created, the initial option of "importing two pretrained norns" crashes the game.~~ Fixed: implemented full v39 DS archive deserialization (9 sessions). Creature import now completes successfully — skeleton is rebuilt, and the creature is relocated to a valid room position if imported DS coordinates fall outside the current map.
-- [ ] When the "hand with question mark" is selected from the upper left side of the screen, and when the user clicks on an agent, the hand doesn't show proper naming for an agent, just some code-like text.
+- [x] ~~When the "hand with question mark" is selected from the upper left side of the screen, and when the user clicks on an agent, the hand doesn't show proper naming for an agent, just some code-like text.~~ Fixed: the `Catalogue` OVERRIDE mechanism was resetting the string-ID write pointer backward, causing later catalogue files (e.g. `zz_ds_grendel_upgrade`) to overwrite `"Agent Categories"` string slots with unrelated voice data. Also implemented the `CATO` command and fixed `CATA`/`CATX` to match DS behaviour.
 - [ ] Within the initial menu, when delete a world is selected, the world is not deleted.
 - [ ] Within the initial menu, the menu doesn't show different images for the different types of worlds: Only Docking Station world vs Docking Station + Creatures 3 world. The symbol used for representing the worlds is the Docking Station symbol in both cases. Update: the world icons change based on which type of world was selected last. If the user creates a Creatures 3 world, all icons changes to the Creatures 3 world icon, and vice versa.
 - [x] In the main menu, when Quit is clicked, the menu itself disapears, but the application window doesn't close.

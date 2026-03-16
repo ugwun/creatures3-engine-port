@@ -272,6 +272,16 @@ public:
     return myPermiability;
   }
 
+  // DS per-agent category override.  -1 means "use classifier lookup".
+  void SetCategory(int category) {
+    _ASSERT(!myGarbaged);
+    myCategory = category;
+  }
+  int GetCategory() const {
+    _ASSERT(!myGarbaged);
+    return myCategory;
+  }
+
   void SetVelocity(const Vector2D &velocity) {
     _ASSERT(!myGarbaged);
     myVelocityVector = velocity;
@@ -868,6 +878,7 @@ protected:
   float myAeroDynamicFactor; // % velocity lost due to media resistance.
   int myAeroDynamicPercentage;
   int myPermiability; // Below which the agent cannot pass through.
+  int myCategory;     // DS per-agent category override (-1 = use classifier)
   float myGravitationalAcceleration; // Rate at which agent accelerates in
                                      // pixels per tick.
   bool myStoppedFlag;

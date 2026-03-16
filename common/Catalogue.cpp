@@ -143,15 +143,11 @@ void Catalogue::AddLocalisedFile(const std::string &file) {
         }
 
         if (myTags.find(tok) != myTags.end()) {
-          if (overrideExisting) {
-            // OVERRIDE - reset the tag's starting position so new
-            // strings replace the previous ones.
-            myNextFreeId = myTags[tok].id;
-          } else {
-            // Last-write-wins: allow later catalogue files to redefine
-            // existing tags (Docking Station patch files do this frequently).
-            myNextFreeId = myTags[tok].id;
-          }
+          // Duplicate tag found.  Instead of resetting myNextFreeId
+          // backward to the old position (which corrupts string slots
+          // belonging to OTHER tags loaded between then and now),
+          // just update the tag to point to the current end.  The old
+          // slots are orphaned but harmless.
         }
 
         myTags[tok].id = myNextFreeId;

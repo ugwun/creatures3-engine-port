@@ -21,6 +21,8 @@ protected:
 
   void SetUp() override {
     tmpDir = "/tmp/test_catalogue_dir";
+    // Clean any leftover files from previous test runs
+    system(("rm -f " + tmpDir + "/*.catalogue 2>/dev/null").c_str());
     mkdir(tmpDir.c_str(), 0755);
   }
 
@@ -226,4 +228,87 @@ TEST_F(CatalogueTest, ArrayMismatchedCount_Throws) {
 
   Catalogue cat;
   EXPECT_THROW(cat.AddDir(tmpDir, "en"), Catalogue::Err);
+}
+
+// ---------------------------------------------------------------------------
+// OVERRIDE must not corrupt adjacent tags
+// ---------------------------------------------------------------------------
+
+// Regression test: when a later file overrides a tag, the strings of other
+// tags defined after the overridden tag in the *original* file must NOT be
+// corrupted.  This reproduces the exact bug where zz_ds_grendel_upgrade
+// overriding "Grendel Male Embryo" (from voices.catalogue) caused voice
+// hex data to overwrite "Agent Categories" string slots.
+TEST_F(CatalogueTest, Override_DoesNotCorruptAdjacentTags) {
+  // File A defines tag "alpha" then "beta" (loaded first alphabetically)
+  WriteCatalogueFile("a_first.catalogue",
+                     "TAG \"alpha\"\n"
+                     "\"alpha_old_1\"\n"
+                     "\"alpha_old_2\"\n"
+                     "TAG \"beta\"\n"
+                     "\"beta_1\"\n"
+                     "\"beta_2\"\n"
+                     "\"beta_3\"\n");
+
+  // File Z overrides "alpha" and adds more strings after it
+  WriteCatalogueFile("z_last.catalogue",
+                     "TAG OVERRIDE \"alpha\"\n"
+                     "\"alpha_new_1\"\n"
+                     "\"alpha_new_2\"\n"
+                     "TAG \"gamma\"\n"
+                     "\"gamma_1\"\n"
+                     "\"gamma_2\"\n"
+                     "\"gamma_3\"\n"
+                     "\"gamma_4\"\n");
+
+  Catalogue cat;
+  cat.AddDir(tmpDir, "en");
+
+  // alpha should be updated
+  EXPECT_STREQ(cat.Get("alpha", 0), "alpha_new_1");
+  EXPECT_STREQ(cat.Get("alpha", 1), "alpha_new_2");
+
+  // beta must NOT be corrupted by gamma's strings
+  EXPECT_STREQ(cat.Get("beta", 0), "beta_1");
+  EXPECT_STREQ(cat.Get("beta", 1), "beta_2");
+  EXPECT_STREQ(cat.Get("beta", 2), "beta_3");
+
+  // gamma should be correct
+  EXPECT_STREQ(cat.Get("gamma", 0), "gamma_1");
+}
+
+TEST_F(CatalogueTest, ArrayOverride_DoesNotCorruptAdjacentArrays) {
+  // File A: defines two arrays
+  WriteCatalogueFile("a_arrays.catalogue",
+                     "ARRAY \"categories\" 3\n"
+                     "\"self\"\n"
+                     "\"hand\"\n"
+                     "\"door\"\n"
+                     "ARRAY \"classifiers\" 3\n"
+                     "\"999 999 999\"\n"
+                     "\"2 1 0\"\n"
+                     "\"2 2 0\"\n");
+
+  // File Z: overrides categories, adds a new large array after
+  WriteCatalogueFile("z_upgrade.catalogue",
+                     "ARRAY OVERRIDE \"categories\" 3\n"
+                     "\"SELF\"\n"
+                     "\"HAND\"\n"
+                     "\"DOOR\"\n"
+                     "TAG \"voices\"\n"
+                     "\"deadbeef\"\n"
+                     "\"cafebabe\"\n"
+                     "\"12345678\"\n"
+                     "\"abcdef01\"\n");
+
+  Catalogue cat;
+  cat.AddDir(tmpDir, "en");
+
+  // categories should have 3 entries (either old or new depending on load order)
+  EXPECT_EQ(cat.GetArrayCountForTag("categories"), 3);
+
+  // THE KEY INVARIANT: classifiers must NOT be corrupted by voice data
+  EXPECT_STREQ(cat.Get("classifiers", 0), "999 999 999");
+  EXPECT_STREQ(cat.Get("classifiers", 1), "2 1 0");
+  EXPECT_STREQ(cat.Get("classifiers", 2), "2 2 0");
 }

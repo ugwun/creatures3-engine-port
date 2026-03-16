@@ -38,6 +38,7 @@
 #include "GeneralHandlers.h"
 
 #include "../Creature/Genome.h"
+#include "../Creature/SensoryFaculty.h"
 #include "../build.h"
 #include "MacroScript.h"
 #include "Orderiser.h"
@@ -1633,9 +1634,20 @@ void GeneralHandlers::Command_TINO(CAOSMachine &vm) {
   vm.FetchGenericRV(); // p2
 }
 
-// CATO n -- catalogue-related DS command. Stub.
+// CATO n -- Set the agent category of TARG.
+// If n == -1, compute from the agent's classifier via SensoryFaculty.
 void GeneralHandlers::Command_CATO(CAOSMachine &vm) {
-  vm.FetchIntegerRV(); // n
+  int n = vm.FetchIntegerRV();
+  vm.ValidateTarg();
+  if (n == -1) {
+    Classifier c = vm.GetTarg().GetAgentReference().GetClassifier();
+    int id = SensoryFaculty::GetCategoryIdOfClassifier(&c);
+    // Map C3 error sentinel (39) to DS uncategorized (-1)
+    vm.GetTarg().GetAgentReference().SetCategory(
+        id == SensoryFaculty::ourCatagoryIdError ? -1 : id);
+  } else {
+    vm.GetTarg().GetAgentReference().SetCategory(n);
+  }
 }
 
 // DS: net: sub-table command dispatcher
