@@ -281,6 +281,19 @@ For details on the technical changes made during the porting process, see [READM
 ## Known Issues
 
 ### Engine Monitor
+
+- [ ] When an ettin egg in the Desert Terrarium is about to be laid, an error occurs
+```
+ERR
+Agent runtime error:
+422482.16s
+ERR
+Runtime error in agent 1 1 101 script 1 1 101 9 unique id 311 Gene file not found or attempt to load into invalid slotinst setv va00 0 enum 4 3 0 doif dead = 0 addv va00 1 endi next addv va00 totl 3 4 3 slow doif va00 lt 2 gsub egg_ endi subr egg_ sndc "egg1" anim [0 1 2 3 4 5] over inst setv va00 posl setv va01 post addv va00 46 addv va01 65 new: simp 3 4 3 "greneggmask" 7 8 10 elas 10 fric 100 attr 195 bhvr 32 aero 10 accg 4 perm 60 {@}gene load targ 1 "e*" setv ov01 2 mvto va00 va01 tick 60 targ ownr pose 0 retn Mon Mar 16 15:15:00 2026 - root - 1.154
+422482.16s
+ERR
+Action: Stop Script
+```
+
 - [ ] Runtime error in agent 1 1 99 script 1 1 99 9
 ```
 Runtime error in agent 1 1 99 script 1 1 99 9 unique id 24801 Gene file not found or attempt to load into invalid slotdoif ov99 lt 8 inst setv va99 0 enum 4 1 0 doif gmap posx posy ne 0 and gmap posx posy ne 7 setv va99 1 endi next addv ov99 1 doif va99 ne 1 stop endi endi inst setv va00 0 enum 4 2 0 doif dead = 0 addv va00 1 endi next addv va00 totl 3 4 2 slow doif va00 lt 2 gsub egg_ endi subr egg_sndc "egg1" inst setv va00 posl setv va01 post subv va00 10 addv va01 10 new: simp 3 4 2 "greneggmask" 7 1 10 elas 10 fric 100 attr 195 bhvr 32 aero 10 accg 4 perm 60 {@}gene load targ 1 "g*" setv ov01 1 mvto va00 va01 velo -10 -5 tick 600 retn Sun Mar 8 10:10:08 2026 - root - 1.154
@@ -298,7 +311,7 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 - [x] ~~It seems game ticks are too fast, or somehow out of sync. The game appears to be running too fast.~~ Fixed: replaced `SDL_Delay(20)` with tick-rate-aware sleep using `GetWorldTickInterval()` (50ms / 20Hz).
 - [x] ~~When clicking on an agent with the hand, the click is registered with all agents within that exact position. For example, when use clicks on the rightmost question mark, which opens the world menu, and if this question mark happens to be on top of a lift button, the lift button is activated.~~ Fixed: when `Find()` identifies the topmost agent, reuse it for activation instead of doing a second `IsTouching()` lookup that could match a different overlapping agent.
 - [ ] The "hand" agent (representing the user) is not able to talk by pressing Enter key.
-- [ ] Sounds stop playing after few minutes.
+- [ ] Sounds stop playing after few minutes. Update: after leaving the game, starting it again and loading a world makes the sounds work again - the Docking Station sounds, Creatures 3 sounds are broken.
 - [ ] Music doesn't load at all.
 - [ ] Creatures 3 sounds are not playing, only Docking Station sounds are playing.
 - [x] ~~When a world is created, the initial option of "importing two pretrained norns" crashes the game.~~ Fixed: implemented full v39 DS archive deserialization (9 sessions). Creature import now completes successfully — skeleton is rebuilt, and the creature is relocated to a valid room position if imported DS coordinates fall outside the current map.
