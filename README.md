@@ -300,7 +300,7 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 - [ ] Sounds stop playing after few minutes.
 - [ ] Music doesn't load at all.
 - [ ] Creatures 3 sounds are not playing, only Docking Station sounds are playing.
-- [ ] When a world is created, the initial option of "importing two pretrained norns" crashes the game.
+- [x] ~~When a world is created, the initial option of "importing two pretrained norns" crashes the game.~~ Fixed: implemented full v39 DS archive deserialization (9 sessions). Creature import now completes successfully — skeleton is rebuilt, and the creature is relocated to a valid room position if imported DS coordinates fall outside the current map.
 - [ ] When the "hand with question mark" is selected from the upper left side of the screen, and when the user clicks on an agent, the hand doesn't show proper naming for an agent, just some code-like text.
 - [ ] Within the initial menu, when delete a world is selected, the world is not deleted.
 - [ ] Within the initial menu, the menu doesn't show different images for the different types of worlds: Only Docking Station world vs Docking Station + Creatures 3 world. The symbol used for representing the worlds is the Docking Station symbol in both cases. Update: the world icons change based on which type of world was selected last. If the user creates a Creatures 3 world, all icons changes to the Creatures 3 world icon, and vice versa.
