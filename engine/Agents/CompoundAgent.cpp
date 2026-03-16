@@ -31,8 +31,14 @@ bool CompoundAgent::AddPart(int id, CompoundPart *part) {
     myParts.push_back((CompoundPart *)NULL);
 
   if (myParts[id]) {
-    // Hmm, we already have that part here :(
-    return false;
+    // DS scripts sometimes re-add parts without killing the old one first
+    // (e.g. bramboo plant growth cycles). Instead of failing and aborting
+    // the script, silently replace the existing part with a warning.
+    theFlightRecorder.Log(1,
+        "CompoundAgent::AddPart: replacing existing part %d on agent %d",
+        id, myID);
+    delete myParts[id];
+    myParts[id] = NULL;
   }
 
   myParts[id] = part;

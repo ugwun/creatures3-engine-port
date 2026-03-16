@@ -289,3 +289,15 @@ target_include_directories(test_V39Serialization PRIVATE
 )
 target_link_libraries(test_V39Serialization PRIVATE GTest::gtest_main ZLIB::ZLIB)
 gtest_discover_tests(test_V39Serialization)
+
+# ---------------------------------------------------------------------------
+# test_CompoundAgent — AddPart replacement logic (no engine deps)
+# ---------------------------------------------------------------------------
+add_executable(test_CompoundAgent test_CompoundAgent.cpp)
+target_include_directories(test_CompoundAgent PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_CompoundAgent PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_CompoundAgent)

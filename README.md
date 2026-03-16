@@ -143,7 +143,7 @@ For full details see [`./monitor/README.md`](./monitor/README.md).
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **347 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **352 tests**.
 
 ### Running the tests
 
@@ -175,6 +175,7 @@ cd build && ctest --output-on-failure
 | `test_PointerAgent` | Click-target resolution (prevents click-through) |
 | `test_TickRate` | Game tick-rate calculation (interval scaling, sleep duration) |
 | `test_V39Serialization` | v39 (DS) serialisation round-trips for `LifeEvent` and `CreatureHistory` |
+| `test_CompoundAgent` | Compound part slot replacement logic (AddPart with occupied slots) |
 
 ### Writing a new test
 
