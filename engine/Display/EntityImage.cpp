@@ -677,6 +677,12 @@ bool EntityImage::Read(CreaturesArchive &archive)
 		FilePath galleryName;
 		archive >> galleryName;
 
+		// Restore the default gallery name so GetGalleryName() (used by
+		// the CAOS 'gall' string RV) returns the correct value after
+		// world load.  Without this, gall returns empty and DS scripts
+		// that clone agents fail with "Gallery: .s16".
+		myDefaultGalleryName = galleryName;
+
 		if(galleryName.empty())
 		{
 			std::string string = ErrorMessageHandler::Format(theDisplayErrorTag,
