@@ -1,5 +1,7 @@
 #include "engine/CreaturesArchive.h"
+#include "engine/Caos/CAOSVar.h"
 #include <gtest/gtest.h>
+#include <map>
 #include <sstream>
 
 // Basic types testing
@@ -61,6 +63,84 @@ TEST(CreaturesArchiveTest, SerializeContainers) {
 
     EXPECT_EQ(vecSave, vecLoad);
     EXPECT_EQ(listSave, listLoad);
+  }
+}
+
+// Named variable serialization round-trip.
+// This mirrors the exact pattern used in Agent::Write/Read for per-agent
+// string-keyed NAME variables (myNamedVariables).
+TEST(CreaturesArchiveTest, SerializeNamedVariables_RoundTrip) {
+  std::stringstream stream(std::ios_base::in | std::ios_base::out |
+                           std::ios_base::binary);
+
+  // Build a map of named variables with different CAOSVar types
+  std::map<std::string, CAOSVar> vars;
+  vars["status"].SetString("inactive");
+  vars["counter"].SetInteger(42);
+  vars["ratio"].SetFloat(3.14f);
+
+  // Write using the same pattern as Agent::Write
+  {
+    CreaturesArchive archive(stream, CreaturesArchive::Save);
+    archive << (int)vars.size();
+    for (auto it = vars.begin(); it != vars.end(); ++it) {
+      archive << it->first;
+      it->second.Write(archive);
+    }
+  }
+
+  // Read using the same pattern as Agent::Read
+  {
+    stream.seekg(0);
+    CreaturesArchive archive(stream, CreaturesArchive::Load);
+    std::map<std::string, CAOSVar> loaded;
+    int count;
+    archive >> count;
+    ASSERT_EQ(count, 3);
+    for (int i = 0; i < count; ++i) {
+      std::string key;
+      archive >> key;
+      loaded[key].Read(archive);
+    }
+
+    // Verify all values survived the round-trip
+    ASSERT_EQ(loaded.size(), 3u);
+
+    std::string statusStr;
+    loaded["status"].GetString(statusStr);
+    EXPECT_EQ(statusStr, "inactive");
+
+    EXPECT_EQ(loaded["counter"].GetInteger(), 42);
+    EXPECT_FLOAT_EQ(loaded["ratio"].GetFloat(), 3.14f);
+  }
+}
+
+// Backwards-compatibility: old saves wrote (int)0 as the leeway count.
+// Reading count=0 should produce no named variables.
+TEST(CreaturesArchiveTest, SerializeNamedVariables_EmptyBackwardsCompat) {
+  std::stringstream stream(std::ios_base::in | std::ios_base::out |
+                           std::ios_base::binary);
+
+  // Write count=0 (simulates an old v12 save)
+  {
+    CreaturesArchive archive(stream, CreaturesArchive::Save);
+    archive << (int)0;
+  }
+
+  // Read — should produce no variables
+  {
+    stream.seekg(0);
+    CreaturesArchive archive(stream, CreaturesArchive::Load);
+    std::map<std::string, CAOSVar> loaded;
+    int count;
+    archive >> count;
+    EXPECT_EQ(count, 0);
+    for (int i = 0; i < count; ++i) {
+      std::string key;
+      archive >> key;
+      loaded[key].Read(archive);
+    }
+    EXPECT_TRUE(loaded.empty());
   }
 }
 

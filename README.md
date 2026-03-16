@@ -143,7 +143,7 @@ For full details see [`./monitor/README.md`](./monitor/README.md).
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **352 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **354 tests**.
 
 ### Running the tests
 
@@ -160,7 +160,7 @@ cd build && ctest --output-on-failure
 | `test_FilePath` | Path string manipulation |
 | `test_Maths` | Bounded arithmetic, RNG |
 | `test_SimpleLexer` | Token lexer |
-| `test_CreaturesArchive` | Binary serialisation |
+| `test_CreaturesArchive` | Binary serialisation (incl. named variable round-trip) |
 | `test_CAOSVar` | CAOS variable tagged union |
 | `test_Classifier` | Family/genus/species/event matching |
 | `test_Scriptorium` | Script install / find / zap store |

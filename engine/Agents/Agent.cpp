@@ -2013,8 +2013,14 @@ bool Agent::Write(CreaturesArchive &ar) const {
   // Serialise these if we want bounding box checks on
   ar << myWidthTemp << myHeightTemp;
 
-  // bytecount - num of bytes to skip over (to allow extensions)
-  ar << (int)0; // leeway to allow extension hacking
+  // Extension: per-agent string-keyed NAME variables (DS feature).
+  // Write count, then each (key, value) pair.  Old saves wrote (int)0
+  // here as unused leeway, so reads with count==0 are backwards-compatible.
+  ar << (int)myNamedVariables.size();
+  for (auto it = myNamedVariables.begin(); it != myNamedVariables.end(); ++it) {
+    ar << it->first;
+    it->second.Write(ar);
+  }
 
   return true;
 }
@@ -2284,9 +2290,14 @@ bool Agent::Read(CreaturesArchive &ar) {
 
       ar >> myWidthTemp >> myHeightTemp;
 
-      // bytecount - num of bytes to skip over (to allow extensions)
+      // Extension: per-agent string-keyed NAME variables.
+      // tmp_int = count of named variables (0 for old saves without them).
       ar >> tmp_int;
-      //	ar.Skip( tmp_int );
+      for (int nv = 0; nv < tmp_int; ++nv) {
+        std::string key;
+        ar >> key;
+        myNamedVariables[key].Read(ar);
+      }
     }
 
   } else {
