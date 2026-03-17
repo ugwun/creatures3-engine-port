@@ -124,22 +124,26 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 | `-d <path>` | Alias for `--game-dir` |
 | `--gamespeed <N>` | Game speed multiplier (float, default 1). E.g. `3` = 3× speed, `0.5` = half speed |
 | `-s <N>` | Alias for `--gamespeed` |
+| `--tools` | Start the embedded developer tools server (port 9980) |
 | `--help`, `-h` | Print usage and exit |
 
 > [!NOTE]
 > If `--game-dir` is omitted, the engine uses the current working directory.
 
-## Engine Monitor
+## Developer Tools
 
-A browser-based console streams engine logs and errors in real time while the game runs.
+The engine includes a browser-based developer tools suite — an engine log monitor, interactive CAOS console, and live script inspector. The tools server is embedded directly in the `lc2e` binary with **zero external dependencies** (no Node.js, no relay scripts).
 
 ```bash
-./monitor/run.sh   # starts the relay and opens the browser automatically
+./build/lc2e -d "/path/to/Docking Station" --tools
+# Open http://localhost:9980 in your browser
 ```
 
-Then launch the game normally. Log output will appear in the browser as it happens.
+<!-- TODO: Add screenshot of developer tools UI here -->
 
-For full details see [`./monitor/README.md`](./monitor/README.md).
+When `--tools` is not passed, the tools server does not start and there is zero overhead.
+
+For full details see [`tools/README.md`](./tools/README.md). For the technical architecture, see [`tools/ARCHITECTURE.md`](./tools/ARCHITECTURE.md).
 
 ## Testing
 

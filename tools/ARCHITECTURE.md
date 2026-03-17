@@ -1,55 +1,327 @@
 # Developer Tools — Architecture
 
+This document describes how the developer tools system is built — its communication architecture, threading model, code structure, and how to extend it with new tools.
+
+---
+
 ## Overview
 
-The developer tools are an embedded HTTP/WebSocket server inside the `lc2e` binary, activated by `--tools`. No external dependencies (Node.js, relay scripts) are needed.
+The developer tools are an **embedded HTTP server** inside the `lc2e` binary, activated by the `--tools` CLI flag. Everything — static file serving, REST API, and live log streaming — runs through a single port (9980).
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     lc2e binary                         │
-│                                                         │
-│  ┌──────────────┐        ┌────────────────────────┐     │
-│  │ FlightRecorder├──UDP──►│     DebugServer        │     │
-│  │  (logging)    │  9999  │  ┌──────────────────┐  │     │
-│  └──────────────┘        │  │ httplib::Server   │  │     │
-│                          │  │ (background thread)│  │     │
-│  ┌──────────────┐        │  └────────┬─────────┘  │     │
-│  │  Main Loop   │◄──Poll─┤           │            │     │
-│  │  (game tick)  │        │  Work Queue           │     │
-│  └──────────────┘        └────────────────────────┘     │
-│                                 │                       │
-└─────────────────────────────────┼───────────────────────┘
-                                  │ port 9980
-                           ┌──────▼──────┐
-                           │   Browser   │
-                           │  (tools UI) │
-                           └─────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        lc2e binary                           │
+│                                                              │
+│  ┌──────────────┐         ┌─────────────────────────────┐    │
+│  │FlightRecorder│──UDP───►│       DebugServer            │    │
+│  │  (logging)   │  9999   │                              │    │
+│  └──────────────┘         │  ┌─────────────────────┐     │    │
+│                           │  │   httplib::Server    │     │    │
+│                           │  │ (background thread)  │     │    │
+│                           │  └──────────┬──────────┘     │    │
+│                           │             │                │    │
+│  ┌──────────────┐         │    ┌────────▼────────┐       │    │
+│  │  Main Loop   │◄──Poll──│    │   Work Queue    │       │    │
+│  │ (game tick)  │         │    │ std::queue +     │       │    │
+│  │              │────────►│    │ std::promise     │       │    │
+│  └──────────────┘ result  │    └─────────────────┘       │    │
+│                           │                              │    │
+│                           │  ┌─────────────────────┐     │    │
+│                           │  │   SSE Log Buffer    │     │    │
+│                           │  │ std::deque + CV     │     │    │
+│                           │  └─────────────────────┘     │    │
+│                           └──────────────┬───────────────┘    │
+│                                          │                    │
+└──────────────────────────────────────────┼────────────────────┘
+                                           │ port 9980
+                                    ┌──────▼──────┐
+                                    │   Browser   │
+                                    │             │
+                                    │ ┌────┐ ┌──┐ │
+                                    │ │Log │ │ ▸│ │
+                                    │ └────┘ └──┘ │
+                                    └─────────────┘
 ```
+
+### What replaced what
+
+The previous architecture required Node.js:
+
+```
+FlightRecorder → UDP :9999 → relay.js (Node.js) → WS :9998 → Browser
+```
+
+The new architecture has zero external dependencies:
+
+```
+FlightRecorder → UDP :9999 → DebugServer (in-process) → SSE :9980 → Browser
+```
+
+---
 
 ## Threading Model
 
-1. **httplib::Server** runs in a background `std::thread`, handling HTTP requests and serving static files.
-2. **API handlers** that touch engine state (CAOS execution, agent queries) push `WorkItem` objects onto a `std::queue` protected by `std::mutex`.
-3. **`Poll()`** is called once per game tick from the main loop. It drains the queue, executes each work item on the main thread, and sets the result via `std::promise`.
-4. **HTTP handlers** block (via `std::future::wait_for`) until Poll() processes their request, with a 10-second timeout.
+The engine is **single-threaded**. All engine state (agents, scripts, world) must only be accessed from the main thread. The DebugServer bridges this constraint:
 
-## Key Files
+### 1. Background HTTP Thread
+
+`httplib::Server` runs in a background `std::thread`, started in `DebugServer::Start()`. It:
+- Serves static files from the `tools/` directory
+- Handles API requests (`/api/execute`, `/api/scripts`, etc.)
+- Handles SSE connections (`/api/events`)
+
+### 2. Work Queue (background → main thread)
+
+API handlers that need engine state create a `WorkItem`:
+
+```cpp
+struct WorkItem {
+    std::function<std::string()> work;  // the work to do on main thread
+    std::promise<std::string> promise;  // result channel
+};
+```
+
+The handler pushes the item onto a `std::queue<WorkItem*>` (protected by `std::mutex`), then blocks on `std::future::wait_for()` with a timeout.
+
+### 3. Poll() — Main Thread Drain
+
+`DebugServer::Poll()` is called once per game tick from the main loop in `SDL_Main.cpp`. It:
+1. Locks the queue mutex
+2. Pops all pending work items
+3. Executes each item's `work()` lambda (safely on the main thread)
+4. Sets the result via `promise.set_value()`
+5. The blocked HTTP handler wakes up and returns the response
+
+```
+HTTP Thread                     Main Thread
+    │                               │
+    ├─ push WorkItem ──────────►    │
+    ├─ future.wait_for(10s) ...     │
+    │                               ├─ Poll()
+    │                               ├─ item->work()
+    │                               ├─ promise.set_value(result)
+    │  ◄──────────── result ────────┤
+    ├─ res.set_content(result)      │
+    │                               │
+```
+
+### 4. SSE Log Streaming
+
+Log streaming works differently — it doesn't use the work queue:
+
+1. **FlightRecorder** sends UDP packets to `127.0.0.1:9999` (broadcast)
+2. **UDP relay thread** in DebugServer receives packets, pushes them into a `std::deque<std::string>` (the SSE log buffer), protected by `std::mutex` + `std::condition_variable`
+3. **SSE handler** (`GET /api/events`) uses httplib's chunked content provider. It blocks on the condition variable waiting for new log lines, then writes `data: ...\n\n` SSE events to the client
+4. The browser uses `EventSource("/api/events")` to receive the stream — EventSource automatically reconnects on disconnect
+
+---
+
+## File Structure
+
+### Engine-side (C++)
 
 | File | Purpose |
 |---|---|
-| `engine/DebugServer.h` | Header — Start/Poll/Stop API |
-| `engine/DebugServer.cpp` | Implementation — HTTP routes, work queue, UDP relay |
-| `engine/contrib/httplib.h` | Vendored cpp-httplib (MIT) |
-| `engine/Display/SDL/SDL_Main.cpp` | `--tools` flag handling, Poll() integration |
-| `tools/index.html` | UI shell with tab navigation |
-| `tools/app.js` | Log tab + WebSocket + tab switching |
-| `tools/debugger.js` | CAOS Console tab |
-| `tools/scripts.js` | Scripts tab |
-| `tools/style.css` | Bright-Fi design system |
+| [`engine/DebugServer.h`](../engine/DebugServer.h) | Public API: `Start()`, `Poll()`, `Stop()`, `IsRunning()` |
+| [`engine/DebugServer.cpp`](../engine/DebugServer.cpp) | Full implementation: HTTP routes, work queue, SSE log buffer, UDP relay |
+| [`engine/contrib/httplib.h`](../engine/contrib/httplib.h) | Vendored [cpp-httplib](https://github.com/yhirose/cpp-httplib) (MIT license, header-only) |
+| [`engine/Display/SDL/SDL_Main.cpp`](../engine/Display/SDL/SDL_Main.cpp) | `--tools` flag parsing, `Start()`/`Poll()`/`Stop()` integration |
+
+### Browser-side (HTML/JS/CSS)
+
+| File | Purpose |
+|---|---|
+| [`tools/index.html`](index.html) | UI shell — tab navigation, panel containers, sidebar |
+| [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching |
+| [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
+| [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
+| [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
+
+### Documentation
+
+| File | Purpose |
+|---|---|
+| [`tools/README.md`](README.md) | Usage guide: quick start, tab descriptions, API reference |
+| [`tools/ARCHITECTURE.md`](ARCHITECTURE.md) | This file — technical reference |
+
+---
+
+## Engine Integration Points
+
+### SDL_Main.cpp
+
+The `--tools` flag is parsed in the CLI argument loop. Three hooks are added:
+
+```cpp
+// After crash handlers are installed:
+if (enableTools) {
+    theDebugServer.Start(9980, toolsDir);
+}
+
+// In the main game loop, after UpdateApp():
+if (enableTools) {
+    theDebugServer.Poll();
+}
+
+// In DoShutdown():
+if (enableTools) {
+    theDebugServer.Stop();
+}
+```
+
+### Tools Directory Resolution
+
+The engine resolves the `tools/` directory path in this order:
+1. **CLI override:** `--tools /path/to/tools` uses the given path directly
+2. **Relative to executable:** `_NSGetExecutablePath()` → `<exe_dir>/../tools/`
+3. **Fallback:** `./tools/` relative to the current working directory
+
+### FlightRecorder
+
+`FlightRecorder::EnableUDPBroadcast(9999)` sends JSON log lines via UDP. The DebugServer creates a separate UDP socket, binds to `INADDR_ANY:9999`, and receives these packets in a background thread. This means the FlightRecorder code is **completely unchanged** — the DebugServer is a passive listener.
+
+### CAOS Execution
+
+The `/api/execute` endpoint follows the same pattern as `RequestManager`:
+1. Compile the CAOS text with `Orderiser::OrderFromCAOS()`
+2. Create a fresh `CAOSMachine`
+3. Call `StartScriptExecuting()` with `NULLHANDLE` as owner (no OWNR)
+4. Redirect output with `SetOutputStream()`
+5. Run to completion with `UpdateVM(-1)`
+6. Catch `CAOSMachine::RunError` for runtime errors
+
+---
+
+## Design System — Bright-Fi
+
+All developer tools UI follows the **Bright-Fi** aesthetic. This section serves as a reference for implementing new tabs.
+
+### Colour Palette
+
+| Role | Value | CSS Variable | Usage |
+|---|---|---|---|
+| Base background | `#F2F0EC` | `--off-white` | Content panels, sidebar, script table |
+| Negative space | `#000000` | `--black` | Header, structural borders |
+| Primary accent | `#FF5F00` | `--orange` | Active tab, status indicators, input bar |
+| Secondary accent | `#FF00FF` | `--magenta` | Pause overlay, crash category |
+| Category: Error | `#DD0000` | `--cat-error` | Error rows, badges |
+| Category: Network | `#0055FF` | `--cat-network` | Network rows, badges |
+| Category: World | `#008000` | `--cat-world` | World rows, badges |
+| Category: CAOS | `#7700CC` | `--cat-caos` | CAOS rows, badges, script source |
+
+### Typography
+
+- **UI labels:** Inter, weight 800–900, `text-transform: uppercase`, `letter-spacing: 2–3px`
+- **Code/output:** JetBrains Mono, 12–14px
+- Both fonts loaded via Google Fonts in `index.html`
+
+### UI Conventions
+
+- All borders: hard `1–2px solid black`, **no rounded corners**
+- Category badges: solid-fill blocks with white text (e.g. `ERR` on red)
+- Error rows: faint red background tint
+- State badges: outlined with muted background (e.g. green for `running`, orange for `blocking`)
+- Console input bar: black background, orange top border, orange `>` prompt
+- Square dots throughout (not circles) for geometric vocabulary
+
+---
 
 ## Adding New Tools
 
-1. Add a new `<div id="tab-newtool" class="tab-panel" hidden>` in `index.html`
-2. Add a `<button class="tab-btn" data-tab="newtool">` in the tab nav
-3. Create `newtool.js` with the UI logic
-4. If you need an API endpoint, add it in `DebugServer.cpp` — use the work queue pattern for anything that touches engine state
+### 1. Add a Tab
+
+In `index.html`, add a button to the tab navigation and a panel:
+
+```html
+<!-- In #tab-nav -->
+<button class="tab-btn" data-tab="newtool">New Tool</button>
+
+<!-- After the other tab panels -->
+<div id="tab-newtool" class="tab-panel" hidden>
+  <!-- Your content here -->
+</div>
+```
+
+Tab switching is handled automatically by the event listeners in `app.js` — any button with `data-tab="x"` will show `#tab-x` and hide all other panels.
+
+### 2. Add Controls (Optional)
+
+If your tab needs header controls (buttons, toggles), add a controls div:
+
+```html
+<!-- In #header-right -->
+<div id="newtool-controls" class="tab-controls" hidden>
+  <button id="btn-newtool-action" class="btn">Action</button>
+</div>
+```
+
+The matching `*-controls` div is shown/hidden automatically with the tab.
+
+### 3. Create the JavaScript
+
+Create `newtool.js` and include it in `index.html`:
+
+```html
+<script src="newtool.js"></script>
+```
+
+Wrap your code in an IIFE to avoid polluting the global scope:
+
+```javascript
+"use strict";
+(() => {
+    // Your tab logic here
+})();
+```
+
+### 4. Add an API Endpoint (If Needed)
+
+In `DebugServer.cpp`, register a new route inside `DebugServer::Start()`:
+
+```cpp
+// For read-only endpoints that touch engine state:
+myImpl->svr.Get("/api/newtool", [this](const httplib::Request& req, httplib::Response& res) {
+    auto* item = new WorkItem();
+    item->work = []() -> std::string {
+        // Access engine state here (runs on main thread)
+        return "{\"result\": \"...\"}";
+    };
+
+    auto future = item->promise.get_future();
+    {
+        std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+        myImpl->workQueue.push(item);
+    }
+
+    if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+        res.set_content(future.get(), "application/json");
+    } else {
+        res.status = 504;
+        res.set_content("{\"error\":\"Timeout\"}", "application/json");
+    }
+});
+```
+
+> **Critical:** Any endpoint that reads or modifies engine state (agents, scripts, world) **must** use the work queue. Only static file serving and the SSE endpoint can run directly on the HTTP thread.
+
+---
+
+## Future Phases
+
+### Phase 2 — Breakpoints & Stepping
+
+- Add `std::set<int> myBreakpoints` to `CAOSMachine`
+- Check IP against breakpoints in `UpdateVM()` before dispatch
+- New API endpoints: `POST /api/breakpoint`, `POST /api/step/:agentId`, `POST /api/continue/:agentId`
+- Browser: source view with clickable line gutters, step/continue/step-over buttons
+
+### Phase 3 — Agent Inspector
+
+- Full agent property browser: position, sprite frame, attributes, OV00–OV99, timer, velocity
+- Creature-specific panels: brain state, biochemistry, drives, current action
+
+### Phase 4 — CAOS Profiler
+
+- Surface `DBG: PROF` data with browser visualizations
+- Flame charts by agent classifier
+- Script execution time heatmaps
