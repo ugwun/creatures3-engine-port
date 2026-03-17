@@ -3,7 +3,6 @@
 "use strict";
 
 // ── State ─────────────────────────────────────────────────────────────────
-let ws = null;
 let paused = false;
 let pauseBuffer = [];
 let allMessages = [];         // master log (never cleared by filter)
@@ -11,7 +10,6 @@ let totalMessages = 0;
 let errorCount = 0;
 let recentTimestamps = [];    // for log/s calculation
 
-const WS_URL = `ws://${location.host}/ws`;
 const MAX_VISIBLE_ROWS = 2000; // keep DOM lean
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
@@ -50,23 +48,21 @@ function categorize(cat) {
 
 // No longer needed — filter reads checkbox state directly in isCatEnabled().
 
-// ── WebSocket connection ──────────────────────────────────────────────────
+// ── SSE connection ───────────────────────────────────────────────────────
+let evtSource = null;
+
 function connect() {
     setStatus("connecting");
-    ws = new WebSocket(WS_URL);
+    evtSource = new EventSource("/api/events");
 
-    ws.onopen = () => setStatus("connected");
+    evtSource.onopen = () => setStatus("connected");
 
-    ws.onclose = () => {
+    evtSource.onerror = () => {
         setStatus("disconnected");
-        setTimeout(connect, 2000);
+        // EventSource automatically reconnects, but we update status
     };
 
-    ws.onerror = () => {
-        ws.close();
-    };
-
-    ws.onmessage = (e) => {
+    evtSource.onmessage = (e) => {
         let msg;
         try { msg = JSON.parse(e.data); } catch (_) { return; }
         if (paused) {

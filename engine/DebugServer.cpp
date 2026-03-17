@@ -1,19 +1,19 @@
 // -------------------------------------------------------------------------
 // Filename:    DebugServer.cpp
 // Class:       DebugServer
-// Purpose:     Embedded HTTP + WebSocket dev tools server
+// Purpose:     Embedded HTTP + SSE dev tools server
 // Description:
 //   Implements the --tools server: static file serving, CAOS REPL API,
-//   script inspection, and live log stream via WebSocket.
+//   script inspection, and live log stream via Server-Sent Events (SSE).
 //
 //   Threading model:
 //     - httplib runs in a background thread
 //     - Handlers that touch engine state (CAOS execution, agent queries)
 //       push work items onto a thread-safe queue
 //     - Poll() drains the queue on the main thread
-//     - WebSocket log streaming uses a UDP listener that mirrors what
+//     - SSE log streaming uses a UDP listener that mirrors what
 //       relay.js used to do — listens on 127.0.0.1:9999 for FlightRecorder
-//       packets and rebroadcasts to connected WebSocket clients
+//       packets and buffers them for SSE clients
 // -------------------------------------------------------------------------
 
 #ifdef _MSC_VER
@@ -57,11 +57,6 @@
 #include <unistd.h>
 #include <vector>
 
-// ── Minimal RFC 6455 WebSocket helpers ──────────────────────────────────────
-// We only need server→client text frames for log streaming, plus the
-// handshake. This avoids pulling in a full WS library.
-
-#include <CommonCrypto/CommonDigest.h>  // CC_SHA1 (macOS native, no OpenSSL needed)
 
 
 // Base64 encode (small, self-contained)
@@ -105,11 +100,6 @@ static std::string JsonEscape(const std::string& s) {
 	return out;
 }
 
-// ── WebSocket client tracking ──────────────────────────────────────────────
-struct WSClient {
-	int fd;
-};
-
 // ── Work queue item ────────────────────────────────────────────────────────
 struct WorkItem {
 	std::function<std::string()> work;
@@ -122,9 +112,11 @@ struct DebugServer::Impl {
 	std::thread serverThread;
 	bool running = false;
 
-	// WebSocket clients
-	std::mutex wsMutex;
-	std::set<int> wsClients;  // socket fds
+	// SSE log buffer — UDP relay pushes here, SSE clients drain from here
+	std::mutex logMutex;
+	std::condition_variable logCV;
+	std::deque<std::string> logBuffer;
+	static const size_t MAX_LOG_BUFFER = 5000;
 
 	// UDP listener for FlightRecorder rebroadcast
 	int udpSocket = -1;
@@ -138,60 +130,16 @@ struct DebugServer::Impl {
 	std::string staticDir;
 	int port = 9980;
 
-	// ── WebSocket frame sending ────────────────────────────────────────
-	void SendWSFrame(int fd, const std::string& text) {
-		// Build a text frame (opcode 0x81)
-		std::vector<unsigned char> frame;
-		frame.push_back(0x81); // FIN + text opcode
-		size_t len = text.size();
-		if (len < 126) {
-			frame.push_back((unsigned char)len);
-		} else if (len < 65536) {
-			frame.push_back(126);
-			frame.push_back((unsigned char)((len >> 8) & 0xFF));
-			frame.push_back((unsigned char)(len & 0xFF));
-		} else {
-			frame.push_back(127);
-			for (int i = 7; i >= 0; --i)
-				frame.push_back((unsigned char)((len >> (8 * i)) & 0xFF));
-		}
-		frame.insert(frame.end(), text.begin(), text.end());
-		// Non-blocking send — drop if it would block
-		send(fd, frame.data(), frame.size(), MSG_DONTWAIT);
+	// ── Push a log line into the SSE buffer ──────────────────────────────
+	void PushLog(const std::string& line) {
+		std::lock_guard<std::mutex> lock(logMutex);
+		logBuffer.push_back(line);
+		while (logBuffer.size() > MAX_LOG_BUFFER)
+			logBuffer.pop_front();
+		logCV.notify_all();
 	}
 
-	void BroadcastWS(const std::string& text) {
-		std::lock_guard<std::mutex> lock(wsMutex);
-		std::vector<int> dead;
-		for (int fd : wsClients) {
-			// Try to send; if it fails, mark for removal
-			std::vector<unsigned char> frame;
-			frame.push_back(0x81);
-			size_t len = text.size();
-			if (len < 126) {
-				frame.push_back((unsigned char)len);
-			} else if (len < 65536) {
-				frame.push_back(126);
-				frame.push_back((unsigned char)((len >> 8) & 0xFF));
-				frame.push_back((unsigned char)(len & 0xFF));
-			} else {
-				frame.push_back(127);
-				for (int i = 7; i >= 0; --i)
-					frame.push_back((unsigned char)((len >> (8 * i)) & 0xFF));
-			}
-			frame.insert(frame.end(), text.begin(), text.end());
-			ssize_t n = send(fd, frame.data(), frame.size(), MSG_DONTWAIT);
-			if (n < 0) {
-				dead.push_back(fd);
-			}
-		}
-		for (int fd : dead) {
-			wsClients.erase(fd);
-			close(fd);
-		}
-	}
-
-	// ── UDP → WS relay thread ──────────────────────────────────────────
+	// ── UDP → SSE relay thread ────────────────────────────────────────
 	void UDPRelayLoop() {
 		char buf[16384];
 		while (udpRunning) {
@@ -205,7 +153,7 @@ struct DebugServer::Impl {
 				while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r'))
 					buf[--n] = '\0';
 				if (n > 0) {
-					BroadcastWS(std::string(buf, n));
+					PushLog(std::string(buf, n));
 				}
 			} else if (n < 0) {
 				// EAGAIN/EWOULDBLOCK is fine — just means no data
@@ -216,28 +164,6 @@ struct DebugServer::Impl {
 				}
 			}
 		}
-	}
-
-	// ── WebSocket handshake via raw socket ──────────────────────────────
-	// httplib doesn't support WS natively, so we intercept the /ws route
-	// and do the upgrade ourselves. This is called from the GET /ws handler
-	// which has access to the raw socket.
-	bool DoWSHandshake(int fd, const std::string& wsKey) {
-		// Compute accept key per RFC 6455:
-		// SHA1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"), Base64
-		std::string concat = wsKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-		unsigned char hash[CC_SHA1_DIGEST_LENGTH];
-		CC_SHA1(concat.c_str(), (CC_LONG)concat.size(), hash);
-		std::string accept = Base64Encode(hash, CC_SHA1_DIGEST_LENGTH);
-
-		std::string response =
-			"HTTP/1.1 101 Switching Protocols\r\n"
-			"Upgrade: websocket\r\n"
-			"Connection: Upgrade\r\n"
-			"Sec-WebSocket-Accept: " + accept + "\r\n"
-			"\r\n";
-		send(fd, response.c_str(), response.size(), 0);
-		return true;
 	}
 };
 
@@ -541,6 +467,55 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── SSE endpoint for log streaming ─────────────────────────────────
+	// Clients connect to GET /api/events and receive log lines as SSE.
+	myImpl->svr.Get("/api/events", [this](const httplib::Request& req, httplib::Response& res) {
+		// We need to figure out where the client should start reading from.
+		// New connections get all buffered log lines then live updates.
+		size_t startIdx = 0;
+		{
+			std::lock_guard<std::mutex> lock(myImpl->logMutex);
+			startIdx = myImpl->logBuffer.size(); // will send from here
+		}
+
+		res.set_header("Cache-Control", "no-cache");
+		res.set_header("X-Accel-Buffering", "no");
+
+		res.set_chunked_content_provider(
+			"text/event-stream",
+			[this, startIdx](size_t offset, httplib::DataSink& sink) mutable -> bool {
+				// Send any buffered log lines first
+				{
+					std::lock_guard<std::mutex> lock(myImpl->logMutex);
+					while (startIdx < myImpl->logBuffer.size()) {
+						std::string event = "data: " + myImpl->logBuffer[startIdx] + "\n\n";
+						sink.write(event.c_str(), event.size());
+						startIdx++;
+					}
+				}
+
+				// Wait for new log lines
+				{
+					std::unique_lock<std::mutex> lock(myImpl->logMutex);
+					myImpl->logCV.wait_for(lock, std::chrono::milliseconds(500),
+						[this, &startIdx]() {
+							return startIdx < myImpl->logBuffer.size() || !myImpl->running;
+						});
+
+					// Send any newly arrived lines
+					while (startIdx < myImpl->logBuffer.size()) {
+						std::string event = "data: " + myImpl->logBuffer[startIdx] + "\n\n";
+						sink.write(event.c_str(), event.size());
+						startIdx++;
+					}
+				}
+
+				// Keep connection alive unless server is stopping
+				return myImpl->running;
+			}
+		);
+	});
+
 	// ── Start UDP listener for log relay ───────────────────────────────
 	myImpl->udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (myImpl->udpSocket >= 0) {
@@ -621,16 +596,12 @@ void DebugServer::Stop() {
 	if (myImpl->serverThread.joinable())
 		myImpl->serverThread.join();
 
-	// Close any remaining WebSocket clients
+	// Wake up any SSE clients blocked on logCV so they can exit
 	{
-		std::lock_guard<std::mutex> lock(myImpl->wsMutex);
-		for (int fd : myImpl->wsClients) {
-			close(fd);
-		}
-		myImpl->wsClients.clear();
+		std::lock_guard<std::mutex> lock(myImpl->logMutex);
+		myImpl->running = false;
+		myImpl->logCV.notify_all();
 	}
-
-	myImpl->running = false;
 	delete myImpl;
 	myImpl = nullptr;
 
