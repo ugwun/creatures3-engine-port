@@ -301,3 +301,28 @@ target_include_directories(test_CompoundAgent PRIVATE
 )
 target_link_libraries(test_CompoundAgent PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_CompoundAgent)
+
+# ---------------------------------------------------------------------------
+# test_CAOSMachineCallStack — CALL command call stack save/restore/clear
+# ---------------------------------------------------------------------------
+add_executable(test_CAOSMachineCallStack
+  test_CAOSMachineCallStack.cpp
+  ../engine/Caos/CAOSVar.cpp
+)
+target_link_libraries(test_CAOSMachineCallStack PRIVATE test_stubs)
+gtest_discover_tests(test_CAOSMachineCallStack)
+
+# ---------------------------------------------------------------------------
+# test_StringIntGroup — PRAY chunk tag parsing (binary format)
+# ---------------------------------------------------------------------------
+add_executable(test_StringIntGroup
+  test_StringIntGroup.cpp
+  ../common/PRAYFiles/StringIntGroup.cpp
+)
+target_include_directories(test_StringIntGroup PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_StringIntGroup PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_StringIntGroup)
