@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creatures 3 — Developer Tools</title>
+  <meta name="description" content="Developer tools for Creatures 3 engine: log monitor, CAOS console, and script inspector." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header id="header">
+    <div id="header-left">
+      <div id="logo">
+        <!-- Marathon-style geometric mark: bold orange square with a cross slit -->
+        <div id="logo-mark">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="18" height="18" fill="white" />
+            <rect x="9" y="1" width="2" height="18" fill="black" />
+            <rect x="1" y="9" width="18" height="2" fill="black" />
+          </svg>
+        </div>
+        <div>
+          <div id="logo-title">Creatures 3</div>
+          <div id="logo-sub">Developer Tools</div>
+        </div>
+      </div>
+      <div style="width:20px"></div>
+      <div id="status-pill" class="pill pill--disconnected">
+        <span class="pill-dot"></span>
+        <span id="status-text">Connecting</span>
+      </div>
+    </div>
+
+    <div id="header-center">
+      <!-- Tab navigation -->
+      <nav id="tab-nav">
+        <button class="tab-btn tab-btn--active" data-tab="log">Log</button>
+        <button class="tab-btn" data-tab="console">Console</button>
+        <button class="tab-btn" data-tab="scripts">Scripts</button>
+      </nav>
+    </div>
+
+    <div id="header-right">
+      <!-- Log tab controls -->
+      <div id="log-controls" class="tab-controls">
+        <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
+        <button id="btn-pause" class="btn">Pause</button>
+        <button id="btn-clear" class="btn">Clear</button>
+        <button id="btn-copy" class="btn">Copy</button>
+        <button id="btn-export" class="btn">Export</button>
+      </div>
+      <!-- Console tab controls -->
+      <div id="console-controls" class="tab-controls" hidden>
+        <button id="btn-console-clear" class="btn">Clear Output</button>
+      </div>
+      <!-- Scripts tab controls -->
+      <div id="scripts-controls" class="tab-controls" hidden>
+        <button id="btn-scripts-refresh" class="btn">Refresh</button>
+        <label class="opt-toggle" style="color:#fff;margin-left:8px">
+          <input type="checkbox" id="opt-auto-refresh" checked /> Auto
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Tab: Log ──────────────────────────────────────────────────────────── -->
+  <div id="tab-log" class="tab-panel tab-panel--active">
+    <!-- Category sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Categories</div>
+        <label class="cat-toggle" id="cat-all">
+          <input type="checkbox" checked data-mask="0xFFFFFFFF" /> All
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <label class="cat-toggle" style="--accent:#DD0000">
+          <input type="checkbox" checked data-mask="1" /> <span class="cat-dot"></span> Errors
+        </label>
+        <label class="cat-toggle" style="--accent:#FF5F00">
+          <input type="checkbox" checked data-mask="16" /> <span class="cat-dot"></span> Shutdown
+        </label>
+        <label class="cat-toggle" style="--accent:#0055FF">
+          <input type="checkbox" checked data-mask="2" /> <span class="cat-dot"></span> Network
+        </label>
+        <label class="cat-toggle" style="--accent:#008000">
+          <input type="checkbox" checked data-mask="4" /> <span class="cat-dot"></span> World
+        </label>
+        <label class="cat-toggle" style="--accent:#7700CC">
+          <input type="checkbox" checked data-mask="8" /> <span class="cat-dot"></span> CAOS
+        </label>
+        <label class="cat-toggle" style="--accent:#007799">
+          <input type="checkbox" checked data-mask="32" /> <span class="cat-dot"></span> Sound
+        </label>
+        <label class="cat-toggle" style="--accent:#FF00FF">
+          <input type="checkbox" checked data-mask="64" /> <span class="cat-dot"></span> Crash
+        </label>
+        <label class="cat-toggle" style="--accent:#555555">
+          <input type="checkbox" checked data-mask="0" /> <span class="cat-dot"></span> Other
+        </label>
+      </div>
+
+      <div class="sidebar-section sidebar-footer">
+        <div class="sidebar-title">Display</div>
+        <label class="opt-toggle"><input type="checkbox" id="opt-timestamps" checked /> Timestamps</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-autoscroll" checked /> Auto-scroll</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-compact" /> Compact rows</label>
+      </div>
+    </aside>
+
+    <!-- Log output -->
+    <main id="log-container">
+      <div id="log-inner">
+        <!-- rows injected by JS -->
+      </div>
+      <div id="scroll-anchor"></div>
+    </main>
+
+    <!-- Pause overlay -->
+    <div id="pause-overlay" hidden>
+      <div id="pause-badge">Paused — <span id="pause-buffered">0</span> buffered</div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Console ──────────────────────────────────────────────────────── -->
+  <div id="tab-console" class="tab-panel" hidden>
+    <div id="console-container">
+      <div id="console-output">
+        <div class="console-welcome">
+          <span class="console-welcome-title">CAOS Console</span>
+          <span class="console-welcome-hint">Type CAOS commands below. Press Enter to execute, Shift+Enter for multi-line. ↑/↓ for history.</span>
+        </div>
+      </div>
+      <div id="console-input-bar">
+        <span class="console-prompt">&gt;</span>
+        <textarea id="console-input" rows="1" placeholder="outs &quot;hello&quot;" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Scripts ──────────────────────────────────────────────────────── -->
+  <div id="tab-scripts" class="tab-panel" hidden>
+    <div id="scripts-container">
+      <table id="scripts-table">
+        <thead>
+          <tr>
+            <th>Agent ID</th>
+            <th>Classifier</th>
+            <th>State</th>
+            <th>IP</th>
+            <th>Current Source</th>
+          </tr>
+        </thead>
+        <tbody id="scripts-tbody">
+          <!-- populated by scripts.js -->
+        </tbody>
+      </table>
+      <div id="scripts-empty" hidden>
+        <span>No running scripts.</span>
+        <span class="scripts-empty-hint">Start a world to see active CAOS scripts.</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="debugger.js"></script>
+  <script src="scripts.js"></script>
+</body>
+
+</html>

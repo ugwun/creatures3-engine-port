@@ -1,5 +1,5 @@
-// app.js — Creatures 3 Engine Monitor
-// WebSocket client that receives log lines from relay.js and renders them.
+// app.js — Creatures 3 Developer Tools — Log Tab
+// WebSocket client that receives log lines from the embedded DebugServer.
 "use strict";
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -11,7 +11,7 @@ let totalMessages = 0;
 let errorCount = 0;
 let recentTimestamps = [];    // for log/s calculation
 
-const WS_URL = "ws://localhost:9998";
+const WS_URL = `ws://${location.host}/ws`;
 const MAX_VISIBLE_ROWS = 2000; // keep DOM lean
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
@@ -263,3 +263,23 @@ setInterval(() => {
 
 // ── Boot ─────────────────────────────────────────────────────────────────
 connect();
+
+// ── Tab switching ────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Deactivate all tabs
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-btn--active'));
+        document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = true; p.classList.remove('tab-panel--active'); });
+        document.querySelectorAll('.tab-controls').forEach(c => { c.hidden = true; });
+
+        // Activate clicked tab
+        btn.classList.add('tab-btn--active');
+        const tabId = `tab-${btn.dataset.tab}`;
+        const panel = document.getElementById(tabId);
+        if (panel) { panel.hidden = false; panel.classList.add('tab-panel--active'); }
+
+        // Show matching controls
+        const ctrl = document.getElementById(`${btn.dataset.tab}-controls`);
+        if (ctrl) ctrl.hidden = false;
+    });
+});

@@ -19,11 +19,13 @@
 // #include "../../../common/CStyleException.h"
 #include "../../App.h"
 #include "../../C2eServices.h" // for theFlightRecorder
+#include "../../DebugServer.h"
 #include "TickRateUtils.h"
 
 #include <cstdlib> // atof
 #include <time.h>
 #include <unistd.h> // chdir / getcwd
+#include <mach-o/dyld.h> // _NSGetExecutablePath
 
 // --- In-process crash reporter -----------------------------------------
 #include <cstring>    // strsignal()
@@ -150,6 +152,8 @@ static bool ourRunning;
 // static bool ourTerminateApplication;
 static bool ourQuit;
 static float gameSpeedMultiplier = 1.0f;
+static bool enableTools = false;
+static std::string toolsPathOverride;
 
 // exter
 // HWND theMainWindow = 0;
@@ -194,12 +198,15 @@ int main(int argc, char *argv[]) {
                 "  -d <path>           Alias for --game-dir\n"
                 "  --gamespeed <N>     Game speed multiplier (float, default 1)\n"
                 "  -s <N>              Alias for --gamespeed\n"
+                "  --tools [path]      Start developer tools server on port 9980\n"
+                "                      Optional path overrides tools/ directory\n"
                 "  --help, -h          Show this help message\n"
                 "\n"
                 "Examples:\n"
                 "  ./build/lc2e --game-dir \"/Users/me/Creatures Docking "
                 "Station/Docking Station\"\n"
                 "  ./build/lc2e -d \"/path/to/game\" --gamespeed 3\n"
+                "  ./build/lc2e -d \"/path/to/game\" --tools\n"
                 "\n"
                 "If --game-dir is not specified, the current working directory "
                 "is used.\n");
@@ -218,6 +225,12 @@ int main(int argc, char *argv[]) {
           gameSpeedMultiplier = 1.0f;
         fprintf(stderr, "[lc2e] Game speed multiplier: %.2fx\n",
                 gameSpeedMultiplier);
+      } else if (arg == "--tools") {
+        enableTools = true;
+        // Optional path override: --tools /path/to/tools/
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          toolsPathOverride = argv[++i];
+        }
       }
     }
 
@@ -226,6 +239,30 @@ int main(int argc, char *argv[]) {
 
     // Install crash signal handlers now that FlightRecorder UDP is live.
     InstallCrashHandlers();
+
+    // Start developer tools server if --tools was passed.
+    if (enableTools) {
+      std::string toolsDir;
+      if (!toolsPathOverride.empty()) {
+        toolsDir = toolsPathOverride;
+      } else {
+        // Resolve relative to the executable: <exe_dir>/../tools/
+        char exePath[1024];
+        uint32_t exeSize = sizeof(exePath);
+        if (_NSGetExecutablePath(exePath, &exeSize) == 0) {
+          std::string exeDir(exePath);
+          size_t lastSlash = exeDir.rfind('/');
+          if (lastSlash != std::string::npos)
+            exeDir = exeDir.substr(0, lastSlash);
+          toolsDir = exeDir + "/../tools";
+        }
+        // Fallback: ./tools/ relative to cwd
+        if (toolsDir.empty()) {
+          toolsDir = "./tools";
+        }
+      }
+      theDebugServer.Start(9980, toolsDir);
+    }
 
     /* Initialize the SDL library (starts the event loop) */
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -247,6 +284,7 @@ int main(int argc, char *argv[]) {
       if (!ourQuit) {
         theApp.UpdateApp();
         theApp.GetInputManager().SysFlushEventBuffer();
+        if (enableTools) theDebugServer.Poll();
       }
 
       // Sleep for the remainder of the tick interval, mirroring the Windows
@@ -621,7 +659,7 @@ case WM_MOVE: {
   static void DoShutdown() {
     ourRunning = false;
 
-    // TODO: close down external interface here.
+    if (enableTools) theDebugServer.Stop();
 
     theApp.ShutDown();
   }

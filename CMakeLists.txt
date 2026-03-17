@@ -199,6 +199,7 @@ set(SRC_FILES
   engine/mfchack.cpp
   engine/unix/File.cpp
   engine/unix/FileFuncs.cpp
+  engine/DebugServer.cpp
 )
 
 add_executable(lc2e ${SRC_FILES})
