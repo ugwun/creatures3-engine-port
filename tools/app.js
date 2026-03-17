@@ -83,10 +83,10 @@ function setStatus(state) {
 function appendMessage(msg) {
     allMessages.push(msg);
     totalMessages++;
-    statTotal.textContent = totalMessages;
+    if (statTotal) statTotal.textContent = totalMessages;
 
     const cat = categorize(msg.cat);
-    if (msg.cat & 1) { errorCount++; statErrors.textContent = errorCount; }
+    if (msg.cat & 1) { errorCount++; if (statErrors) statErrors.textContent = errorCount; }
 
     // log/s tracking
     const now = Date.now();
@@ -175,7 +175,8 @@ btnClear.addEventListener("click", () => {
     logInner.innerHTML = "";
     allMessages = [];
     totalMessages = 0; errorCount = 0;
-    statTotal.textContent = "0"; statErrors.textContent = "0";
+    if (statTotal) statTotal.textContent = "0";
+    if (statErrors) statErrors.textContent = "0";
 });
 
 btnExport.addEventListener("click", () => {
@@ -254,7 +255,7 @@ optCompact.addEventListener("change", () => {
 setInterval(() => {
     const now = Date.now();
     recentTimestamps = recentTimestamps.filter(t => now - t < 1000);
-    statFps.textContent = recentTimestamps.length;
+    if (statFps) statFps.textContent = recentTimestamps.length;
 }, 500);
 
 // ── Boot ─────────────────────────────────────────────────────────────────

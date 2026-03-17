@@ -519,6 +519,10 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 	// ── Start UDP listener for log relay ───────────────────────────────
 	myImpl->udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (myImpl->udpSocket >= 0) {
+		// Allow address reuse so FlightRecorder's sendto socket doesn't conflict
+		int reuse = 1;
+		setsockopt(myImpl->udpSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
 		// Set non-blocking for clean shutdown
 		int flags = fcntl(myImpl->udpSocket, F_GETFL, 0);
 		if (flags >= 0) fcntl(myImpl->udpSocket, F_SETFL, flags | O_NONBLOCK);
@@ -527,7 +531,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(9999);
-		inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+		// FlightRecorder sends to INADDR_BROADCAST, so we must bind INADDR_ANY
+		addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 		if (bind(myImpl->udpSocket, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
 			myImpl->udpRunning = true;
