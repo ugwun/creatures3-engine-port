@@ -1610,17 +1610,21 @@ void AgentHandlers::Command_CALL(CAOSMachine &vm) {
   // fall back to async message (matching original C3 behavior for
   // cross-agent calls).
   if (targ == vm.GetOwner()) {
-    // Save full caller state (macro, IP, P1, P2, lock, inst, targ,
-    // local vars, stack)
+    // Push the caller's full state onto the call stack.  The subroutine
+    // will take over this VM and run within the normal UpdateVM loop
+    // (including across ticks if it blocks on over/wait).  When the
+    // subroutine reaches endm, StopScriptExecuting() will pop the
+    // caller from the stack and restore it so execution continues
+    // from after this CALL instruction.
     CAOSMachine::CallState savedState;
     vm.SaveCallState(savedState);
+    vm.PushCallStack(savedState);
 
-    // Set up subroutine without destroying caller state
+    // Begin the subroutine — this replaces the VM's active script
+    // with the target script but does NOT call UpdateVM.  The outer
+    // UpdateVM loop will execute the subroutine's instructions
+    // on this tick (and subsequent ticks if it blocks).
     vm.BeginSubroutine(targetScript, p1, p2);
-    vm.UpdateVM(-1); // run to completion
-
-    // Restore full caller state
-    vm.RestoreCallState(savedState);
   } else {
     // Cross-agent call: send as message (async)
     SendMessage(theApp.GetWorld(), vm.GetOwner(), targ, ev, p1, p2, 0);

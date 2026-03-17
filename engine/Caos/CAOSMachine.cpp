@@ -176,7 +176,10 @@ Creature &CAOSMachine::GetCreatureTarg() {
 void CAOSMachine::StartScriptExecuting(MacroScript *m, const AgentHandle &owner,
                                        const AgentHandle &from,
                                        const CAOSVar &p1, const CAOSVar &p2) {
-  // If we are interrupting a running script, stop it running
+  // If we are interrupting a running script, stop it running.
+  // Clear the call stack first so StopScriptExecuting truly stops
+  // rather than restoring a CALL caller.
+  ClearCallStack();
   if (myState != stateFinished)
     StopScriptExecuting();
   myMacro = m;
@@ -194,6 +197,24 @@ void CAOSMachine::StartScriptExecuting(MacroScript *m, const AgentHandle &owner,
 void CAOSMachine::StopScriptExecuting() {
   if (myState == stateFinished)
     return;
+
+  // If there's a saved caller on the CALL stack, restore it instead
+  // of truly stopping. This happens when a subroutine invoked via
+  // CALL reaches endm — the subroutine is done, and the caller
+  // should resume from where it left off.
+  if (!myCallStack.empty()) {
+    // Unlock the subroutine's macro
+    if (myMacro) {
+      myMacro->Unlock();
+    }
+    // Pop and restore the caller
+    CallState caller = myCallStack.back();
+    myCallStack.pop_back();
+    RestoreCallState(caller);
+    return;
+  }
+
+  // Normal full stop — no CALL stack entries.
   myState = stateFinished;
   if (myMacro) {
     myMacro->Unlock();
@@ -222,6 +243,18 @@ void CAOSMachine::StopScriptExecuting() {
   myIP = 0;
   // There's no need to set these two - they'll be set up in UpdateVM
   // myCommandIP, myCurrentCmd
+}
+
+void CAOSMachine::ClearCallStack() {
+  // Unlock macros saved in the call stack to prevent leaks.
+  // Each caller's macro was locked when StartScriptExecuting was
+  // originally called; we release those locks here since the
+  // callers will never be restored.
+  for (auto &state : myCallStack) {
+    if (state.macro)
+      state.macro->Unlock();
+  }
+  myCallStack.clear();
 }
 
 void CAOSMachine::DeleteOutputStreamIfResponsible() {

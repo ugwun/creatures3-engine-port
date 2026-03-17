@@ -456,8 +456,6 @@ public:
 
   // Restore a previously saved CallState, resuming the caller script.
   void RestoreCallState(const CallState &state) {
-    // The subroutine's endm called StopScriptExecuting() which cleared
-    // everything. Rebuild state from the saved bundle.
     myMacro = state.macro;
     if (myMacro)
       myMacro->Lock(); // re-lock the caller's macro
@@ -501,6 +499,14 @@ public:
     }
     // targ/ownr/from/it/lock/inst carry over from caller (saved in CallState)
   }
+
+  // Push caller state onto the CALL stack (for cross-tick subroutine calls).
+  void PushCallStack(const CallState &state) {
+    myCallStack.push_back(state);
+  }
+
+  // Clear the entire call stack, unlocking any saved macros.
+  void ClearCallStack();
 
   void SetCamera(Camera *newCamera) { // if this is null then it's OK it means
                                       // use the main camera
@@ -651,6 +657,12 @@ private:
   bool myInstFlag;   // INST mode on/off?
   int myQuanta;      // number of steps left for this UpdateVM()
   bool myLockedFlag; // can script be interrupted?
+
+  // Call stack for the CALL command.  When a subroutine is invoked via
+  // CALL, the caller's full VM state is pushed here.  When the subroutine
+  // finishes (endm → StopScriptExecuting), the caller is popped and
+  // restored, allowing multi-tick subroutines (over/wait) to work.
+  std::vector<CallState> myCallStack;
 
   // variables
   Camera *myCamera; // if this is null we use the main camera

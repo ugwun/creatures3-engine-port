@@ -44,12 +44,6 @@ bool CompoundAgent::AddPart(int id, CompoundPart *part) {
 
   myParts[id] = part;
 
-  // Diagnostic: trace part creation on comms screen agent
-  if (myClassifier.Family() == 1 && myClassifier.Genus() == 2 && myClassifier.Species() == 210) {
-    theFlightRecorder.Log(1, "CommsScreen::AddPart: part=%d partsSize=%d",
-        id, (int)myParts.size());
-  }
-
   part->SetParent(this);
   // sort out position and plane relative to part0
   if (id != 0) {
@@ -67,10 +61,6 @@ bool CompoundAgent::AddPart(int id, CompoundPart *part) {
 }
 
 void CompoundAgent::DestroyPart(int id) {
-  if (myClassifier.Family() == 1 && myClassifier.Genus() == 2 && myClassifier.Species() == 210) {
-    theFlightRecorder.Log(1, "CommsScreen::DestroyPart: part=%d partsSize=%d",
-        id, (int)myParts.size());
-  }
   if (id >= 1 && id < myParts.size() && myParts[id]) {
     delete myParts[id];
     myParts[id] = NULL;

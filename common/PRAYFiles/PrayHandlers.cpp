@@ -58,7 +58,7 @@
 BasicException helper_Convert(PrayException& pe)
 {
 #ifdef C2E_OLD_CPP_LIB
-        char hackbuf[512];
+        char hackbuf[512] = {};
         std::ostrstream str( hackbuf, sizeof(hackbuf) );
 #else
         std::ostringstream str;
@@ -184,8 +184,11 @@ int PrayHandlers::IntegerRV_PRAY_INJT(CAOSMachine &vm) {
   try {
     // 1. Get Chunk from Manager...
     PrayChunkPtr chunk(theApp.GetResourceManager().GetChunk(name));
+
     // 2. With the chunk, now construct an input stream around it
-    std::istrstream ist((char *)chunk->GetData(), chunk->GetSize());
+    std::string chunkData((const char *)chunk->GetData(), chunk->GetSize());
+    std::istringstream ist(chunkData);
+
     // 3. Now we have the stream, construct the StringIntGroup around it...
     StringIntGroup vals(ist);
     // 4. Now we have the group object, let's bingle on through the systems
@@ -198,7 +201,7 @@ int PrayHandlers::IntegerRV_PRAY_INJT(CAOSMachine &vm) {
     int loop;
     for (loop = 0; loop < count; loop++) {
 #ifdef C2E_OLD_CPP_LIB
-      char hackbuf[512];
+      char hackbuf[512] = {};
       std::ostrstream st(hackbuf, sizeof(hackbuf));
 #else
       std::stringstream st;
@@ -215,7 +218,7 @@ int PrayHandlers::IntegerRV_PRAY_INJT(CAOSMachine &vm) {
       return 0;
     for (loop = 0; loop < count; loop++) {
 #ifdef C2E_OLD_CPP_LIB
-      char hackbuf[512];
+      char hackbuf[512] = {};
       std::ostrstream st(hackbuf, sizeof(hackbuf));
 #else
       std::stringstream st;
@@ -325,7 +328,8 @@ int PrayHandlers::IntegerRV_PRAY_AGTI(CAOSMachine &vm) {
     // 1. Get Chunk from Manager...
     PrayChunkPtr chunk(theApp.GetResourceManager().GetChunk(name));
     // 2. With the chunk, now construct an input stream around it
-    std::istrstream ist((char *)chunk->GetData(), chunk->GetSize());
+    std::string chunkData((const char *)chunk->GetData(), chunk->GetSize());
+    std::istringstream ist(chunkData);
     // 3. Now we have the stream, construct the StringIntGroup around it...
     StringIntGroup vals(ist);
     // 4. Now we have the group object, simply fetch the int...
@@ -445,7 +449,8 @@ int PrayHandlers::Dependency_Helper(CAOSMachine &vm, std::string &name,
     // 1. Get Chunk from Manager...
     PrayChunkPtr chunk(theApp.GetResourceManager().GetChunk(name));
     // 2. With the chunk, now construct an input stream around it
-    std::istrstream ist((char *)chunk->GetData(), chunk->GetSize());
+    std::string chunkData((const char *)chunk->GetData(), chunk->GetSize());
+    std::istringstream ist(chunkData);
     // 3. Now we have the stream, construct the StringIntGroup around it...
     StringIntGroup vals(ist);
 
@@ -461,8 +466,8 @@ int PrayHandlers::Dependency_Helper(CAOSMachine &vm, std::string &name,
     int loop;
     for (loop = 0; loop < count; loop++) {
 #ifdef C2E_OLD_CPP_LIB
-      char hackbuf1[128];
-      char hackbuf2[128];
+      char hackbuf1[128] = {};
+      char hackbuf2[128] = {};
       std::ostrstream st(hackbuf1, sizeof(hackbuf1));
       std::ostrstream cst(hackbuf2, sizeof(hackbuf2));
 #else
@@ -483,8 +488,8 @@ int PrayHandlers::Dependency_Helper(CAOSMachine &vm, std::string &name,
     // dependency evaluate on...
     for (loop = 0; loop < count; loop++) {
 #ifdef C2E_OLD_CPP_LIB
-      char hackbuf1[128];
-      char hackbuf2[128];
+      char hackbuf1[128] = {};
+      char hackbuf2[128] = {};
       std::ostrstream st(hackbuf1, sizeof(hackbuf1));
       std::ostrstream cst(hackbuf2, sizeof(hackbuf2));
 #else
@@ -569,7 +574,8 @@ void PrayHandlers::StringRV_PRAY_AGTS(CAOSMachine &vm, std::string &str) {
     // 1. Get Chunk from Manager...
     PrayChunkPtr chunk(theApp.GetResourceManager().GetChunk(name));
     // 2. With the chunk, now construct an input stream around it
-    std::istrstream ist((char *)chunk->GetData(), chunk->GetSize());
+    std::string chunkData((const char *)chunk->GetData(), chunk->GetSize());
+    std::istringstream ist(chunkData);
     // 3. Now we have the stream, construct the StringIntGroup around it...
     StringIntGroup vals(ist);
     // 4. Now we have the group object, simply fetch the string...
