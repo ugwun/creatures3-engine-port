@@ -143,7 +143,7 @@ For full details see [`./monitor/README.md`](./monitor/README.md).
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **354 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **372 tests**.
 
 ### Running the tests
 
@@ -176,6 +176,8 @@ cd build && ctest --output-on-failure
 | `test_TickRate` | Game tick-rate calculation (interval scaling, sleep duration) |
 | `test_V39Serialization` | v39 (DS) serialisation round-trips for `LifeEvent` and `CreatureHistory` |
 | `test_CompoundAgent` | Compound part slot replacement logic (AddPart with occupied slots) |
+| `test_CAOSMachineCallStack` | CALL command call stack state bundle (save/restore/copy semantics) |
+| `test_StringIntGroup` | PRAY chunk binary tag parsing (int/string maps, round-trip) |
 
 ### Writing a new test
 
@@ -319,6 +321,6 @@ Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible typ
 - [ ] Within the initial menu, when delete a world is selected, the world is not deleted.
 - [ ] Within the initial menu, the menu doesn't show different images for the different types of worlds: Only Docking Station world vs Docking Station + Creatures 3 world. The symbol used for representing the worlds is the Docking Station symbol in both cases. Update: the world icons change based on which type of world was selected last. If the user creates a Creatures 3 world, all icons changes to the Creatures 3 world icon, and vice versa.
 - [x] In the main menu, when Quit is clicked, the menu itself disapears, but the application window doesn't close.
-- [ ] In Docking Station, in "Comms Room", there are no agents visible, therefore no agents are available to import.
+- [x] ~~In Docking Station, in "Comms Room", there are no agents visible, therefore no agents are available to import.~~ Fixed: PRAY handlers used `istrstream(char*, int)` which creates streams with empty get areas on modern C++, causing all agent tag lookups to fail. Switched to `istringstream`. Also zero-initialized `ostrstream` hackbuf arrays to fix non-null-terminated `str()` results (e.g. `"Script 1f"` instead of `"Script 1"`).
 - [ ] Fullscreen doesn't work.
 - [ ] Camera transmition, from the "Camera" agents is not working. For example, the user should see transmission from cameras in the Docking Station's Comms Room or in the Creatures 3 Bridge. Currently, the camera view is just black.
