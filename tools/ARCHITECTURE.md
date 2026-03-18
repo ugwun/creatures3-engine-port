@@ -135,6 +135,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
+| [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: source view, breakpoints, stepping, inspector |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
 ### Documentation
@@ -306,14 +307,68 @@ myImpl->svr.Get("/api/newtool", [this](const httplib::Request& req, httplib::Res
 
 ---
 
+## Breakpoint Mechanism
+
+### State Machine
+
+The `CAOSMachine` VM has four states:
+
+```
+┌─────────────┐   FetchOp+Dispatch   ┌────────────┐
+│  stateFetch  │─────────────────▶│ stateBlock │  (wait/over)
+└──────┬──────┘                   └─────┬──────┘
+       │                              │ UnBlock()
+       │ IP in breakpoints            │
+       ▼                              ▼
+┌───────────────┐              ┌──────────────┐
+│stateBreakpoint│              │stateFinished│
+└───────┬───────┘              └──────────────┘
+        │
+        │ DebugContinue()/
+        │ DebugStepInto()/
+        │ DebugStepOver()
+        ▼
+┌─────────────┐
+│  stateFetch  │  (resumes execution)
+└─────────────┘
+```
+
+### Data Members
+
+```cpp
+// In CAOSMachine (private)
+std::set<int> myBreakpoints;    // bytecode IPs to break at
+bool myDebugStepOnce = false;   // execute one op then re-enter breakpoint
+int  myDebugStepOverDepth = -1; // stack depth threshold for step-over
+```
+
+### UpdateVM() Integration
+
+The breakpoint check runs at the **top** of the main dispatch loop, before `FetchOp()`:
+
+1. If `myState == stateBreakpoint` → **break** immediately (VM stays paused).
+2. If `myIP` is in `myBreakpoints` and not currently stepping → set `stateBreakpoint`, **break**.
+3. If `myDebugStepOnce` is true → clear the flag, execute **one** instruction, then set `stateBreakpoint` and **break**.
+4. For step-over: if `myDebugStepOverDepth >= 0` and the current stack depth is greater, keep stepping (set `myDebugStepOnce = true` again) instead of pausing.
+
+When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished). The agent’s tick continues normally — the VM is simply paused. On the next tick, `UpdateVM()` is called again, detects `stateBreakpoint`, and immediately returns, keeping the script suspended until a debug command (continue/step) changes the state.
+
+### Debug API Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/breakpoint` | Set/clear/clearAll breakpoints on agent VM |
+| `POST` | `/api/step/:agentId` | Step one instruction (into or over) |
+| `POST` | `/api/continue/:agentId` | Resume execution from breakpoint |
+| `GET` | `/api/agent/:id` | Full agent state including source, breakpoints, context |
+
+---
+
 ## Future Phases
 
-### Phase 2 — Breakpoints & Stepping
+### ~~Phase 2 — Breakpoints & Stepping~~ ✅ Implemented
 
-- Add `std::set<int> myBreakpoints` to `CAOSMachine`
-- Check IP against breakpoints in `UpdateVM()` before dispatch
-- New API endpoints: `POST /api/breakpoint`, `POST /api/step/:agentId`, `POST /api/continue/:agentId`
-- Browser: source view with clickable line gutters, step/continue/step-over buttons
+See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 
 ### Phase 3 — Agent Inspector
 
@@ -325,3 +380,4 @@ myImpl->svr.Get("/api/newtool", [this](const httplib::Request& req, httplib::Res
 - Surface `DBG: PROF` data with browser visualizations
 - Flame charts by agent classifier
 - Script execution time heatmaps
+

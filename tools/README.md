@@ -31,7 +31,7 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ## Tabs
 
-The developer tools UI is organized into three tabs, accessible from the header navigation bar.
+The developer tools UI is organized into four tabs, accessible from the header navigation bar.
 
 ### Log
 
@@ -110,7 +110,7 @@ The **Scripts** tab shows a live table of all currently running CAOS scripts acr
 |---|---|
 | Agent ID | The agent's unique ID (`GetUniqueID()`) |
 | Classifier | Family, Genus, Species, Event (e.g. `2 13 100 9`) |
-| State | `running` (actively executing) or `blocking` (waiting on `wait`, `over`, etc.) |
+| State | `running`, `blocking` (waiting on `wait`, `over`, etc.), or `paused` (at a breakpoint) |
 | IP | Current instruction pointer in the bytecode |
 | Current Source | The CAOS source line at the current IP (if debug info is available) |
 
@@ -121,7 +121,30 @@ The **Scripts** tab shows a live table of all currently running CAOS scripts acr
 - **Toggle auto** — uncheck "Auto" to disable automatic polling
 - **Empty state** — when no scripts are running (e.g. no world loaded), a message is shown instead of an empty table
 
-Running scripts are shown with a green badge; blocking scripts with an orange badge.
+Running scripts are shown with a green badge; blocking scripts with an orange badge; paused scripts (at a breakpoint) with an orange outlined badge tagged ⏸.
+
+### Debugger
+
+The **Debugger** tab is an interactive CAOS source-level debugger. Select a running agent to see its script source code, set breakpoints, and step through execution one instruction at a time.
+
+**Features:**
+
+- **Agent selector** — dropdown in the header bar lists all agents with running scripts. Select one to load its source code and VM state.
+- **Source view** — full CAOS source displayed with line numbers on a dark background. The current execution position is highlighted in orange.
+- **Breakpoints** — click any line number to toggle a breakpoint (red marker). Breakpoints pause the script before executing the instruction at that source position.
+- **Step controls:**
+  - **Continue** — resume execution until the next breakpoint or script completion
+  - **Step** — execute exactly one CAOS instruction and pause again (step into)
+  - **Step Over** — step but skip over nested blocks (loops, subroutines) by running until the stack depth returns to the original level
+- **Context inspector** — right-hand panel showing the current values of OWNR, TARG, FROM, IT, and the bytecode IP
+- **State badge** — shows RUNNING / BLOCKING / PAUSED / FINISHED
+- **Breakpoint list** — sidebar showing all active breakpoints with remove buttons
+
+**Limitations:**
+
+- Breakpoints are set on bytecode IP addresses (character offsets into the source). The mapping from source lines to IPs uses the `DebugInfo` address map built by the compiler.
+- Stepping operates at the bytecode instruction level, not at the CAOS source statement level. Some CAOS statements compile to multiple bytecode operations.
+- Breakpoints are per-agent, not global. Setting a breakpoint on one agent does not affect other agents running the same script.
 
 ---
 
@@ -192,19 +215,71 @@ List all installed scripts in the scriptorium (the engine's script registry).
 
 ### `GET /api/agent/:id`
 
-Get details about a specific agent and its VM state.
+Get detailed state about a specific agent, its VM, source code, breakpoints, and context handles. This is the primary endpoint used by the Debugger tab.
 
 **Response:**
 ```json
 {
   "id": 42,
-  "family": 2,
-  "genus": 13,
-  "species": 100,
+  "family": 2, "genus": 13, "species": 100,
+  "running": true, "blocking": false, "paused": true,
+  "ip": 156,
+  "scriptFamily": 2, "scriptGenus": 13, "scriptSpecies": 100, "scriptEvent": 9,
+  "source": "inst\nsetv va00 42\nouts \"hello\"\n...",
+  "sourcePos": 24,
+  "breakpoints": [156, 200],
+  "targ": 67, "ownr": 42, "from": 0, "it": 0,
+  "variables": {},
+  "vmState": "..."
+}
+```
+
+### `POST /api/breakpoint`
+
+Set or clear a breakpoint on a specific agent's VM.
+
+**Request:**
+```json
+{ "agentId": 42, "ip": 156, "action": "set" }
+```
+
+`action` must be `"set"`, `"clear"`, or `"clearAll"`. For `"clearAll"`, the `ip` field is ignored.
+
+**Response:**
+```json
+{ "ok": true, "breakpoints": [156, 200] }
+```
+
+### `POST /api/step/:agentId`
+
+Single-step a paused agent. The agent must be in the `paused` state (at a breakpoint).
+
+**Request:**
+```json
+{ "mode": "into" }
+```
+
+`mode` is `"into"` (step one instruction) or `"over"` (step over nested blocks).
+
+**Response:**
+```json
+{
+  "ok": true,
+  "ip": 160,
+  "paused": true,
   "running": true,
   "blocking": false,
-  "vmState": "IP=156 State=fetch Script=2 13 100 9\nOWNR=42 TARG=67 FROM=0\n..."
+  "sourcePos": 30
 }
+```
+
+### `POST /api/continue/:agentId`
+
+Resume execution of a paused agent.
+
+**Response:**
+```json
+{ "ok": true }
 ```
 
 ### `GET /api/events`

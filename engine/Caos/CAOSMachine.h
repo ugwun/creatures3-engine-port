@@ -41,6 +41,7 @@ class DebugHandlers;
 #endif
 
 #include "../../common/C2eTypes.h"
+#include <set>
 #include <string>
 #include <vector>
 
@@ -629,6 +630,16 @@ public:
 
   bool IsLocked() { return myLockedFlag; }
 
+  // ── Debug / Breakpoint API ──────────────────────────────────────────
+  void SetBreakpoint(int ip);
+  void ClearBreakpoint(int ip);
+  void ClearAllBreakpoints();
+  const std::set<int>& GetBreakpoints() const;
+  bool IsAtBreakpoint() const { return myState == stateBreakpoint; }
+  void DebugContinue();    // resume from breakpoint
+  void DebugStepInto();    // execute one instruction then pause
+  void DebugStepOver();    // step over (skip nested calls/blocks)
+
   CAOSMachine();
   ~CAOSMachine();
 
@@ -645,7 +656,7 @@ private:
   std::ostream *myOutputStream;
   std::istream *myInputStream;
   bool myOutputStreamDeleteResponsibility;
-  enum { stateFinished, stateFetch, stateBlocking };
+  enum { stateFinished, stateFetch, stateBlocking, stateBreakpoint };
   MacroScript *myMacro;
   int myIP;        // instruction pointer
   int myCommandIP; // The IP of the command currently Executing.
@@ -657,6 +668,11 @@ private:
   bool myInstFlag;   // INST mode on/off?
   int myQuanta;      // number of steps left for this UpdateVM()
   bool myLockedFlag; // can script be interrupted?
+
+  // Debug / breakpoint state
+  std::set<int> myBreakpoints;         // bytecode IPs to break at
+  bool myDebugStepOnce = false;        // single-step flag
+  int  myDebugStepOverDepth = -1;      // stack depth for step-over
 
   // Call stack for the CALL command.  When a subroutine is invoked via
   // CALL, the caller's full VM state is pushed here.  When the subroutine

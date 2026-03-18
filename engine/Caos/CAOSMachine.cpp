@@ -305,6 +305,21 @@ bool CAOSMachine::UpdateVM(int quanta) {
     myQuanta = quanta;
     int quantaCount = 0;
     while ((myQuanta == -1 || myQuanta > 0)) {
+      // ── Breakpoint check ───────────────────────────────────────────
+      if (myState == stateBreakpoint) {
+        // Paused at a breakpoint — yield control
+        break;
+      }
+      if (myState == stateFetch && !myBreakpoints.empty() &&
+          !myDebugStepOnce && myBreakpoints.count(myIP)) {
+        myState = stateBreakpoint;
+        break;
+      }
+      // ── Single-step logic ─────────────────────────────────────────
+      bool wasSteppingOnce = myDebugStepOnce;
+      if (myDebugStepOnce)
+        myDebugStepOnce = false;
+      // ── Normal dispatch ───────────────────────────────────────────
       myCommandIP = myIP;
       if (myState == stateFetch)
         myCurrentCmd = FetchOp();
@@ -322,9 +337,22 @@ bool CAOSMachine::UpdateVM(int quanta) {
       if (myQuanta > 0 && !myInstFlag)
         --myQuanta;
 
-      // drop out if blocking or finished
+      // drop out if blocking, finished, or hit breakpoint
       if (myState != stateFetch)
         break;
+
+      // ── Post-step pause: re-enter breakpoint after one instruction ───
+      if (wasSteppingOnce && myState == stateFetch) {
+        // For step-over: keep going if stack is deeper than start
+        if (myDebugStepOverDepth >= 0 &&
+            (int)myStack.size() > myDebugStepOverDepth) {
+          myDebugStepOnce = true; // keep stepping
+        } else {
+          myDebugStepOverDepth = -1;
+          myState = stateBreakpoint;
+          break;
+        }
+      }
 
       // if taking ages, warn the user
       ++quantaCount;
@@ -1132,4 +1160,32 @@ void CAOSMachine::StreamClassifier(std::ostream &out) {
   Classifier c;
   m->GetClassifier(c);
   c.StreamClassifier(out);
+}
+
+// ── Debug / Breakpoint methods ──────────────────────────────────────────
+
+void CAOSMachine::SetBreakpoint(int ip) { myBreakpoints.insert(ip); }
+void CAOSMachine::ClearBreakpoint(int ip) { myBreakpoints.erase(ip); }
+void CAOSMachine::ClearAllBreakpoints() { myBreakpoints.clear(); }
+const std::set<int>& CAOSMachine::GetBreakpoints() const { return myBreakpoints; }
+
+void CAOSMachine::DebugContinue() {
+  if (myState == stateBreakpoint)
+    myState = stateFetch;
+}
+
+void CAOSMachine::DebugStepInto() {
+  if (myState == stateBreakpoint) {
+    myState = stateFetch;
+    myDebugStepOnce = true;
+    myDebugStepOverDepth = -1;
+  }
+}
+
+void CAOSMachine::DebugStepOver() {
+  if (myState == stateBreakpoint) {
+    myState = stateFetch;
+    myDebugStepOnce = true;
+    myDebugStepOverDepth = (int)myStack.size();
+  }
 }

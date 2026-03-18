@@ -45,31 +45,45 @@
         <button class="tab-btn tab-btn--active" data-tab="log">Log</button>
         <button class="tab-btn" data-tab="console">Console</button>
         <button class="tab-btn" data-tab="scripts">Scripts</button>
+        <button class="tab-btn" data-tab="debugger">Debugger</button>
       </nav>
     </div>
-
-    <div id="header-right">
-      <!-- Log tab controls -->
-      <div id="log-controls" class="tab-controls">
-        <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
-        <button id="btn-pause" class="btn">Pause</button>
-        <button id="btn-clear" class="btn">Clear</button>
-        <button id="btn-copy" class="btn">Copy</button>
-        <button id="btn-export" class="btn">Export</button>
-      </div>
-      <!-- Console tab controls -->
-      <div id="console-controls" class="tab-controls" hidden>
-        <button id="btn-console-clear" class="btn">Clear Output</button>
-      </div>
-      <!-- Scripts tab controls -->
-      <div id="scripts-controls" class="tab-controls" hidden>
-        <button id="btn-scripts-refresh" class="btn">Refresh</button>
-        <label class="opt-toggle" style="color:#fff;margin-left:8px">
-          <input type="checkbox" id="opt-auto-refresh" checked /> Auto
-        </label>
-      </div>
-    </div>
   </header>
+
+  <!-- ── Toolbar: contextual controls per tab ──────────────────────────────── -->
+  <div id="toolbar">
+    <!-- Log tab controls -->
+    <div id="log-controls" class="tab-controls">
+      <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
+      <div class="toolbar-sep"></div>
+      <button id="btn-pause" class="btn">Pause</button>
+      <button id="btn-clear" class="btn">Clear</button>
+      <button id="btn-copy" class="btn">Copy</button>
+      <button id="btn-export" class="btn">Export</button>
+    </div>
+    <!-- Console tab controls -->
+    <div id="console-controls" class="tab-controls" hidden>
+      <button id="btn-console-clear" class="btn">Clear Output</button>
+    </div>
+    <!-- Scripts tab controls -->
+    <div id="scripts-controls" class="tab-controls" hidden>
+      <button id="btn-scripts-refresh" class="btn">Refresh</button>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-auto-refresh" checked /> Auto
+      </label>
+    </div>
+    <!-- Debugger tab controls -->
+    <div id="debugger-controls" class="tab-controls" hidden>
+      <select id="dbg-agent-select" class="dbg-select">
+        <option value="">Select agent…</option>
+      </select>
+      <div class="toolbar-sep"></div>
+      <button id="btn-dbg-continue" class="btn" disabled>Continue</button>
+      <button id="btn-dbg-step" class="btn" disabled>Step</button>
+      <button id="btn-dbg-stepover" class="btn" disabled>Step Over</button>
+    </div>
+  </div>
+
 
   <!-- ── Tab: Log ──────────────────────────────────────────────────────────── -->
   <div id="tab-log" class="tab-panel tab-panel--active">
@@ -171,9 +185,50 @@
     </div>
   </div>
 
+  <!-- ── Tab: Debugger ────────────────────────────────────────────────────────── -->
+  <div id="tab-debugger" class="tab-panel" hidden>
+    <div id="dbg-container">
+      <div id="dbg-source-panel">
+        <div id="dbg-source-header">
+          <span id="dbg-script-info">No agent selected</span>
+        </div>
+        <div id="dbg-source-view">
+          <div id="dbg-source-lines">
+            <!-- populated by debugger_view.js -->
+          </div>
+        </div>
+      </div>
+      <div id="dbg-inspector-panel">
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">Context</div>
+          <table id="dbg-context-table" class="dbg-var-table">
+            <tbody>
+              <tr><td class="dbg-var-key">OWNR</td><td id="dbg-ctx-ownr" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">TARG</td><td id="dbg-ctx-targ" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">FROM</td><td id="dbg-ctx-from" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">IT</td><td id="dbg-ctx-it" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">IP</td><td id="dbg-ctx-ip" class="dbg-var-val">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">State</div>
+          <div id="dbg-state-badge" class="state-badge state-running">—</div>
+        </div>
+        <div class="dbg-inspector-section dbg-inspector-flex">
+          <div class="dbg-inspector-title">Breakpoints</div>
+          <div id="dbg-breakpoint-list">
+            <span class="dbg-empty-hint">Click a line number to set a breakpoint</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script src="debugger.js"></script>
   <script src="scripts.js"></script>
+  <script src="debugger_view.js"></script>
 </body>
 
 </html>

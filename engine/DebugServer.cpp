@@ -312,7 +312,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				macro->GetClassifier(c);
 
 				std::string state;
-				if (vm.IsBlocking()) state = "blocking";
+				if (vm.IsAtBreakpoint()) state = "paused";
+				else if (vm.IsBlocking()) state = "blocking";
 				else state = "running";
 
 				// Get source line at current IP
@@ -421,7 +422,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 	});
 
 	// ── GET /api/agent/:id ─────────────────────────────────────────────
-	// Returns details about a specific agent and its VM state.
+	// Returns full details about a specific agent, its VM state,
+	// source code, breakpoints, and variables for the debugger view.
 	myImpl->svr.Get(R"(/api/agent/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
 		int agentId = std::stoi(req.matches[1]);
 
@@ -436,11 +438,6 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 			CAOSMachine& vm = agent.GetVirtualMachine();
 			Classifier c = agent.GetClassifier();
 
-			std::ostringstream stateStream;
-			if (vm.IsRunning()) {
-				vm.DumpState(stateStream, '\n');
-			}
-
 			std::ostringstream json;
 			json << "{\"id\":" << agent.GetUniqueID()
 				<< ",\"family\":" << (int)c.Family()
@@ -448,8 +445,63 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				<< ",\"species\":" << (int)c.Species()
 				<< ",\"running\":" << (vm.IsRunning() ? "true" : "false")
 				<< ",\"blocking\":" << (vm.IsBlocking() ? "true" : "false")
-				<< ",\"vmState\":\"" << JsonEscape(stateStream.str()) << "\""
-				<< "}";
+				<< ",\"paused\":" << (vm.IsAtBreakpoint() ? "true" : "false")
+				<< ",\"ip\":" << vm.GetIP();
+
+			// Source code and source position
+			MacroScript* macro = vm.GetScript();
+			if (macro) {
+				Classifier mc;
+				macro->GetClassifier(mc);
+				json << ",\"scriptFamily\":" << (int)mc.Family()
+					<< ",\"scriptGenus\":" << (int)mc.Genus()
+					<< ",\"scriptSpecies\":" << (int)mc.Species()
+					<< ",\"scriptEvent\":" << (int)mc.Event();
+
+				DebugInfo* di = macro->GetDebugInfo();
+				if (di) {
+					std::string src;
+					di->GetSourceCode(src);
+					json << ",\"source\":\"" << JsonEscape(src) << "\"";
+					int pos = di->MapAddressToSource(vm.GetIP());
+					json << ",\"sourcePos\":" << pos;
+				}
+			}
+
+			// Breakpoints
+			const std::set<int>& bps = vm.GetBreakpoints();
+			json << ",\"breakpoints\":[";
+			bool firstBp = true;
+			for (int bp : bps) {
+				if (!firstBp) json << ",";
+				firstBp = false;
+				json << bp;
+			}
+			json << "]";
+
+			// Context handles
+			AgentHandle targ = vm.GetTarg();
+			AgentHandle ownr = vm.GetOwner();
+			AgentHandle from = vm.GetFrom();
+			AgentHandle it = vm.GetIT();
+			json << ",\"targ\":" << (targ.IsValid() ? targ.GetAgentReference().GetUniqueID() : 0)
+				<< ",\"ownr\":" << (ownr.IsValid() ? ownr.GetAgentReference().GetUniqueID() : 0)
+				<< ",\"from\":" << (from.IsValid() ? from.GetAgentReference().GetUniqueID() : 0)
+				<< ",\"it\":" << (it.IsValid() ? it.GetAgentReference().GetUniqueID() : 0);
+
+			// Local variables VA00–VA99 (only non-zero ones to save bandwidth)
+			json << ",\"variables\":{";
+			bool firstVar = true;
+			// Use DumpState pattern — access local vars via the public VM state dump
+			// For now, we'll dump the full VM state as a string
+			std::ostringstream stateStream;
+			if (vm.IsRunning() || vm.IsAtBreakpoint()) {
+				vm.DumpState(stateStream, '\n');
+			}
+			json << "}";
+
+			json << ",\"vmState\":\"" << JsonEscape(stateStream.str()) << "\"";
+			json << "}";
 			return json.str();
 		};
 
@@ -466,6 +518,203 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 			res.set_content("{\"error\":\"Timeout\"}", "application/json");
 		}
 	});
+
+	// ── POST /api/breakpoint ──────────────────────────────────────────
+	// Set or clear breakpoints on a specific agent's VM.
+	// Body: { "agentId": 42, "ip": 156, "action": "set"|"clear"|"clearAll" }
+	myImpl->svr.Post("/api/breakpoint", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		// Simple JSON parsing
+		int agentId = 0;
+		int ip = 0;
+		std::string action;
+
+		// Parse agentId
+		size_t pos = body.find("\"agentId\"");
+		if (pos != std::string::npos) {
+			pos = body.find(':', pos);
+			if (pos != std::string::npos) agentId = std::stoi(body.substr(pos + 1));
+		}
+		// Parse ip
+		pos = body.find("\"ip\"");
+		if (pos != std::string::npos) {
+			pos = body.find(':', pos);
+			if (pos != std::string::npos) ip = std::stoi(body.substr(pos + 1));
+		}
+		// Parse action
+		pos = body.find("\"action\"");
+		if (pos != std::string::npos) {
+			pos = body.find('"', pos + 8);
+			if (pos != std::string::npos) {
+				pos++;
+				size_t end = body.find('"', pos);
+				if (end != std::string::npos) action = body.substr(pos, end - pos);
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = [agentId, ip, action]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid()) {
+				return "{\"ok\":false,\"error\":\"Agent not found\"}";
+			}
+
+			CAOSMachine& vm = handle.GetAgentReference().GetVirtualMachine();
+
+			if (action == "set") {
+				vm.SetBreakpoint(ip);
+			} else if (action == "clear") {
+				vm.ClearBreakpoint(ip);
+			} else if (action == "clearAll") {
+				vm.ClearAllBreakpoints();
+			} else {
+				return "{\"ok\":false,\"error\":\"Unknown action\"}";
+			}
+
+			// Return current breakpoints
+			const std::set<int>& bps = vm.GetBreakpoints();
+			std::ostringstream json;
+			json << "{\"ok\":true,\"breakpoints\":[";
+			bool first = true;
+			for (int b : bps) {
+				if (!first) json << ",";
+				first = false;
+				json << b;
+			}
+			json << "]}";
+			return json.str();
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/step/:agentId ───────────────────────────────────────
+	// Single-step a paused agent.  Body: { "mode": "into"|"over" }
+	myImpl->svr.Post(R"(/api/step/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+		std::string mode = "into";
+		size_t pos = req.body.find("\"mode\"");
+		if (pos != std::string::npos) {
+			pos = req.body.find('"', pos + 6);
+			if (pos != std::string::npos) {
+				pos++;
+				size_t end = req.body.find('"', pos);
+				if (end != std::string::npos) mode = req.body.substr(pos, end - pos);
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = [agentId, mode]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid()) {
+				return "{\"ok\":false,\"error\":\"Agent not found\"}";
+			}
+
+			Agent& agent = handle.GetAgentReference();
+			CAOSMachine& vm = agent.GetVirtualMachine();
+
+			if (!vm.IsAtBreakpoint()) {
+				return "{\"ok\":false,\"error\":\"Agent is not paused at a breakpoint\"}";
+			}
+
+			// Perform the step
+			if (mode == "over") {
+				vm.DebugStepOver();
+			} else {
+				vm.DebugStepInto();
+			}
+
+			// Run VM for one quanta to execute the step
+			try {
+				vm.UpdateVM(1);
+			} catch (CAOSMachine::RunError& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			} catch (...) {
+				return "{\"ok\":false,\"error\":\"Exception during step\"}";
+			}
+
+			// Return updated state
+			std::ostringstream json;
+			json << "{\"ok\":true"
+				<< ",\"ip\":" << vm.GetIP()
+				<< ",\"paused\":" << (vm.IsAtBreakpoint() ? "true" : "false")
+				<< ",\"running\":" << (vm.IsRunning() ? "true" : "false")
+				<< ",\"blocking\":" << (vm.IsBlocking() ? "true" : "false");
+
+			// Include source position if available
+			MacroScript* macro = vm.GetScript();
+			if (macro) {
+				DebugInfo* di = macro->GetDebugInfo();
+				if (di) {
+					int srcPos = di->MapAddressToSource(vm.GetIP());
+					json << ",\"sourcePos\":" << srcPos;
+				}
+			}
+
+			json << "}";
+			return json.str();
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/continue/:agentId ───────────────────────────────────
+	// Resume a paused agent.
+	myImpl->svr.Post(R"(/api/continue/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid()) {
+				return "{\"ok\":false,\"error\":\"Agent not found\"}";
+			}
+
+			CAOSMachine& vm = handle.GetAgentReference().GetVirtualMachine();
+			if (!vm.IsAtBreakpoint()) {
+				return "{\"ok\":false,\"error\":\"Agent is not paused\"}";
+			}
+
+			vm.DebugContinue();
+			return "{\"ok\":true}";
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
 
 	// ── SSE endpoint for log streaming ─────────────────────────────────
 	// Clients connect to GET /api/events and receive log lines as SSE.

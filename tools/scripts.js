@@ -6,6 +6,7 @@
     const tbody = document.getElementById("scripts-tbody");
     const emptyDiv = document.getElementById("scripts-empty");
     const table = document.getElementById("scripts-table");
+    const container = document.getElementById("scripts-container");
     const btnRefresh = document.getElementById("btn-scripts-refresh");
     const optAuto = document.getElementById("opt-auto-refresh");
 
@@ -27,6 +28,9 @@
     }
 
     function renderScripts(scripts) {
+        // Remember scroll position to preserve user's place
+        const wasAtTop = container ? container.scrollTop < 10 : true;
+
         tbody.innerHTML = "";
 
         if (scripts.length === 0) {
@@ -43,7 +47,9 @@
             tr.className = "script-row";
 
             const classifier = `${s.family} ${s.genus} ${s.species} ${s.event}`;
-            const stateClass = s.state === "blocking" ? "state-blocking" : "state-running";
+            let stateClass = "state-running";
+            if (s.state === "blocking") stateClass = "state-blocking";
+            else if (s.state === "paused") stateClass = "state-paused";
 
             tr.innerHTML =
                 `<td class="col-id">${s.agentId}</td>` +
@@ -53,6 +59,11 @@
                 `<td class="col-source"><code>${escHtml(s.source || "—")}</code></td>`;
 
             tbody.appendChild(tr);
+        }
+
+        // Autoscroll: if user was near the top, stay at top
+        if (wasAtTop && container) {
+            container.scrollTop = 0;
         }
     }
 
@@ -89,7 +100,9 @@
     }
 
     // Start auto-refresh by default
-    startAutoRefresh();
+    if (optAuto && optAuto.checked) {
+        startAutoRefresh();
+    }
 
     // Also do an immediate refresh
     refreshScripts();

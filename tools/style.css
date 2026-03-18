@@ -36,7 +36,8 @@
   --border-thin: rgba(0, 0, 0, 0.18);
 
   --sidebar-w: 196px;
-  --header-h: 60px;
+  --header-h: 48px;
+  --toolbar-h: 40px;
 
   --font-ui: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
@@ -93,6 +94,33 @@ body {
   gap: 8px;
   padding: 0 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── Toolbar: contextual controls below header ─────────────────────── */
+#toolbar {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  height: var(--toolbar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--near-black);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 99;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
+}
+
+.toolbar-toggle {
+  color: rgba(255, 255, 255, 0.6) !important;
+  margin-left: 8px;
 }
 
 /* Logo */
@@ -276,7 +304,7 @@ body {
 /* ── Sidebar ───────────────────────────────────────────────────────────── */
 #sidebar {
   position: fixed;
-  top: var(--header-h);
+  top: calc(var(--header-h) + var(--toolbar-h));
   left: 0;
   bottom: 0;
   width: var(--sidebar-w);
@@ -363,7 +391,7 @@ body {
 /* ── Log area ─────────────────────────────────────────────────────────── */
 #log-container {
   position: fixed;
-  top: var(--header-h);
+  top: calc(var(--header-h) + var(--toolbar-h));
   left: var(--sidebar-w);
   right: 0;
   bottom: 0;
@@ -631,10 +659,14 @@ body.compact .log-row {
   gap: 8px;
 }
 
+.tab-controls[hidden] {
+  display: none !important;
+}
+
 /* ── Tab Panels ────────────────────────────────────────────────────────── */
 .tab-panel {
   position: fixed;
-  top: var(--header-h);
+  top: calc(var(--header-h) + var(--toolbar-h));
   left: 0;
   right: 0;
   bottom: 0;
@@ -903,4 +935,265 @@ body.compact .log-row {
 .scripts-empty-hint {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.2);
+}
+
+/* ── Debugger Tab ────────────────────────────────────────────────────── */
+#dbg-container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Source panel (left) */
+#dbg-source-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 2px solid var(--black);
+}
+
+#dbg-source-header {
+  padding: 8px 16px;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--orange);
+  flex-shrink: 0;
+}
+
+#dbg-source-view {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--near-black);
+  padding: 4px 0;
+}
+
+/* Source lines */
+.dbg-line {
+  display: flex;
+  align-items: stretch;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.7);
+  transition: background .08s;
+  border-left: 3px solid transparent;
+}
+
+.dbg-line:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dbg-line--current {
+  background: rgba(255, 95, 0, 0.12) !important;
+  border-left-color: var(--orange);
+}
+
+.dbg-line--current .dbg-code {
+  color: var(--white);
+}
+
+/* Breakpoint marker column */
+.dbg-bp-marker {
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dbg-bp-marker.dbg-bp-active::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--cat-error);
+  display: block;
+}
+
+/* Line number gutter */
+.dbg-gutter {
+  width: 44px;
+  text-align: right;
+  padding-right: 12px;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color .1s;
+}
+
+.dbg-gutter:hover {
+  color: var(--orange);
+}
+
+.dbg-line--current .dbg-gutter {
+  color: var(--orange);
+  font-weight: 700;
+}
+
+/* Code content */
+.dbg-code {
+  flex: 1;
+  padding-right: 16px;
+  white-space: pre;
+}
+
+/* Inspector panel (right) */
+#dbg-inspector-panel {
+  width: 260px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--off-white);
+  display: flex;
+  flex-direction: column;
+}
+
+.dbg-inspector-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--black);
+}
+
+.dbg-inspector-title {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--black);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--black);
+}
+
+.dbg-inspector-flex {
+  flex: 1;
+}
+
+/* Variable table */
+.dbg-var-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.dbg-var-table td {
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border-thin);
+}
+
+.dbg-var-key {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+  width: 50px;
+}
+
+.dbg-var-val {
+  color: var(--near-black);
+  word-break: break-all;
+}
+
+/* State badges (reused from scripts tab, extended) */
+.state-badge.state-paused {
+  background: rgba(255, 95, 0, 0.12);
+  color: var(--orange);
+  border: 1px solid rgba(255, 95, 0, 0.25);
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  display: inline-block;
+}
+
+.state-badge.state-finished {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  display: inline-block;
+}
+
+/* Breakpoint list items */
+.dbg-bp-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--near-black);
+}
+
+.dbg-bp-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--cat-error);
+  flex-shrink: 0;
+}
+
+.dbg-bp-remove {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .1s;
+  padding: 0;
+}
+
+.dbg-bp-remove:hover {
+  border-color: var(--cat-error);
+  color: var(--cat-error);
+  background: rgba(221, 0, 0, 0.06);
+}
+
+.dbg-empty-hint {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-ui);
+  font-style: italic;
+}
+
+/* Agent selector dropdown in header */
+.dbg-select {
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  max-width: 320px;
+}
+
+.dbg-select option {
+  background: var(--black);
+  color: var(--white);
+}
+
+.dbg-select:focus {
+  border-color: var(--orange);
 }
