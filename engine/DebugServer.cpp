@@ -336,6 +336,12 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 
 				if (!first) json << ",";
 				first = false;
+
+				std::string galleryName;
+				try { galleryName = agent.GetGalleryName(); } catch (...) {}
+
+				Classifier agentClass = agent.GetClassifier();
+
 				json << "{\"agentId\":" << agent.GetUniqueID()
 					<< ",\"family\":" << (int)c.Family()
 					<< ",\"genus\":" << (int)c.Genus()
@@ -344,6 +350,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 					<< ",\"state\":\"" << state << "\""
 					<< ",\"ip\":" << vm.GetIP()
 					<< ",\"source\":\"" << JsonEscape(sourceLine) << "\""
+					<< ",\"gallery\":\"" << JsonEscape(galleryName) << "\""
+					<< ",\"agentFamily\":" << (int)agentClass.Family()
 					<< "}";
 			}
 
@@ -446,7 +454,9 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				<< ",\"running\":" << (vm.IsRunning() ? "true" : "false")
 				<< ",\"blocking\":" << (vm.IsBlocking() ? "true" : "false")
 				<< ",\"paused\":" << (vm.IsAtBreakpoint() ? "true" : "false")
-				<< ",\"ip\":" << vm.GetIP();
+				<< ",\"ip\":" << vm.GetIP()
+				<< ",\"posx\":" << (int)agent.GetPosition().x
+				<< ",\"posy\":" << (int)agent.GetPosition().y;
 
 			// Source code and source position
 			MacroScript* macro = vm.GetScript();
@@ -489,18 +499,55 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				<< ",\"from\":" << (from.IsValid() ? from.GetAgentReference().GetUniqueID() : 0)
 				<< ",\"it\":" << (it.IsValid() ? it.GetAgentReference().GetUniqueID() : 0);
 
-			// Local variables VA00–VA99 (only non-zero ones to save bandwidth)
-			json << ",\"variables\":{";
-			bool firstVar = true;
-			// Use DumpState pattern — access local vars via the public VM state dump
-			// For now, we'll dump the full VM state as a string
-			std::ostringstream stateStream;
-			if (vm.IsRunning() || vm.IsAtBreakpoint()) {
-				vm.DumpState(stateStream, '\n');
+			// OV00–OV99 agent variables (only non-default)
+			json << ",\"ov\":{";
+			bool firstOv = true;
+			for (int i = 0; i < GLOBAL_VARIABLE_COUNT; ++i) {
+				CAOSVar& v = agent.GetReferenceToVariable(i);
+				if (v.GetType() == CAOSVar::typeInteger && v.GetInteger() == 0) continue;
+				if (!firstOv) json << ",";
+				firstOv = false;
+				json << "\"" << i << "\":";
+				if (v.GetType() == CAOSVar::typeInteger)
+					json << v.GetInteger();
+				else if (v.GetType() == CAOSVar::typeFloat)
+					json << v.GetFloat();
+				else if (v.GetType() == CAOSVar::typeString) {
+					std::string s; v.GetString(s);
+					json << "\"" << JsonEscape(s) << "\"";
+				}
+				else if (v.GetType() == CAOSVar::typeAgent && v.GetAgent().IsValid())
+					json << v.GetAgent().GetAgentReference().GetUniqueID();
+				else
+					json << "0";
 			}
 			json << "}";
 
-			json << ",\"vmState\":\"" << JsonEscape(stateStream.str()) << "\"";
+			// VA00–VA99 local variables (only non-default)
+			json << ",\"va\":{";
+			bool firstVa = true;
+			int vaCount = CAOSMachine::GetLocalVariableCount();
+			for (int i = 0; i < vaCount; ++i) {
+				CAOSVar& v = vm.GetLocalVariable(i);
+				if (v.GetType() == CAOSVar::typeInteger && v.GetInteger() == 0) continue;
+				if (!firstVa) json << ",";
+				firstVa = false;
+				json << "\"" << i << "\":";
+				if (v.GetType() == CAOSVar::typeInteger)
+					json << v.GetInteger();
+				else if (v.GetType() == CAOSVar::typeFloat)
+					json << v.GetFloat();
+				else if (v.GetType() == CAOSVar::typeString) {
+					std::string s; v.GetString(s);
+					json << "\"" << JsonEscape(s) << "\"";
+				}
+				else if (v.GetType() == CAOSVar::typeAgent && v.GetAgent().IsValid())
+					json << v.GetAgent().GetAgentReference().GetUniqueID();
+				else
+					json << "0";
+			}
+			json << "}";
+
 			json << "}";
 			return json.str();
 		};

@@ -135,7 +135,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
-| [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: source view, breakpoints, stepping, inspector |
+| [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer with 4-space indentation |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -371,14 +371,18 @@ When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished)
 
 See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 
-### Phase 3 — Agent Inspector
+### ~~Phase 3 — Agent Inspector~~ (Partially Implemented)
 
-- Full agent property browser: position, sprite frame, attributes, OV00–OV99, timer, velocity
-- Creature-specific panels: brain state, biochemistry, drives, current action
+- ✅ Agent list panel with classifier grouping, search, gallery names, state dots
+- ✅ Camera focus on selected agent (`cmrp`)
+- ✅ OV00–OV99 agent variable display
+- ✅ VA00–VA99 local variable display (when paused)
+- ✅ CAOS syntax highlighting in source view
+- [ ] Full agent property browser: position, sprite frame, attributes, timer, velocity
+- [ ] Creature-specific panels: brain state, biochemistry, drives, current action
 
 ### Phase 4 — CAOS Profiler
 
 - Surface `DBG: PROF` data with browser visualizations
 - Flame charts by agent classifier
 - Script execution time heatmaps
-

@@ -2,7 +2,7 @@
 
 Browser-based developer tools for the Creatures 3 / Docking Station engine, served directly from the `lc2e` binary. No external dependencies — no Node.js, no relay scripts, no separate processes.
 
-<!-- TODO: Add screenshot of the full developer tools UI here -->
+![Developer Tools — Log Tab](developer_tools_logs.png)
 
 ---
 
@@ -35,8 +35,6 @@ The developer tools UI is organized into four tabs, accessible from the header n
 
 ### Log
 
-<!-- TODO: Add screenshot of the Log tab here -->
-
 The **Log** tab provides a real-time stream of engine log messages via Server-Sent Events (SSE). It replaces the old `monitor/` + `relay.js` setup with a zero-dependency embedded solution.
 
 **Features:**
@@ -64,7 +62,7 @@ Messages are colour-coded by category with a left border indicator and a categor
 
 ### Console
 
-<!-- TODO: Add screenshot of the Console tab here -->
+![Developer Tools — Console Tab](developer_tools_console.png)
 
 The **Console** tab is an interactive CAOS REPL (Read-Eval-Print Loop). It compiles and executes CAOS commands on the engine's main thread and displays the output immediately.
 
@@ -100,7 +98,7 @@ hello world
 
 ### Scripts
 
-<!-- TODO: Add screenshot of the Scripts tab here -->
+![Developer Tools — Scripts Tab](developer_tools_scripts.png)
 
 The **Scripts** tab shows a live table of all currently running CAOS scripts across all agents in the world.
 
@@ -125,26 +123,57 @@ Running scripts are shown with a green badge; blocking scripts with an orange ba
 
 ### Debugger
 
-The **Debugger** tab is an interactive CAOS source-level debugger. Select a running agent to see its script source code, set breakpoints, and step through execution one instruction at a time.
+![Developer Tools — Debugger Tab](developer_tools_debugger.png)
 
-**Features:**
+The **Debugger** tab is an interactive CAOS source-level debugger. A persistent **agent list panel** on the left shows all agents with running scripts, grouped by classifier. Select an agent to see its source code, set breakpoints, and step through execution.
 
-- **Agent selector** — dropdown in the toolbar lists all agents with running scripts. Select one to load its source code and VM state.
-- **Source view** — full CAOS source displayed with line numbers on a dark background, auto-formatted with line breaks and 4-space indentation. The current execution position is highlighted in orange.
-- **Breakpoints** — click any line number to toggle a breakpoint (red marker). Breakpoints pause the script before executing the instruction at that source position.
-- **Step controls:**
-  - **Continue** — resume execution until the next breakpoint or script completion
-  - **Step** — execute exactly one CAOS instruction and pause again (step into)
-  - **Step Over** — step but skip over nested blocks (loops, subroutines) by running until the stack depth returns to the original level
-- **Context inspector** — right-hand panel showing the current values of OWNR, TARG, FROM, IT, and the bytecode IP
+**Agent List Panel:**
+
+- **Classifier grouping** — agents are grouped by their script's Family/Genus/Species (e.g. all `2 13 9` scripts together)
+- **Stable sorting** — agents within each group are sorted by ID and stay in fixed positions. Incremental DOM updates prevent flickering
+- **Gallery names** — each agent shows its sprite base name (e.g. `balloonbug`, `lift`, `norn`) for quick identification
+- **State dots** — colour-coded indicators: green (running), orange (blocking/waiting), orange outlined (paused at breakpoint), grey outlined (finished)
+- **Stale agents** — agents whose scripts have finished are greyed out for 5 seconds before being removed
+- **Search** — filter agents by ID, gallery name, or classifier using the search box
+- **Creature priority** — groups containing creature agents (family 4: Norns, Grendels, Ettins) are sorted to the top
+- **Legend** — a compact state dot legend at the bottom of the panel
+
+**Source View:**
+
+- Full CAOS source displayed with line numbers, auto-formatted with line breaks and 4-space indentation
+- The current execution position is highlighted in orange
+- **Follow toggle** — checkbox in the toolbar to enable/disable auto-scrolling to the current execution line. Uncheck to freely browse the source while the script runs
+- **CAOS syntax highlighting** — keywords, numbers, and strings are colour-coded for readability
+
+**Breakpoints:**
+
+- Click any line number to toggle a breakpoint (red marker in the gutter)
+- Breakpoints pause the script before executing the instruction at that source position
+- All active breakpoints are listed in the inspector panel with remove buttons
+
+**Step Controls:**
+
+- **Continue** — resume execution until the next breakpoint or script completion
+- **Step** — execute exactly one CAOS instruction and pause again (step into)
+- **Step Over** — step but skip over nested blocks (loops, subroutines)
+
+**Camera Focus:**
+
+- **Focus** button in the toolbar moves the in-game camera to center on the selected agent's position using the `cmrp` CAOS command
+
+**Inspector Panel:**
+
+- **Context** — current values of OWNR, TARG, FROM, IT, and bytecode IP
 - **State badge** — shows RUNNING / BLOCKING / PAUSED / FINISHED
-- **Breakpoint list** — sidebar showing all active breakpoints with remove buttons
+- **OV Variables** — displays non-zero OV00–OV99 agent variables
+- **VA Variables** — displays non-zero VA00–VA99 local script variables (when paused at a breakpoint)
+- **Breakpoint list** — all active breakpoints with remove buttons
 
 **Limitations:**
 
-- Breakpoints are set on bytecode IP addresses (character offsets into the source). The mapping from source lines to IPs uses the `DebugInfo` address map built by the compiler.
-- Stepping operates at the bytecode instruction level, not at the CAOS source statement level. Some CAOS statements compile to multiple bytecode operations.
-- Breakpoints are per-agent, not global. Setting a breakpoint on one agent does not affect other agents running the same script.
+- Breakpoints are set on bytecode IP addresses (character offsets into the source). The mapping from source lines to IPs uses the `DebugInfo` address map built by the compiler
+- Stepping operates at the bytecode instruction level, not at the CAOS source statement level
+- Breakpoints are per-agent, not global
 
 ---
 
@@ -196,7 +225,9 @@ List all currently running CAOS scripts across all agents.
     "event": 9,
     "state": "running",
     "ip": 156,
-    "source": "doif targ <> null"
+    "source": "doif targ <> null",
+    "gallery": "balloonbug",
+    "agentFamily": 2
   }
 ]
 ```
@@ -224,6 +255,7 @@ Get detailed state about a specific agent, its VM, source code, breakpoints, and
   "family": 2, "genus": 13, "species": 100,
   "running": true, "blocking": false, "paused": true,
   "ip": 156,
+  "posx": 5200, "posy": 1300,
   "scriptFamily": 2, "scriptGenus": 13, "scriptSpecies": 100, "scriptEvent": 9,
   "source": "inst\nsetv va00 42\nouts \"hello\"\n...",
   "sourcePos": 24,

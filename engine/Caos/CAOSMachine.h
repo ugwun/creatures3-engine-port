@@ -640,6 +640,10 @@ public:
   void DebugStepInto();    // execute one instruction then pause
   void DebugStepOver();    // step over (skip nested calls/blocks)
 
+  // Read-only access to local variables for debug inspection
+  CAOSVar& GetLocalVariable(int i) { return myLocalVariables[i]; }
+  static int GetLocalVariableCount() { return LOCAL_VARIABLE_COUNT; }
+
   CAOSMachine();
   ~CAOSMachine();
 

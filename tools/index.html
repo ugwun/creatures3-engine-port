@@ -74,9 +74,11 @@
     </div>
     <!-- Debugger tab controls -->
     <div id="debugger-controls" class="tab-controls" hidden>
-      <select id="dbg-agent-select" class="dbg-select">
-        <option value="">Select agent…</option>
-      </select>
+      <button id="btn-dbg-focus" class="btn" disabled>Focus</button>
+      <div class="toolbar-sep"></div>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-dbg-follow" checked /> Follow
+      </label>
       <div class="toolbar-sep"></div>
       <button id="btn-dbg-continue" class="btn" disabled>Continue</button>
       <button id="btn-dbg-step" class="btn" disabled>Step</button>
@@ -188,6 +190,23 @@
   <!-- ── Tab: Debugger ────────────────────────────────────────────────────────── -->
   <div id="tab-debugger" class="tab-panel" hidden>
     <div id="dbg-container">
+      <!-- Agent list panel (left sidebar) -->
+      <aside id="dbg-agent-panel">
+        <div class="dbg-agent-panel-header">Agents</div>
+        <div id="dbg-agent-search-wrap">
+          <input id="dbg-agent-search" type="text" placeholder="Filter by ID or name…" autocomplete="off" />
+        </div>
+        <div id="dbg-agent-list">
+          <div id="dbg-agent-empty" class="dbg-empty-hint">No running scripts. Start a world to see agents.</div>
+        </div>
+        <div id="dbg-agent-legend">
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--running"></span> Running</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--blocking"></span> Blocking</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--paused"></span> Paused</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--finished"></span> Finished</span>
+        </div>
+      </aside>
+      <!-- Source panel (center) -->
       <div id="dbg-source-panel">
         <div id="dbg-source-header">
           <span id="dbg-script-info">No agent selected</span>
@@ -198,6 +217,7 @@
           </div>
         </div>
       </div>
+      <!-- Inspector panel (right) -->
       <div id="dbg-inspector-panel">
         <div class="dbg-inspector-section">
           <div class="dbg-inspector-title">Context</div>
@@ -214,6 +234,18 @@
         <div class="dbg-inspector-section">
           <div class="dbg-inspector-title">State</div>
           <div id="dbg-state-badge" class="state-badge state-running">—</div>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">OV Variables</div>
+          <div id="dbg-ov-vars" class="dbg-vars-grid">
+            <span class="dbg-empty-hint">No non-zero OV variables</span>
+          </div>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">VA Variables</div>
+          <div id="dbg-va-vars" class="dbg-vars-grid">
+            <span class="dbg-empty-hint">No non-zero VA variables</span>
+          </div>
         </div>
         <div class="dbg-inspector-section dbg-inspector-flex">
           <div class="dbg-inspector-title">Breakpoints</div>

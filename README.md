@@ -139,7 +139,7 @@ The engine includes a browser-based developer tools suite — an engine log moni
 # Open http://localhost:9980 in your browser
 ```
 
-<!-- TODO: Add screenshot of developer tools UI here -->
+![Developer Tools — Debugger](tools/developer_tools_debugger.png)
 
 When `--tools` is not passed, the tools server does not start and there is zero overhead.
 
