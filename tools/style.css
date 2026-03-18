@@ -937,6 +937,20 @@ body.compact .log-row {
   color: rgba(0, 0, 0, 0.2);
 }
 
+/* Formatted CAOS source blocks */
+.caos-source {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 4px 0;
+  color: var(--near-black);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ── Debugger Tab ────────────────────────────────────────────────────── */
 #dbg-container {
   display: flex;

@@ -31,7 +31,7 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ## Tabs
 
-The developer tools UI is organized into four tabs, accessible from the header navigation bar.
+The developer tools UI is organized into four tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
 
 ### Log
 
@@ -112,7 +112,7 @@ The **Scripts** tab shows a live table of all currently running CAOS scripts acr
 | Classifier | Family, Genus, Species, Event (e.g. `2 13 100 9`) |
 | State | `running`, `blocking` (waiting on `wait`, `over`, etc.), or `paused` (at a breakpoint) |
 | IP | Current instruction pointer in the bytecode |
-| Current Source | The CAOS source line at the current IP (if debug info is available) |
+| Current Source | The CAOS source at the current IP, auto-formatted with line breaks and 4-space indentation |
 
 **Features:**
 
@@ -129,8 +129,8 @@ The **Debugger** tab is an interactive CAOS source-level debugger. Select a runn
 
 **Features:**
 
-- **Agent selector** — dropdown in the header bar lists all agents with running scripts. Select one to load its source code and VM state.
-- **Source view** — full CAOS source displayed with line numbers on a dark background. The current execution position is highlighted in orange.
+- **Agent selector** — dropdown in the toolbar lists all agents with running scripts. Select one to load its source code and VM state.
+- **Source view** — full CAOS source displayed with line numbers on a dark background, auto-formatted with line breaks and 4-space indentation. The current execution position is highlighted in orange.
 - **Breakpoints** — click any line number to toggle a breakpoint (red marker). Breakpoints pause the script before executing the instruction at that source position.
 - **Step controls:**
   - **Continue** — resume execution until the next breakpoint or script completion

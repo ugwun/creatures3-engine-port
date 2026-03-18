@@ -136,6 +136,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: source view, breakpoints, stepping, inspector |
+| [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer with 4-space indentation |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
 ### Documentation

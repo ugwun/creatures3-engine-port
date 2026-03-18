@@ -51,12 +51,16 @@
             if (s.state === "blocking") stateClass = "state-blocking";
             else if (s.state === "paused") stateClass = "state-paused";
 
+            const sourceRaw = s.source || "—";
+            const sourceFormatted = (typeof formatCAOS === "function" && sourceRaw !== "—")
+                ? formatCAOS(sourceRaw) : sourceRaw;
+
             tr.innerHTML =
                 `<td class="col-id">${s.agentId}</td>` +
                 `<td class="col-classifier"><code>${escHtml(classifier)}</code></td>` +
                 `<td class="col-state"><span class="state-badge ${stateClass}">${s.state}</span></td>` +
                 `<td class="col-ip">${s.ip}</td>` +
-                `<td class="col-source"><code>${escHtml(s.source || "—")}</code></td>`;
+                `<td class="col-source"><pre class="caos-source">${escHtml(sourceFormatted)}</pre></td>`;
 
             tbody.appendChild(tr);
         }

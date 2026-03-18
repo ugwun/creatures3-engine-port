@@ -134,7 +134,9 @@
         // Source code
         if (data.source && data.source !== currentSource) {
             currentSource = data.source;
-            buildSourceView(data.source);
+            const formatted = (typeof formatCAOS === "function")
+                ? formatCAOS(data.source) : data.source;
+            buildSourceView(formatted);
         }
 
         // Highlight current position
