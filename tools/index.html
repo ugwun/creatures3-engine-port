@@ -46,6 +46,7 @@
         <button class="tab-btn" data-tab="console">Console</button>
         <button class="tab-btn" data-tab="scripts">Scripts</button>
         <button class="tab-btn" data-tab="debugger">Debugger</button>
+        <button class="tab-btn" data-tab="creatures">Creatures</button>
       </nav>
     </div>
   </header>
@@ -83,6 +84,13 @@
       <button id="btn-dbg-continue" class="btn" disabled>Continue</button>
       <button id="btn-dbg-step" class="btn" disabled>Step</button>
       <button id="btn-dbg-stepover" class="btn" disabled>Step Over</button>
+    </div>
+    <!-- Creatures tab controls -->
+    <div id="creatures-controls" class="tab-controls" hidden>
+      <button id="btn-creatures-refresh" class="btn">Refresh</button>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-creatures-auto" checked /> Auto (2s)
+      </label>
     </div>
   </div>
 
@@ -257,11 +265,58 @@
     </div>
   </div>
 
+  <!-- ── Tab: Creatures ──────────────────────────────────────────────────── -->
+  <div id="tab-creatures" class="tab-panel" hidden>
+    <div id="crt-container">
+      <!-- Creature list panel (left sidebar) -->
+      <aside id="crt-list-panel">
+        <div class="crt-list-header">Creatures</div>
+        <div id="crt-list">
+          <div id="crt-list-empty" class="crt-empty-hint">No creatures in world. Import or hatch a Norn to begin.</div>
+        </div>
+      </aside>
+      <!-- Detail panel (center) -->
+      <div id="crt-detail-panel">
+        <div id="crt-detail-header">
+          <nav id="crt-sub-tabs">
+            <button class="crt-sub-btn crt-sub-btn--active" data-subtab="drives">Drives</button>
+            <button class="crt-sub-btn" data-subtab="chemistry">Chemistry</button>
+          </nav>
+        </div>
+        <div id="crt-detail-content">
+          <!-- Drives sub-view -->
+          <div id="crt-drives" class="crt-subview crt-subview--active">
+            <div id="crt-drives-bars">
+              <div class="crt-empty-hint">Select a creature to view drives</div>
+            </div>
+          </div>
+          <!-- Chemistry sub-view -->
+          <div id="crt-chemistry" class="crt-subview" hidden>
+            <div id="crt-chem-controls">
+              <label class="opt-toggle"><input type="checkbox" id="opt-chem-nonzero" checked /> Non-zero only</label>
+            </div>
+            <div id="crt-chem-bars">
+              <div class="crt-empty-hint">Select a creature to view chemistry</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Summary card (right panel) -->
+      <aside id="crt-summary-panel">
+        <div class="crt-summary-header">Summary</div>
+        <div id="crt-summary-content">
+          <div class="crt-empty-hint">Select a creature</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
   <script src="caos_format.js"></script>
   <script src="app.js"></script>
   <script src="debugger.js"></script>
   <script src="scripts.js"></script>
   <script src="debugger_view.js"></script>
+  <script src="creatures.js"></script>
 </body>
 
 </html>

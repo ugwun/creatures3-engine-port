@@ -136,6 +136,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
+| [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer with 4-space indentation |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -379,7 +380,17 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ VA00–VA99 local variable display (when paused)
 - ✅ CAOS syntax highlighting in source view
 - [ ] Full agent property browser: position, sprite frame, attributes, timer, velocity
-- [ ] Creature-specific panels: brain state, biochemistry, drives, current action
+
+### ~~Phase 3.5 — Creature Inspector~~ (Phase 1 Implemented)
+
+- ✅ Creature list with species icons, names, life state badges, health bars
+- ✅ Drive levels visualization (20 colour-graded horizontal bars)
+- ✅ Chemistry view (256 chemicals, sorted bars, ~50 named, non-zero filter)
+- ✅ Summary card (moniker, age, sex, health, organs, highest drive)
+- ✅ Creature name display (from LinguisticFaculty)
+- ✅ 2-second auto-refresh polling
+- [ ] Brain heatmap visualization (lobe selector, neuron activity grid)
+- [ ] Tract and dendrite inspection
 
 ### Phase 4 — CAOS Profiler
 

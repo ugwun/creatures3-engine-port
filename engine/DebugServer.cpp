@@ -38,6 +38,11 @@
 #include "Caos/Orderiser.h"
 #include "Caos/Scriptorium.h"
 #include "Classifier.h"
+#include "Creature/Creature.h"
+#include "Creature/Biochemistry/Biochemistry.h"
+#include "Creature/Biochemistry/Organ.h"
+#include "Creature/LifeFaculty.h"
+#include "Creature/LinguisticFaculty.h"
 #include "World.h"
 
 #include <arpa/inet.h>
@@ -762,6 +767,184 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+
+	// ── GET /api/creatures ────────────────────────────────────────────
+	// Lists all creature agents with drives, life state, health.
+	myImpl->svr.Get("/api/creatures", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "[";
+			bool first = true;
+
+			try {
+				AgentMap& agentMap = AgentManager::GetAgentIDMap();
+				for (AgentMapIterator it = agentMap.begin(); it != agentMap.end(); ++it) {
+					AgentHandle& handle = it->second->IsValid() ? *(it->second) : NULLHANDLE;
+					if (handle.IsInvalid()) continue;
+					if (!handle.IsCreature()) continue;
+
+					try {
+						Creature& creature = handle.GetCreatureReference();
+						Agent& agent = handle.GetAgentReference();
+						Classifier c = agent.GetClassifier();
+						LifeFaculty* life = creature.Life();
+
+						// Life state string
+						std::string lifeState = "unknown";
+						if (life) {
+							if (life->GetWhetherDead()) lifeState = "dead";
+							else if (life->GetWhetherUnconscious()) lifeState = "unconscious";
+							else if (life->GetWhetherDreaming()) lifeState = "dreaming";
+							else if (life->GetWhetherAsleep()) lifeState = "asleep";
+							else if (life->GetWhetherZombie()) lifeState = "zombie";
+							else if (life->GetWhetherAlert()) lifeState = "alert";
+						}
+
+						// Moniker
+						std::string moniker;
+						try { moniker = creature.GetMoniker(); } catch (...) {}
+
+						// Name (from LinguisticFaculty)
+						std::string name;
+						try {
+							LinguisticFaculty* ling = creature.Linguistic();
+							if (ling && ling->KnownWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME)) {
+								name = ling->GetPlatonicWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME);
+							}
+						} catch (...) {}
+
+						if (!first) json << ",";
+						first = false;
+
+						json << "{\"agentId\":" << agent.GetUniqueID()
+							<< ",\"moniker\":\"" << JsonEscape(moniker) << "\""
+							<< ",\"name\":\"" << JsonEscape(name) << "\""
+							<< ",\"genus\":" << (int)c.Genus()
+							<< ",\"species\":" << (int)c.Species();
+
+						if (life) {
+							json << ",\"sex\":" << life->GetSex()
+								<< ",\"age\":" << life->GetAge()
+								<< ",\"ageInTicks\":" << life->GetTickAge()
+								<< ",\"lifeState\":\"" << lifeState << "\"";
+						}
+
+						// Health
+						if (life) {
+							json << ",\"health\":" << life->Health();
+						}
+
+						// Position
+						json << ",\"posX\":" << (int)agent.GetPosition().x
+							<< ",\"posY\":" << (int)agent.GetPosition().y;
+
+						// Drives (20 values)
+						json << ",\"drives\":[";
+						for (int d = 0; d < NUMDRIVES; ++d) {
+							if (d > 0) json << ",";
+							json << creature.GetDriveLevel(d);
+						}
+						json << "]";
+
+						// Highest drive
+						json << ",\"highestDrive\":" << creature.GetHighestDrive();
+
+						json << "}";
+					} catch (...) {
+						// Skip creatures that throw during inspection
+					}
+				}
+			} catch (...) {
+				// No world loaded
+			}
+
+			json << "]";
+			return json.str();
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("[]", "application/json");
+		}
+	});
+
+	// ── GET /api/creature/:id/chemistry ──────────────────────────────
+	// Returns all 256 chemical concentrations and organ status.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/chemistry)", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Biochemistry* biochem = creature.GetBiochemistry();
+				if (!biochem) {
+					return "{\"error\":\"No biochemistry\"}";
+				}
+
+				std::ostringstream json;
+				json << "{\"chemicals\":[";
+				for (int i = 0; i < NUMCHEM; ++i) {
+					if (i > 0) json << ",";
+					json << biochem->GetChemical(i);
+				}
+				json << "]";
+
+				// Organ status
+				int organCount = biochem->GetOrganCount();
+				json << ",\"organCount\":" << organCount;
+				json << ",\"organs\":[";
+				for (int i = 0; i < organCount; ++i) {
+					Organ* organ = biochem->GetOrgan(i);
+					if (!organ) continue;
+					if (i > 0) json << ",";
+					json << "{\"index\":" << i
+						<< ",\"clockRate\":" << organ->LocusClockRate()
+						<< ",\"lifeForce\":" << organ->LocusLifeForce()
+						<< ",\"shortTermLifeForce\":" << organ->ShortTermLifeForce()
+						<< ",\"longTermLifeForce\":" << organ->LongTermLifeForce()
+						<< ",\"energyCost\":" << organ->EnergyCost()
+						<< ",\"functioning\":" << (organ->Functioning() ? "true" : "false")
+						<< ",\"failed\":" << (organ->Failed() ? "true" : "false")
+						<< ",\"receptorCount\":" << organ->ReceptorCount()
+						<< ",\"emitterCount\":" << organ->EmitterCount()
+						<< ",\"reactionCount\":" << organ->ReactionCount()
+						<< "}";
+				}
+				json << "]}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read biochemistry\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
 
 	// ── SSE endpoint for log streaming ─────────────────────────────────
 	// Clients connect to GET /api/events and receive log lines as SSE.

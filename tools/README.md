@@ -31,7 +31,7 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ## Tabs
 
-The developer tools UI is organized into four tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
+The developer tools UI is organized into five tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
 
 ### Log
 
@@ -175,6 +175,53 @@ The **Debugger** tab is an interactive CAOS source-level debugger. A persistent 
 - Stepping operates at the bytecode instruction level, not at the CAOS source statement level
 - Breakpoints are per-agent, not global
 
+### Creatures
+
+The **Creatures** tab is a live inspector for all creature agents (Norns, Grendels, Ettins) in the world. It provides real-time drive levels and biochemistry data for analysing creature behaviour and health.
+
+**Layout:** Three-panel design — creature list sidebar (left), detail panel with sub-tabs (centre), summary card (right).
+
+**Creature List:**
+
+- All creatures in the world, listed with species icon (🐣 Norn, 🦎 Grendel, 🔧 Ettin)
+- Creature name shown as primary label (if named), otherwise genus + short moniker
+- Life state badge (alert, asleep, dreaming, unconscious, dead, zombie)
+- Tiny health bar on each list item
+- Click to select and inspect
+
+**Drives Sub-Tab:**
+
+![Developer Tools — Drives View](developer_tools_drives.png)
+
+- 20 horizontal bars for all creature drives (Pain, Hunger, Tiredness, Sex Drive, etc.)
+- Colour gradient: green (low) → yellow (mid) → red (high)
+- Highest drive highlighted with an orange accent border
+- Numeric values displayed alongside each bar
+
+**Chemistry Sub-Tab:**
+
+![Developer Tools — Chemistry View](developer_tools_chemistry.png)
+
+- All 256 biochemical concentrations displayed as colour-coded bars
+- Sorted by value (highest first) for quick identification
+- "Non-zero only" toggle to filter out inactive chemicals
+- ~50 well-known chemicals labelled by name (Glycogen, ATP, ADP, antigens, drives, etc.)
+- Colour-coded by category: purple (drives), red (antigens), orange (antibodies), green (smells), blue (general)
+
+**Summary Card:**
+
+- Species icon and genus label
+- Creature name (if assigned)
+- Moniker, sex, age stage, life state, health percentage
+- Position in world, agent ID
+- Highest active drive
+- Organ status list (functioning / impaired / failed) with life force values
+
+**Toolbar Controls:**
+
+- **Refresh** — manually fetch latest data
+- **Auto (2s)** — toggle automatic 2-second polling (enabled by default)
+
 ---
 
 ## API Reference
@@ -313,6 +360,65 @@ Resume execution of a paused agent.
 ```json
 { "ok": true }
 ```
+
+### `GET /api/creatures`
+
+List all creature agents (family 4) in the world with drives, life state, and health.
+
+**Response:**
+```json
+[
+  {
+    "agentId": 42,
+    "moniker": "abc1-def2-...",
+    "name": "Alice",
+    "genus": 1,
+    "species": 1,
+    "sex": 2,
+    "age": 3,
+    "ageInTicks": 12500,
+    "lifeState": "alert",
+    "health": 0.85,
+    "posX": 3400,
+    "posY": 2100,
+    "drives": [0.1, 0.3, 0.8, "..."],
+    "highestDrive": 2
+  }
+]
+```
+
+The `name` field is the creature's given name from its `LinguisticFaculty` (empty string if unnamed). `drives` is an array of 20 float values matching the `driveoffsets` enum order.
+
+### `GET /api/creature/:id/chemistry`
+
+Get all 256 chemical concentrations and organ status for a specific creature.
+
+**Response:**
+```json
+{
+  "chemicals": [0.0, 0.1, "...", 0.72, "..."],
+  "organCount": 5,
+  "organs": [
+    {
+      "index": 0,
+      "clockRate": 0.5,
+      "lifeForce": 0.98,
+      "shortTermLifeForce": 0.95,
+      "longTermLifeForce": 0.98,
+      "energyCost": 0.01,
+      "functioning": true,
+      "failed": false,
+      "receptorCount": 4,
+      "emitterCount": 2,
+      "reactionCount": 3
+    }
+  ]
+}
+```
+
+`chemicals` is a flat array of 256 float values indexed by chemical ID.
+
+**Timeout:** 5 seconds. Returns HTTP 504 on timeout.
 
 ### `GET /api/events`
 
