@@ -90,6 +90,12 @@ public:
 	int GetLobeSize(const char* lobeTokenString);
 	char* GetLobeNameFromTissueId(int tissueId);
 
+	// Public accessors for iterating lobes/tracts (used by DebugServer):
+	int GetLobeCount() const { return myLobes.size(); }
+	Lobe* GetLobe(int i) { return (i >= 0 && i < (int)myLobes.size()) ? myLobes[i] : nullptr; }
+	int GetTractCount() const { return myTracts.size(); }
+	Tract* GetTract(int i) { return (i >= 0 && i < (int)myTracts.size()) ? myTracts[i] : nullptr; }
+
 
 	// Serialisation:
 	virtual bool Write(CreaturesArchive &archive) const;

@@ -222,6 +222,57 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - **Refresh** — manually fetch latest data
 - **Auto (2s)** — toggle automatic 2-second polling (enabled by default)
 
+**Brain Sub-Tab:**
+
+![Developer Tools — Brain Monitor](developer_tools_brain_monitor.png)
+
+The **Brain** sub-tab provides a real-time spatial visualization of the creature's neural network, inspired by the original Creatures 3 "Brain in VAT" tool. All lobes are rendered simultaneously on a 2D canvas at their genome-defined positions, giving an immediate overview of what the creature is thinking and how information flows through its brain.
+
+**Spatial Heatmap:**
+
+- All lobes (typically 15 in a C3/DS brain: `noun`, `verb`, `visn`, `comb`, `decn`, `driv`, `attn`, `stim`, `move`, `detl`, `situ`, `resp`, `forf`, `mood`, `smel`) are positioned according to their genome coordinates (`x`, `y`, `width`, `height`)
+- Each neuron within a lobe is a coloured cell:
+  - **Dark/transparent** = inactive (activity ≈ 0)
+  - **Bright orange** = highly active (activity ≈ 1)
+- The **winning neuron** (highest activation) in each lobe is highlighted with an orange border and glow
+- Lobe names are displayed above each lobe rectangle in a colour derived from the genome colour (darkened for readability)
+- The background uses a subtle dot grid to help gauge distances
+
+**Neuron Inspection:**
+
+- **Hover** any neuron cell to see a tooltip with:
+  - Lobe name and neuron ID
+  - Semantic label (if known): drive names for `driv`, action names for `verb`/`decn`, category names for `noun`/`attn`/`stim`/`visn`
+  - Activity level (state 0) and all non-zero SVRule state variables (S1–S7)
+- **Click** a neuron to highlight it and see all its incoming/outgoing dendrite connections drawn as magenta lines to connected neurons in other lobes. A magenta circle marks the selected neuron. Click again to dismiss
+
+**Tract Connection Lines:**
+
+- Orange SVG lines connect the centres of lobes that are linked by neural tracts
+- Line thickness and opacity are proportional to dendrite count — thicker lines indicate more connections
+- **Hover** a tract line to see the tract name and dendrite count
+- **Click** a tract line (or click a tract in the sidebar) to fetch its dendrite data and draw individual neuron-to-neuron connections as magenta lines, with opacity based on dendrite weight (heavier = more opaque). Click again to dismiss
+
+**Info Sidebar:**
+
+- **Lobes section** — lists all lobes with neuron count, winning neuron ID, and winning neuron label (e.g. `driv 20n · ★0 Pain` means the Pain drive has the highest output)
+- **Tracts section** — lists all tracts with source/destination lobe names and dendrite count
+- **Selected Tract** — when a tract is clicked, shows tract name, source → destination, total dendrite count, number of active (non-zero weight) dendrites, and maximum weight
+- **Selected Neuron** — when a neuron is clicked, shows lobe name, neuron ID, and semantic label
+
+**Zoom:**
+
+- **Zoom controls** in the top-right corner of the viewport: **−** (zoom out), percentage display, **+** (zoom in), **⟲** (reset to 100%)
+- **Ctrl+Scroll** (or ⌘+Scroll on macOS) on the viewport to zoom in/out smoothly
+- Zoom range: 40% to 300%
+- Zooming re-renders all lobe positions, neuron cells, and tract lines at the new scale — labels scale proportionally
+
+**Auto-Refresh:**
+
+- Brain overview and all lobe neuron states are polled every 2 seconds when the Brain sub-tab is visible
+- Dendrite data is fetched **on-demand** only (when clicking a tract or neuron) and is not auto-polled, as tract data can be large
+- Switching creatures clears the brain view and loads data for the newly selected creature
+
 ---
 
 ## API Reference
@@ -419,6 +470,57 @@ Get all 256 chemical concentrations and organ status for a specific creature.
 `chemicals` is a flat array of 256 float values indexed by chemical ID.
 
 **Timeout:** 5 seconds. Returns HTTP 504 on timeout.
+
+### `GET /api/creature/:id/brain`
+
+Get brain overview: all lobes (with neuron labels) and tracts.
+
+**Response:**
+```json
+{
+  "lobes": [
+    {
+      "index": 0, "name": "verb", "neuronCount": 40, "winner": 4,
+      "x": 0, "y": 0, "width": 8, "height": 5,
+      "colour": [255, 0, 0],
+      "labels": ["Quiescent", "Push", "Pull", "Stop", "Approach", "..."]
+    }
+  ],
+  "tracts": [
+    {"index": 0, "name": "vis to attn", "dendriteCount": 160, "srcLobe": "visn", "dstLobe": "attn"}
+  ]
+}
+```
+
+### `GET /api/creature/:id/brain/lobe/:lobeIdx`
+
+Get all neuron states for a specific lobe.
+
+**Response:**
+```json
+{
+  "name": "verb", "neuronCount": 40, "winner": 4,
+  "neurons": [
+    {"id": 0, "states": [0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+    {"id": 1, "states": [0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
+  ]
+}
+```
+
+### `GET /api/creature/:id/brain/tract/:tractIdx`
+
+Get dendrite connections and weights for a specific tract. Capped at 1000 dendrites.
+
+**Response:**
+```json
+{
+  "name": "vis to attn", "srcLobe": "visn", "dstLobe": "attn",
+  "dendriteCount": 160, "dendritesReturned": 160,
+  "dendrites": [
+    {"id": 0, "src": 3, "dst": 7, "weights": [0.8, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
+  ]
+}
+```
 
 ### `GET /api/events`
 

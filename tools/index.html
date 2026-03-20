@@ -281,6 +281,7 @@
           <nav id="crt-sub-tabs">
             <button class="crt-sub-btn crt-sub-btn--active" data-subtab="drives">Drives</button>
             <button class="crt-sub-btn" data-subtab="chemistry">Chemistry</button>
+            <button class="crt-sub-btn" data-subtab="brain">Brain</button>
           </nav>
         </div>
         <div id="crt-detail-content">
@@ -297,6 +298,26 @@
             </div>
             <div id="crt-chem-bars">
               <div class="crt-empty-hint">Select a creature to view chemistry</div>
+            </div>
+          </div>
+          <!-- Brain sub-view -->
+          <div id="crt-brain" class="crt-subview" hidden>
+            <div id="crt-brain-layout">
+              <!-- Spatial brain canvas -->
+              <div id="crt-brain-viewport">
+                <div id="crt-brain-canvas">
+                  <div class="crt-empty-hint">Select a creature and click Brain</div>
+                </div>
+                <svg id="crt-brain-svg"></svg>
+                <svg id="crt-brain-dendrite-svg"></svg>
+              </div>
+              <!-- Info sidebar -->
+              <div id="crt-brain-info">
+                <div class="crt-brain-panel-title">Brain</div>
+                <div id="crt-brain-info-content">
+                  <div class="crt-empty-hint">Select a creature</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -317,6 +338,7 @@
   <script src="scripts.js"></script>
   <script src="debugger_view.js"></script>
   <script src="creatures.js"></script>
+  <script src="brain.js"></script>
 </body>
 
 </html>

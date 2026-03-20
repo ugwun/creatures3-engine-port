@@ -50,6 +50,12 @@ public:
 	bool DumpDendrite(int d, std::ostream& out);
 	int DumpSize();
 
+	// Public accessors for dendrite data and attachment lobes (used by DebugServer brain API):
+	int GetDendriteCount() const { return myDendrites.size(); }
+	Dendrite* GetDendrite(int i) { return (i >= 0 && i < (int)myDendrites.size()) ? myDendrites[i] : nullptr; }
+	Lobe* GetSrcLobe() const { return mySrc.lobe; }
+	Lobe* GetDstLobe() const { return myDst.lobe; }
+
 protected:
 	std::string myName;
 	Dendrites myDendrites;

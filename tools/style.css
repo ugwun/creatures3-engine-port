@@ -1941,3 +1941,247 @@ body.compact .log-row {
   font-size: 10px;
   color: rgba(0, 0, 0, 0.45);
 }
+
+/* ── Brain Sub-Tab — Spatial Heatmap ───────────────────────────────── */
+#crt-brain-layout {
+  display: flex;
+  height: 100%;
+  gap: 0;
+}
+
+/* Scrollable viewport for the spatial brain map */
+#crt-brain-viewport {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0);
+  background-size: 12px 12px;
+}
+
+#crt-brain-canvas {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* SVG overlay for tract connection lines */
+#crt-brain-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#crt-brain-svg line {
+  pointer-events: stroke;
+}
+
+#crt-brain-svg line:hover {
+  stroke-opacity: 1 !important;
+  stroke-width: 3 !important;
+}
+
+/* Dendrite SVG overlay — sits above tract lines */
+#crt-brain-dendrite-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Individual lobe — positioned absolutely at genome coords */
+.crt-brain-lobe {
+  position: absolute;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.03);
+  z-index: 2;
+}
+
+.crt-brain-lobe-label {
+  position: absolute;
+  top: -14px;
+  left: 0;
+  font-size: 9px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 3px var(--off-white), 0 0 6px var(--off-white);
+}
+
+/* Individual neuron cell — size set inline by JS (zoom-aware) */
+.crt-brain-neuron {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: crosshair;
+  transition: background 0.3s;
+}
+
+.crt-brain-neuron:hover {
+  outline: 2px solid var(--white);
+  outline-offset: -1px;
+  z-index: 10;
+}
+
+.crt-brain-neuron--winner {
+  outline: 2px solid var(--orange);
+  outline-offset: -1px;
+  z-index: 5;
+  box-shadow: 0 0 4px var(--orange);
+}
+
+/* ── Zoom controls ─────────────────────────────────────────────────── */
+.crt-brain-zoom-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: var(--off-white);
+  border: 2px solid var(--black);
+  z-index: 20;
+  font-family: var(--font-mono);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.crt-brain-zoom-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.crt-brain-zoom-btn:hover {
+  background: var(--slate);
+}
+
+.crt-brain-zoom-btn:active {
+  background: var(--orange-dim);
+}
+
+.crt-brain-zoom-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 0 6px;
+  min-width: 36px;
+  text-align: center;
+  border-left: 1px solid var(--border-thin);
+  border-right: 1px solid var(--border-thin);
+  color: var(--black);
+}
+
+/* ── Brain info sidebar ────────────────────────────────────────────── */
+#crt-brain-info {
+  width: 180px;
+  flex-shrink: 0;
+  border-left: 2px solid var(--black);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.crt-brain-panel-title {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--black);
+  color: var(--black);
+}
+
+#crt-brain-info-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0;
+}
+
+.crt-brain-info-section {
+  border-bottom: 1px solid var(--border-thin);
+  padding: 8px 0;
+}
+
+.crt-brain-info-title {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0 10px 4px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.crt-brain-info-lobe {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: 10px;
+}
+
+.crt-brain-info-lobe-name {
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  min-width: 36px;
+}
+
+.crt-brain-info-lobe-detail {
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crt-brain-info-tract {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 10px;
+  font-size: 9px;
+}
+
+.crt-brain-info-tract-flow {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.crt-brain-info-tract-count {
+  margin-left: auto;
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 9px;
+}
+
+.crt-brain-info-tract:hover {
+  background: var(--slate);
+}
+
+.crt-brain-info-tract--selected {
+  background: var(--magenta-dim);
+  border-left: 3px solid var(--magenta);
+}
+
+.crt-brain-info-tract--selected .crt-brain-info-tract-flow {
+  color: var(--magenta);
+}
+
+.crt-brain-info-section--active {
+  background: rgba(255, 0, 255, 0.04);
+  border-bottom: 2px solid var(--magenta);
+}

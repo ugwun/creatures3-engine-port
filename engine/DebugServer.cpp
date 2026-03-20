@@ -41,8 +41,17 @@
 #include "Creature/Creature.h"
 #include "Creature/Biochemistry/Biochemistry.h"
 #include "Creature/Biochemistry/Organ.h"
+#include "Creature/Brain/Brain.h"
+#include "Creature/Brain/BrainConstants.h"
+#include "Creature/Brain/Dendrite.h"
+#include "Creature/Brain/Lobe.h"
+#include "Creature/Brain/Neuron.h"
+#include "Creature/Brain/Tract.h"
+#include "Creature/Brain/BrainScriptFunctions.h"
+#include "Creature/CreatureConstants.h"
 #include "Creature/LifeFaculty.h"
 #include "Creature/LinguisticFaculty.h"
+#include "Creature/SensoryFaculty.h"
 #include "World.h"
 
 #include <arpa/inet.h>
@@ -929,6 +938,275 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				return json.str();
 			} catch (...) {
 				return "{\"error\":\"Failed to read biochemistry\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/creature/:id/brain ──────────────────────────────────
+	// Returns brain overview: lobe summaries (with labels) and tract summaries.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/brain)", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Brain* brain = creature.GetBrain();
+				if (!brain) {
+					return "{\"error\":\"No brain\"}";
+				}
+
+				// Drive names for labelling drive-related lobes
+				static const char* DRIVE_LABELS[] = {
+					"Pain", "Hunger (Protein)", "Hunger (Carb)", "Hunger (Fat)",
+					"Coldness", "Hotness", "Tiredness", "Sleepiness",
+					"Loneliness", "Crowdedness", "Fear", "Boredom",
+					"Anger", "Sex Drive", "Comfort",
+					"Up", "Down", "Exit", "Enter", "Wait"
+				};
+
+				// Action names for labelling verb/decision lobes
+				static const char* ACTION_LABELS[] = {
+					"Quiescent", "Push", "Pull", "Stop",
+					"Approach", "Retreat", "Get", "Drop",
+					"Express", "Rest", "West", "East",
+					"Eat", "Hit"
+				};
+
+				std::ostringstream json;
+				json << "{\"lobes\":[";
+
+				int lobeCount = brain->GetLobeCount();
+				for (int i = 0; i < lobeCount; ++i) {
+					Lobe* lobe = brain->GetLobe(i);
+					if (!lobe) continue;
+					if (i > 0) json << ",";
+
+					std::string lobeName(lobe->GetName());
+					const int* colour = lobe->GetColour();
+
+					json << "{\"index\":" << i
+						<< ",\"name\":\"" << JsonEscape(lobeName) << "\""
+						<< ",\"neuronCount\":" << lobe->GetNoOfNeurons()
+						<< ",\"winner\":" << lobe->GetWhichNeuronWon()
+						<< ",\"x\":" << lobe->GetX()
+						<< ",\"y\":" << lobe->GetY()
+						<< ",\"width\":" << lobe->GetWidth()
+						<< ",\"height\":" << lobe->GetHeight()
+						<< ",\"colour\":[" << colour[0] << "," << colour[1] << "," << colour[2] << "]";
+
+					// Generate labels based on lobe type
+					json << ",\"labels\":[";
+					int nCount = lobe->GetNoOfNeurons();
+
+					bool isNounLobe = (lobeName == "noun" || lobeName == "attn" ||
+									   lobeName == "stim" || lobeName == "visn");
+					bool isVerbLobe = (lobeName == "verb" || lobeName == "decn");
+					bool isDriveLobe = (lobeName == "driv");
+
+					for (int n = 0; n < nCount; ++n) {
+						if (n > 0) json << ",";
+						if (isNounLobe && n < SensoryFaculty::GetNumCategories()) {
+							json << "\"" << JsonEscape(SensoryFaculty::GetCategoryName(n)) << "\"";
+						} else if (isVerbLobe && n < NUMACTIONS) {
+							json << "\"" << ACTION_LABELS[n] << "\"";
+						} else if (isDriveLobe && n < NUMDRIVES) {
+							json << "\"" << DRIVE_LABELS[n] << "\"";
+						} else {
+							json << "\"\"";
+						}
+					}
+					json << "]";
+
+					json << "}";
+				}
+				json << "],\"tracts\":[";
+
+				int tractCount = brain->GetTractCount();
+				for (int i = 0; i < tractCount; ++i) {
+					Tract* tract = brain->GetTract(i);
+					if (!tract) continue;
+					if (i > 0) json << ",";
+
+					std::string srcName, dstName;
+					Lobe* srcLobe = tract->GetSrcLobe();
+					Lobe* dstLobe = tract->GetDstLobe();
+					if (srcLobe) srcName = srcLobe->GetName();
+					if (dstLobe) dstName = dstLobe->GetName();
+
+					json << "{\"index\":" << i
+						<< ",\"name\":\"" << JsonEscape(std::string(tract->GetName())) << "\""
+						<< ",\"dendriteCount\":" << tract->GetDendriteCount()
+						<< ",\"srcLobe\":\"" << JsonEscape(srcName) << "\""
+						<< ",\"dstLobe\":\"" << JsonEscape(dstName) << "\""
+						<< "}";
+				}
+				json << "]}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read brain\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/creature/:id/brain/lobe/:lobeIdx ───────────────────
+	// Returns all neuron states for a specific lobe.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/brain/lobe/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+		int lobeIdx = std::stoi(req.matches[2]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId, lobeIdx]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Brain* brain = creature.GetBrain();
+				if (!brain) return "{\"error\":\"No brain\"}";
+
+				Lobe* lobe = brain->GetLobe(lobeIdx);
+				if (!lobe) return "{\"error\":\"Lobe not found\"}";
+
+				std::ostringstream json;
+				std::string lobeName(lobe->GetName());
+				int nCount = lobe->GetNoOfNeurons();
+
+				json << "{\"name\":\"" << JsonEscape(lobeName) << "\""
+					<< ",\"neuronCount\":" << nCount
+					<< ",\"winner\":" << lobe->GetWhichNeuronWon()
+					<< ",\"neurons\":[";
+
+				for (int n = 0; n < nCount; ++n) {
+					Neuron* neuron = lobe->GetNeuron(n);
+					if (!neuron) continue;
+					if (n > 0) json << ",";
+
+					json << "{\"id\":" << neuron->idInList
+						<< ",\"states\":[";
+					for (int s = 0; s < NUM_SVRULE_VARIABLES; ++s) {
+						if (s > 0) json << ",";
+						json << neuron->states[s];
+					}
+					json << "]}";
+				}
+
+				json << "]}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read lobe\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/creature/:id/brain/tract/:tractIdx ─────────────────
+	// Returns dendrite connection and weight data for a specific tract.
+	// Capped at 1000 dendrites per response.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/brain/tract/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+		int tractIdx = std::stoi(req.matches[2]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId, tractIdx]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Brain* brain = creature.GetBrain();
+				if (!brain) return "{\"error\":\"No brain\"}";
+
+				Tract* tract = brain->GetTract(tractIdx);
+				if (!tract) return "{\"error\":\"Tract not found\"}";
+
+				std::string srcName, dstName;
+				Lobe* srcLobe = tract->GetSrcLobe();
+				Lobe* dstLobe = tract->GetDstLobe();
+				if (srcLobe) srcName = srcLobe->GetName();
+				if (dstLobe) dstName = dstLobe->GetName();
+
+				int totalDendrites = tract->GetDendriteCount();
+				int maxDendrites = std::min(totalDendrites, 1000);
+
+				std::ostringstream json;
+				json << "{\"name\":\"" << JsonEscape(std::string(tract->GetName())) << "\""
+					<< ",\"srcLobe\":\"" << JsonEscape(srcName) << "\""
+					<< ",\"dstLobe\":\"" << JsonEscape(dstName) << "\""
+					<< ",\"dendriteCount\":" << totalDendrites
+					<< ",\"dendritesReturned\":" << maxDendrites
+					<< ",\"dendrites\":[";
+
+				for (int d = 0; d < maxDendrites; ++d) {
+					Dendrite* dendrite = tract->GetDendrite(d);
+					if (!dendrite) continue;
+					if (d > 0) json << ",";
+
+					int srcId = dendrite->srcNeuron ? dendrite->srcNeuron->idInList : -1;
+					int dstId = dendrite->dstNeuron ? dendrite->dstNeuron->idInList : -1;
+
+					json << "{\"id\":" << dendrite->idInList
+						<< ",\"src\":" << srcId
+						<< ",\"dst\":" << dstId
+						<< ",\"weights\":[";
+					for (int w = 0; w < NUM_SVRULE_VARIABLES; ++w) {
+						if (w > 0) json << ",";
+						json << dendrite->weights[w];
+					}
+					json << "]}";
+				}
+
+				json << "]}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read tract\"}";
 			}
 		};
 

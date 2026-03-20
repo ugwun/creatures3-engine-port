@@ -124,6 +124,9 @@ Log streaming works differently — it doesn't use the work queue:
 |---|---|
 | [`engine/DebugServer.h`](../engine/DebugServer.h) | Public API: `Start()`, `Poll()`, `Stop()`, `IsRunning()` |
 | [`engine/DebugServer.cpp`](../engine/DebugServer.cpp) | Full implementation: HTTP routes, work queue, SSE log buffer, UDP relay |
+| [`engine/Creature/Brain/Brain.h`](../engine/Creature/Brain/Brain.h) | Brain class — public accessors for lobes and tracts (added for brain API) |
+| [`engine/Creature/Brain/Lobe.h`](../engine/Creature/Brain/Lobe.h) | Lobe class — public accessors for name, geometry, colour (added for brain API) |
+| [`engine/Creature/Brain/Tract.h`](../engine/Creature/Brain/Tract.h) | Tract class — public accessors for dendrites, src/dst lobes (added for brain API) |
 | [`engine/contrib/httplib.h`](../engine/contrib/httplib.h) | Vendored [cpp-httplib](https://github.com/yhirose/cpp-httplib) (MIT license, header-only) |
 | [`engine/Display/SDL/SDL_Main.cpp`](../engine/Display/SDL/SDL_Main.cpp) | `--tools` flag parsing, `Start()`/`Poll()`/`Stop()` integration |
 
@@ -137,6 +140,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
+| [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer with 4-space indentation |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -381,7 +385,7 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ CAOS syntax highlighting in source view
 - [ ] Full agent property browser: position, sprite frame, attributes, timer, velocity
 
-### ~~Phase 3.5 — Creature Inspector~~ (Phase 1 Implemented)
+### ~~Phase 3.5 — Creature Inspector~~ ✅ Implemented
 
 - ✅ Creature list with species icons, names, life state badges, health bars
 - ✅ Drive levels visualization (20 colour-graded horizontal bars)
@@ -389,8 +393,16 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ Summary card (moniker, age, sex, health, organs, highest drive)
 - ✅ Creature name display (from LinguisticFaculty)
 - ✅ 2-second auto-refresh polling
-- [ ] Brain heatmap visualization (lobe selector, neuron activity grid)
-- [ ] Tract and dendrite inspection
+- ✅ Brain spatial heatmap — all lobes positioned at genome coordinates, neurons as coloured cells
+- ✅ Lobe labels with darkened genome colours (RGB→HSL, lightness capped at 35%)
+- ✅ Winning neuron highlight (orange border + glow)
+- ✅ Semantic neuron labels — drive names (`driv`), action names (`verb`/`decn`), category names (`noun`/`attn`/`stim`/`visn`) from `SensoryFaculty`, `CreatureConstants.h`, `BrainScriptFunctions.h`
+- ✅ SVG tract connection lines between lobes (thickness/opacity ∝ dendrite count)
+- ✅ Click-on-tract dendrite inspection — magenta neuron-to-neuron lines with weight-based opacity
+- ✅ Click-on-neuron connection view — shows all incoming/outgoing dendrites across all tracts
+- ✅ Info sidebar — lobe winners, tract summary, selected tract/neuron detail
+- ✅ Zoom controls — +/−/reset buttons, Ctrl+scroll, 40–300% range
+- ✅ Three brain API endpoints: `/brain` (overview), `/brain/lobe/:idx` (neuron states), `/brain/tract/:idx` (dendrites, capped at 1000)
 
 ### Phase 4 — CAOS Profiler
 

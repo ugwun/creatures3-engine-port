@@ -51,6 +51,14 @@ public:
 
 
 	inline int GetTissueId() {			return myTissueId;}
+
+	// Public accessors for geometry and name (used by DebugServer brain API):
+	const char* GetName() const { return myName; }
+	int GetX() const { return myX; }
+	int GetY() const { return myY; }
+	int GetWidth() const { return myWidth; }
+	int GetHeight() const { return myHeight; }
+	const int* GetColour() const { return myColour; }
 	inline SVRuleVariables& GetSpareNeuronVariables() const {
 		return *mySpareNeuronVariables;
 	}
