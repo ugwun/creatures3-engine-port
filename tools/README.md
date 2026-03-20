@@ -33,6 +33,8 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 The developer tools UI is organized into five tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
 
+**Engine Pause/Play:** The header includes **▶** (play) and **❚❚** (pause) buttons on the right side. These control the global engine simulation — pausing freezes all game ticks (creature AI, physics, timer scripts, agent updates) while keeping the developer tools UI and debug server fully responsive. Useful for inspecting creatures and agents in a frozen state.
+
 ### Log
 
 The **Log** tab provides a real-time stream of engine log messages via Server-Sent Events (SSE). It replaces the old `monitor/` + `relay.js` setup with a zero-dependency embedded solution.
@@ -410,6 +412,33 @@ Resume execution of a paused agent.
 **Response:**
 ```json
 { "ok": true }
+```
+
+### `POST /api/pause`
+
+Pause the global engine simulation. All game ticks stop; the debug server and UI remain responsive.
+
+**Response:**
+```json
+{ "ok": true, "paused": true }
+```
+
+### `POST /api/resume`
+
+Resume the global engine simulation.
+
+**Response:**
+```json
+{ "ok": true, "paused": false }
+```
+
+### `GET /api/engine-state`
+
+Query the current engine pause state.
+
+**Response:**
+```json
+{ "paused": false }
 ```
 
 ### `GET /api/creatures`

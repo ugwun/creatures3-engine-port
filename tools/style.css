@@ -91,9 +91,47 @@ body {
 #header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 0 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Engine play/pause controls */
+.engine-ctrl {
+  width: 36px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font-ui);
+  padding: 0;
+  line-height: 1;
+}
+
+.engine-ctrl:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Play active = green */
+.engine-ctrl--active#btn-engine-play {
+  border-color: #00CC44;
+  color: #00CC44;
+  background: rgba(0, 204, 68, 0.12);
+}
+
+/* Pause active = orange */
+.engine-ctrl--active#btn-engine-pause {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: var(--orange-dim);
 }
 
 /* ── Toolbar: contextual controls below header ─────────────────────── */

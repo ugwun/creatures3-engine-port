@@ -22,6 +22,8 @@
 #include "../../DebugServer.h"
 #include "TickRateUtils.h"
 
+#include <atomic>
+
 #include <cstdlib> // atof
 #include <time.h>
 #include <unistd.h> // chdir / getcwd
@@ -155,6 +157,14 @@ static float gameSpeedMultiplier = 1.0f;
 static bool enableTools = false;
 static std::string toolsPathOverride;
 
+// Global engine pause flag — controlled via Developer Tools.
+// When true, the main loop skips theApp.UpdateApp() but still
+// processes SDL events, renders, and polls the DebugServer.
+static std::atomic<bool> sEnginePaused{false};
+
+void SetEnginePaused(bool paused) { sEnginePaused.store(paused); }
+bool IsEnginePaused() { return sEnginePaused.load(); }
+
 // exter
 // HWND theMainWindow = 0;
 
@@ -282,15 +292,21 @@ int main(int argc, char *argv[]) {
       // Advance the simulation and render - equivalent to WM_TICK on Windows
       uint32_t tickStart = SDL_GetTicks();
       if (!ourQuit) {
-        theApp.UpdateApp();
-        theApp.GetInputManager().SysFlushEventBuffer();
+        if (!sEnginePaused.load()) {
+          theApp.UpdateApp();
+          theApp.GetInputManager().SysFlushEventBuffer();
+        }
         if (enableTools) theDebugServer.Poll();
       }
 
       // Sleep for the remainder of the tick interval, mirroring the Windows
       // Ticker() thread (Window.cpp:421-447).  GetWorldTickInterval() returns
       // 50ms (20 ticks/sec) — the standard Creatures engine rate.
-      if (theApp.GetFastestTicks()) {
+      if (sEnginePaused.load()) {
+        // When paused, sleep a short interval to avoid busy-waiting
+        // while still being responsive to SDL events and debug server.
+        SDL_Delay(16);
+      } else if (theApp.GetFastestTicks()) {
         // WOLF mode (CAOS command) — run as fast as possible.
         SDL_Delay(1);
       } else {

@@ -71,6 +71,10 @@
 #include <unistd.h>
 #include <vector>
 
+// Engine pause flag — defined in SDL_Main.cpp
+extern void SetEnginePaused(bool paused);
+extern bool IsEnginePaused();
+
 
 
 // Base64 encode (small, self-contained)
@@ -776,6 +780,27 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+
+	// ── POST /api/pause ──────────────────────────────────────────────
+	// Pause the global engine simulation.
+	myImpl->svr.Post("/api/pause", [](const httplib::Request& req, httplib::Response& res) {
+		SetEnginePaused(true);
+		res.set_content("{\"ok\":true,\"paused\":true}", "application/json");
+	});
+
+	// ── POST /api/resume ─────────────────────────────────────────────
+	// Resume the global engine simulation.
+	myImpl->svr.Post("/api/resume", [](const httplib::Request& req, httplib::Response& res) {
+		SetEnginePaused(false);
+		res.set_content("{\"ok\":true,\"paused\":false}", "application/json");
+	});
+
+	// ── GET /api/engine-state ────────────────────────────────────────
+	// Returns current engine pause state.
+	myImpl->svr.Get("/api/engine-state", [](const httplib::Request& req, httplib::Response& res) {
+		bool paused = IsEnginePaused();
+		res.set_content(std::string("{\"paused\":") + (paused ? "true" : "false") + "}", "application/json");
+	});
 
 	// ── GET /api/creatures ────────────────────────────────────────────
 	// Lists all creature agents with drives, life state, health.

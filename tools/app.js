@@ -280,3 +280,41 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (ctrl) ctrl.hidden = false;
     });
 });
+
+// ── Engine Pause/Play controls ───────────────────────────────────────
+const btnEnginePlay = document.getElementById('btn-engine-play');
+const btnEnginePause = document.getElementById('btn-engine-pause');
+
+function setEnginePausedUI(paused) {
+    if (paused) {
+        btnEnginePlay.classList.remove('engine-ctrl--active');
+        btnEnginePause.classList.add('engine-ctrl--active');
+    } else {
+        btnEnginePlay.classList.add('engine-ctrl--active');
+        btnEnginePause.classList.remove('engine-ctrl--active');
+    }
+}
+
+btnEnginePlay.addEventListener('click', () => {
+    fetch('/api/resume', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.ok) setEnginePausedUI(d.paused); })
+        .catch(() => {});
+});
+
+btnEnginePause.addEventListener('click', () => {
+    fetch('/api/pause', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.ok) setEnginePausedUI(d.paused); })
+        .catch(() => {});
+});
+
+// Sync initial engine pause state on connect
+function syncEngineState() {
+    fetch('/api/engine-state')
+        .then(r => r.json())
+        .then(d => setEnginePausedUI(d.paused))
+        .catch(() => {});
+}
+// Fetch on page load (after SSE connects)
+setTimeout(syncEngineState, 500);
