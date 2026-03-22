@@ -31,7 +31,7 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ## Tabs
 
-The developer tools UI is organized into five tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
+The developer tools UI is organized into six tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
 
 **Engine Pause/Play:** The header includes **▶** (play) and **❚❚** (pause) buttons on the right side. These control the global engine simulation — pausing freezes all game ticks (creature AI, physics, timer scripts, agent updates) while keeping the developer tools UI and debug server fully responsive. Useful for inspecting creatures and agents in a frozen state.
 
@@ -275,6 +275,60 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
 - Dendrite data is fetched **on-demand** only (when clicking a tract or neuron) and is not auto-polled, as tract data can be large
 - Switching creatures clears the brain view and loads data for the newly selected creature
 
+### CAOS IDE
+
+![Developer Tools — CAOS IDE](developer_tools_caos_ide.png)
+
+The **CAOS IDE** tab is a lightweight browser-based code editor for writing, editing, running, and managing CAOS scripts directly in the running engine. It provides a scriptorium browser, a syntax-highlighted editor, and an output console.
+
+**Layout:** Three-panel design — scriptorium sidebar (left), code editor with classifier header (centre), output console (bottom).
+
+**Scriptorium Browser (Left Sidebar):**
+
+The sidebar lists all scripts currently installed in the engine's scriptorium — the central registry that holds all CAOS event scripts loaded from `.cos` bootstrap files.
+
+- **Classifier grouping** — scripts are grouped by Family/Genus/Species (e.g. `2 18 16`)
+- **Event labels** — each script entry shows both the event number and a human-readable name: `1` Push, `2` Pull, `9` Timer, `10` Constructor, `12` Eat, etc. (~30 standard events are labelled; unknown events show just the number)
+- **Click to load** — clicking a script entry fetches its source from the engine and loads it into the editor with syntax highlighting
+- **Collapsible groups** — click a group header to collapse/expand its event list
+- **Search** — filter scripts by classifier number, event number, or event name (e.g. type `timer` to find all Timer scripts, or `2 18` to find family 2 genus 18). Multi-word queries match all terms (e.g. `2 18 timer`). Groups auto-expand when filtering
+- **⟳ Scripts** — toolbar button to manually refresh the scriptorium list
+
+**Code Editor (Centre):**
+
+- **Syntax highlighting** — CAOS keywords, flow control (`doif`, `loop`, `scrp`, `endm`), commands (`setv`, `targ`, `mvto`), variables (`va00`–`va99`, `ov00`–`ov99`), strings, numbers, and comments are colour-coded using the shared `highlightCAOS()` tokenizer
+- **Line numbers** — displayed in a gutter on the left
+- **Tab insertion** — pressing Tab inserts 4 spaces
+- **No external dependencies** — custom editor using a `<textarea>` overlaid with a syntax highlighting `<pre>`, no CodeMirror or Monaco
+
+**Classifier Header:**
+
+Four numeric input fields (Family, Genus, Species, Event) above the editor. These are auto-populated when loading a script from the scriptorium and are used by the Inject and Remove actions.
+
+**Toolbar Actions:**
+
+| Button | Shortcut | Description |
+|---|---|---|
+| **▶ Run** | Ctrl/⌘+Enter | Executes the editor content as CAOS code via `/api/execute`. Output and errors appear in the output panel. Runs in a fresh VM with no owner agent |
+| **Inject** | — | Compiles the editor content and installs it in the scriptorium under the classifier specified in the header fields. Uses the dedicated `/api/scriptorium/inject` endpoint. Strips any existing `scrp`/`endm` wrapper automatically |
+| **Remove** | — | Removes the script matching the classifier fields from the scriptorium using `rscr` |
+| **Save .cos** | — | Downloads the editor content as a `.cos` file. If a scriptorium script is loaded, the filename reflects the classifier (e.g. `2_18_16_9.cos`) |
+| **Load .cos** | — | Opens a file picker to load a `.cos`, `.txt`, or `.caos` file into the editor |
+| **⟳ Scripts** | — | Refreshes the scriptorium sidebar |
+| **Clear Output** | — | Clears the output panel |
+
+**Output Console (Bottom):**
+
+- Displays execution results from Run, status messages from Inject/Remove/Save/Load, and error messages
+- Colour-coded: green `▶` prompt for commands, white for results, red `✗` for errors, muted italic for info messages
+
+**Limitations:**
+
+- **Run** behaves like the Console tab — no OWNR, no blocking commands, single-shot execution
+- **Inject** requires the classifier fields to be set. If all four are zero, it shows an error
+- **Source availability** — scripts compiled without debug info (e.g. from binary-only worlds) may report "No source available" when loaded
+- **Script locking** — if a scriptorium script is currently being executed by an agent, Inject will fail with "script may be locked"
+
 ---
 
 ## API Reference
@@ -343,6 +397,49 @@ List all installed scripts in the scriptorium (the engine's script registry).
   { "family": 1, "genus": 2, "species": 14, "event": 3 }
 ]
 ```
+
+### `GET /api/scriptorium/:f/:g/:s/:e`
+
+Get the source code of a specific scriptorium script by classifier.
+
+**Response (success):**
+```json
+{ "source": "setv va00 42\noutv va00" }
+```
+
+**Response (not found):**
+```json
+{ "error": "Script not found" }
+```
+
+**Timeout:** 5 seconds.
+
+### `POST /api/scriptorium/inject`
+
+Compile CAOS source and install it in the scriptorium under the given classifier. The source should be the script body **without** the `scrp`/`endm` wrapper.
+
+**Request:**
+```json
+{
+  "family": 2,
+  "genus": 18,
+  "species": 16,
+  "event": 9,
+  "source": "setv va00 42\noutv va00"
+}
+```
+
+**Response (success):**
+```json
+{ "ok": true }
+```
+
+**Response (error):**
+```json
+{ "ok": false, "error": "Failed to install — script may be locked" }
+```
+
+**Timeout:** 10 seconds. Uses `Orderiser::OrderFromCAOS()` to compile, `MacroScript::SetClassifier()` to assign the classifier, and `Scriptorium::InstallScript()` to register it.
 
 ### `GET /api/agent/:id`
 

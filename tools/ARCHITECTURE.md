@@ -142,7 +142,8 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
 | [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
-| [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer with 4-space indentation |
+| [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
+| [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
 ### Documentation
@@ -161,10 +162,11 @@ Log streaming works differently — it doesn't use the work queue:
 Script tags in `index.html` load in this order:
 
 1. `utils.js` — shared `escHtml()` + `DevToolsEvents` event bus (must be first)
-2. `caos_format.js` — exposes `formatCAOS()` on `window`
+2. `caos_format.js` — exposes `formatCAOS()` and `highlightCAOS()` on `window`
 3. `app.js` — Log tab + tab switching / lifecycle events
 4. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
 5. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
+6. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
 
 All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`) or communicated via the event bus.
 
@@ -186,8 +188,8 @@ DevToolsEvents.emit('creature:selected', 42);
 
 | Event | Payload | Producer | Consumers |
 |---|---|---|---|
-| `tab:activated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js` |
-| `tab:deactivated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js` |
+| `tab:activated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js`, `caos_ide.js` |
+| `tab:deactivated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js`, `caos_ide.js` |
 | `creature:selected` | agent ID number | `creatures.js` | `brain.js` |
 
 ### Tab-Aware Polling
@@ -458,3 +460,18 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - Surface `DBG: PROF` data with browser visualizations
 - Flame charts by agent classifier
 - Script execution time heatmaps
+
+### ~~Phase 5 — CAOS IDE~~ ✅ Implemented
+
+- ✅ Scriptorium browser sidebar with classifier grouping and human-readable event labels (~30 standard events)
+- ✅ Search/filter by classifier number, event number, or event name (multi-word)
+- ✅ Code editor with syntax highlighting overlay (custom textarea + pre, no external dependencies)
+- ✅ Line numbers, tab insertion, Ctrl/Cmd+Enter run shortcut
+- ✅ Shared `highlightCAOS()` function in `caos_format.js` (keywords, flow control, commands, variables, strings, numbers, comments)
+- ✅ Run via `/api/execute` — fresh VM, output displayed in console panel
+- ✅ Inject via dedicated `POST /api/scriptorium/inject` — compiles with `OrderFromCAOS`, installs with `InstallScript`
+- ✅ Remove via `rscr` CAOS command
+- ✅ Save/Load `.cos` files
+- ✅ `GET /api/scriptorium/:f/:g/:s/:e` endpoint for fetching individual script source
+- ✅ Classifier header fields auto-populated from loaded scripts
+- ✅ Output console with colour-coded results, errors, and info messages

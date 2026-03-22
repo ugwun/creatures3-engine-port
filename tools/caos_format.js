@@ -197,3 +197,94 @@ function formatCAOS(raw) {
 if (typeof window !== "undefined") {
     window.formatCAOS = formatCAOS;
 }
+
+/**
+ * Syntax-highlight a single line of CAOS source, returning HTML with spans.
+ * Uses the same keyword sets as the formatter for consistency.
+ * @param {string} line - A single line of CAOS code
+ * @returns {string} HTML with <span class="hl-*"> wrappers
+ */
+function highlightCAOS(line) {
+    const FLOW = new Set([
+        "doif", "elif", "else", "endi", "loop", "untl", "ever", "next",
+        "repe", "reps", "enum", "esee", "etch", "epas", "econ",
+        "subr", "gsub", "retn", "inst", "slow", "lock", "unlk", "stop",
+        "call", "endm", "scrp", "iscr", "rscr"
+    ]);
+
+    const COMMANDS = new Set([
+        "setv", "addv", "subv", "mulv", "divv", "modv", "negv", "andv", "orrv",
+        "sets", "adds", "notv",
+        "seta", "targ", "ownr", "from", "null", "norn", "pntr",
+        "new:", "simp", "comp", "vhcl", "crea",
+        "mvto", "mvsf", "mvby", "mesg", "writ", "stim",
+        "pose", "anim", "over", "base", "part", "gall",
+        "wait", "tick", "sndc", "snde", "sndl", "plne",
+        "attr", "bhvr", "perm", "accg", "aero", "elas", "fric", "rest",
+        "velo", "velx", "vely",
+        "obst", "posx", "posy", "posl", "posr", "post", "posb",
+        "cmra", "cmrp", "cmrt", "meta", "trck",
+        "kill", "dead", "rtar", "star", "totl",
+        "gnam", "unid", "fmly", "gnus", "spcs", "type",
+        "rand", "rean",
+        "outv", "outs", "outx",
+        "gmap", "rtyp", "room", "grid", "emit",
+        "carr", "fall", "rnge",
+        "dde:", "putb", "putv", "puts", "dbg:",
+        "gene", "load", "chem", "driv",
+        "hand", "touc",
+        "agnt", "pray",
+        "clik", "clac", "cabn", "cabw", "cabp",
+        "rpas", "cbtn", "link",
+        "pat:", "stm#", "net:", "cls2",
+        "flto", "frel", "pupt", "puhl",
+        "file", "ject",
+        "hist", "gids",
+        "delg", "deln",
+    ]);
+
+    const re = /(\"[^\"]*\")|(\*[^\n]*)|((?:\b|(?<=\s))-?\d+(?:\.\d+)?\b)|([a-zA-Z_:#][a-zA-Z0-9_:#]*)|(\S)/g;
+    let result = "";
+    let lastIndex = 0;
+    let match;
+
+    while ((match = re.exec(line)) !== null) {
+        if (match.index > lastIndex) {
+            result += escHtml(line.substring(lastIndex, match.index));
+        }
+        lastIndex = re.lastIndex;
+
+        const token = match[0];
+
+        if (match[1]) {
+            result += `<span class="hl-string">${escHtml(token)}</span>`;
+        } else if (match[2]) {
+            result += `<span class="hl-comment">${escHtml(token)}</span>`;
+        } else if (match[3]) {
+            result += `<span class="hl-number">${escHtml(token)}</span>`;
+        } else if (match[4]) {
+            const lower = token.toLowerCase();
+            if (FLOW.has(lower)) {
+                result += `<span class="hl-flow">${escHtml(token)}</span>`;
+            } else if (COMMANDS.has(lower)) {
+                result += `<span class="hl-command">${escHtml(token)}</span>`;
+            } else if (/^[ov][av]\d{2}$/i.test(lower)) {
+                result += `<span class="hl-var">${escHtml(token)}</span>`;
+            } else {
+                result += escHtml(token);
+            }
+        } else {
+            result += escHtml(token);
+        }
+    }
+
+    if (lastIndex < line.length) {
+        result += escHtml(line.substring(lastIndex));
+    }
+
+    return result || " ";
+}
+
+if (typeof window !== "undefined") {
+    window.highlightCAOS = highlightCAOS;
+}

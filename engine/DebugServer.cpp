@@ -449,6 +449,135 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── GET /api/scriptorium/:f/:g/:s/:e ──────────────────────────────
+	// Returns the source code of a specific scriptorium script.
+	myImpl->svr.Get(R"(/api/scriptorium/(\d+)/(\d+)/(\d+)/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int f = std::stoi(req.matches[1]);
+		int g = std::stoi(req.matches[2]);
+		int s = std::stoi(req.matches[3]);
+		int e = std::stoi(req.matches[4]);
+
+		auto* item = new WorkItem();
+		item->work = [f, g, s, e]() -> std::string {
+			try {
+				Scriptorium& scrip = theApp.GetWorld().GetScriptorium();
+				Classifier c(f, g, s, e);
+				MacroScript* script = scrip.FindScriptExact(c);
+				if (!script) {
+					return "{\"error\":\"Script not found\"}";
+				}
+
+				DebugInfo* di = script->GetDebugInfo();
+				if (!di) {
+					return "{\"error\":\"No source available\"}";
+				}
+
+				std::string src;
+				di->GetSourceCode(src);
+				return "{\"source\":\"" + JsonEscape(src) + "\"}";
+			} catch (...) {
+				return "{\"error\":\"Failed to retrieve script\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/scriptorium/inject ──────────────────────────────────
+	// Compiles CAOS source and installs it in the scriptorium.
+	// Body: { "family": N, "genus": N, "species": N, "event": N, "source": "..." }
+	myImpl->svr.Post("/api/scriptorium/inject", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+
+		// Simple JSON parsing for classifier + source
+		auto parseIntField = [&](const char* field) -> int {
+			size_t pos = body.find(std::string("\"") + field + "\"");
+			if (pos == std::string::npos) return 0;
+			pos = body.find(':', pos);
+			if (pos == std::string::npos) return 0;
+			return std::stoi(body.substr(pos + 1));
+		};
+
+		int f = parseIntField("family");
+		int g = parseIntField("genus");
+		int s = parseIntField("species");
+		int e = parseIntField("event");
+
+		// Parse "source" string field
+		std::string source;
+		size_t pos = body.find("\"source\"");
+		if (pos != std::string::npos) {
+			pos = body.find('"', pos + 8);
+			if (pos != std::string::npos) {
+				pos++;
+				for (size_t i = pos; i < body.size(); ++i) {
+					if (body[i] == '\\' && i + 1 < body.size()) {
+						char next = body[i + 1];
+						if (next == '"') { source += '"'; ++i; }
+						else if (next == '\\') { source += '\\'; ++i; }
+						else if (next == 'n') { source += '\n'; ++i; }
+						else if (next == 'r') { source += '\r'; ++i; }
+						else if (next == 't') { source += '\t'; ++i; }
+						else { source += body[i]; }
+					} else if (body[i] == '"') {
+						break;
+					} else {
+						source += body[i];
+					}
+				}
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = [f, g, s, e, source]() -> std::string {
+			try {
+				Orderiser o;
+				MacroScript* m = o.OrderFromCAOS(source.c_str());
+				if (!m) {
+					return "{\"ok\":false,\"error\":\"" + JsonEscape(o.GetLastError()) + "\"}";
+				}
+
+				Classifier cls(f, g, s, e);
+				m->SetClassifier(cls);
+
+				if (!theApp.GetWorld().GetScriptorium().InstallScript(m)) {
+					delete m;
+					return "{\"ok\":false,\"error\":\"Failed to install — script may be locked\"}";
+				}
+
+				return "{\"ok\":true}";
+			} catch (std::exception& ex) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(ex.what()) + "\"}";
+			} catch (...) {
+				return "{\"ok\":false,\"error\":\"Unknown error during injection\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(10)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
 	// ── GET /api/agent/:id ─────────────────────────────────────────────
 	// Returns full details about a specific agent, its VM state,
 	// source code, breakpoints, and variables for the debugger view.

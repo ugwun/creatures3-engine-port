@@ -47,6 +47,7 @@
         <button class="tab-btn" data-tab="scripts">Scripts</button>
         <button class="tab-btn" data-tab="debugger">Debugger</button>
         <button class="tab-btn" data-tab="creatures">Creatures</button>
+        <button class="tab-btn" data-tab="ide">CAOS IDE</button>
       </nav>
     </div>
 
@@ -96,6 +97,19 @@
       <label class="opt-toggle toolbar-toggle">
         <input type="checkbox" id="opt-creatures-auto" checked /> Auto (2s)
       </label>
+    </div>
+    <!-- CAOS IDE tab controls -->
+    <div id="ide-controls" class="tab-controls" hidden>
+      <button id="btn-ide-run" class="btn btn-ide-run">▶ Run</button>
+      <button id="btn-ide-inject" class="btn">Inject</button>
+      <button id="btn-ide-remove" class="btn">Remove</button>
+      <div class="toolbar-sep"></div>
+      <button id="btn-ide-save" class="btn">Save .cos</button>
+      <button id="btn-ide-load" class="btn">Load .cos</button>
+      <input type="file" id="ide-file-input" accept=".cos,.txt,.caos" hidden />
+      <div class="toolbar-sep"></div>
+      <button id="btn-ide-refresh" class="btn">⟳ Scripts</button>
+      <button id="btn-ide-clear" class="btn">Clear Output</button>
     </div>
   </div>
 
@@ -337,6 +351,46 @@
     </div>
   </div>
 
+  <!-- ── Tab: CAOS IDE ──────────────────────────────────────────────────── -->
+  <div id="tab-ide" class="tab-panel" hidden>
+    <div id="ide-container">
+      <!-- Scriptorium browser sidebar -->
+      <aside id="ide-sidebar">
+        <div class="ide-sidebar-header">Scriptorium</div>
+        <div id="ide-search-wrap">
+          <input type="text" id="ide-search" placeholder="Search scripts…" />
+        </div>
+        <div id="ide-script-list">
+          <div class="ide-empty-hint">Switch to this tab to load scripts.</div>
+        </div>
+      </aside>
+      <!-- Editor area -->
+      <div id="ide-editor-area">
+        <div id="ide-editor-header">
+          <span class="ide-classifier-label">Classifier:</span>
+          <input id="ide-family" type="number" class="ide-classifier-input" placeholder="F" title="Family" min="0" value="0" />
+          <input id="ide-genus" type="number" class="ide-classifier-input" placeholder="G" title="Genus" min="0" value="0" />
+          <input id="ide-species" type="number" class="ide-classifier-input" placeholder="S" title="Species" min="0" value="0" />
+          <input id="ide-event" type="number" class="ide-classifier-input" placeholder="E" title="Event" min="0" value="0" />
+        </div>
+        <div id="ide-editor-wrap">
+          <pre id="ide-line-numbers" aria-hidden="true">1
+</pre>
+          <div id="ide-editor-layers">
+            <pre id="ide-highlight" aria-hidden="true"></pre>
+            <textarea id="ide-editor" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="* Write CAOS code here…
+* Click Run to execute, or Inject to install in the scriptorium."></textarea>
+          </div>
+        </div>
+        <!-- Output panel -->
+        <div id="ide-output-panel">
+          <div class="ide-output-header">Output</div>
+          <div id="ide-output"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="utils.js"></script>
   <script src="caos_format.js"></script>
   <script src="app.js"></script>
@@ -345,6 +399,7 @@
   <script src="debugger_view.js"></script>
   <script src="creatures.js"></script>
   <script src="brain.js"></script>
+  <script src="caos_ide.js"></script>
 </body>
 
 </html>
