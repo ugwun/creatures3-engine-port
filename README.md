@@ -125,6 +125,7 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 | `--gamespeed <N>` | Game speed multiplier (float, default 1). E.g. `3` = 3× speed, `0.5` = half speed |
 | `-s <N>` | Alias for `--gamespeed` |
 | `--tools` | Start the embedded developer tools server (port 9980) |
+| `--mcp` | Start the API server for AI agent access (port 9980). See [AI Agent Access](#ai-agent-access-mcp) |
 | `--help`, `-h` | Print usage and exit |
 
 > [!NOTE]
@@ -144,6 +145,22 @@ The engine includes a browser-based developer tools suite — an engine log moni
 When `--tools` is not passed, the tools server does not start and there is zero overhead.
 
 For full details see [`tools/README.md`](./tools/README.md). For the technical architecture, see [`tools/ARCHITECTURE.md`](./tools/ARCHITECTURE.md).
+
+## AI Agent Access (MCP)
+
+The engine supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), enabling AI agents to **directly interact with the running game** — executing CAOS commands, inspecting creatures, querying biochemistry and neural activity, setting breakpoints, and controlling the simulation.
+
+```bash
+# Start the engine with API access for AI agents:
+./build/lc2e -d "/path/to/Docking Station" --mcp
+
+# Install the MCP adapter (first time only):
+cd mcp && npm install
+```
+
+Once connected, an AI agent has access to 15 tools including `execute_caos`, `list_creatures`, `get_creature_chemistry`, `get_creature_brain`, `pause_engine`, and more. The `--mcp` flag starts the API server without the browser UI; use `--tools` instead if you want both the browser developer tools and AI access.
+
+For setup instructions and full tool reference, see [`mcp/README.md`](./mcp/README.md).
 
 ## Testing
 

@@ -155,6 +155,7 @@ static bool ourRunning;
 static bool ourQuit;
 static float gameSpeedMultiplier = 1.0f;
 static bool enableTools = false;
+static bool enableMCP = false;
 static std::string toolsPathOverride;
 
 // Global engine pause flag — controlled via Developer Tools.
@@ -210,6 +211,8 @@ int main(int argc, char *argv[]) {
                 "  -s <N>              Alias for --gamespeed\n"
                 "  --tools [path]      Start developer tools server on port 9980\n"
                 "                      Optional path overrides tools/ directory\n"
+                "  --mcp               Start API-only server on port 9980\n"
+                "                      For use with MCP clients (AI agents)\n"
                 "  --help, -h          Show this help message\n"
                 "\n"
                 "Examples:\n"
@@ -217,6 +220,7 @@ int main(int argc, char *argv[]) {
                 "Station/Docking Station\"\n"
                 "  ./build/lc2e -d \"/path/to/game\" --gamespeed 3\n"
                 "  ./build/lc2e -d \"/path/to/game\" --tools\n"
+                "  ./build/lc2e -d \"/path/to/game\" --mcp\n"
                 "\n"
                 "If --game-dir is not specified, the current working directory "
                 "is used.\n");
@@ -241,6 +245,8 @@ int main(int argc, char *argv[]) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           toolsPathOverride = argv[++i];
         }
+      } else if (arg == "--mcp") {
+        enableMCP = true;
       }
     }
 
@@ -250,28 +256,34 @@ int main(int argc, char *argv[]) {
     // Install crash signal handlers now that FlightRecorder UDP is live.
     InstallCrashHandlers();
 
-    // Start developer tools server if --tools was passed.
-    if (enableTools) {
-      std::string toolsDir;
-      if (!toolsPathOverride.empty()) {
-        toolsDir = toolsPathOverride;
+    // Start debug/API server if --tools or --mcp was passed.
+    if (enableTools || enableMCP) {
+      if (enableTools) {
+        // Resolve tools/ directory for static file serving
+        std::string toolsDir;
+        if (!toolsPathOverride.empty()) {
+          toolsDir = toolsPathOverride;
+        } else {
+          // Resolve relative to the executable: <exe_dir>/../tools/
+          char exePath[1024];
+          uint32_t exeSize = sizeof(exePath);
+          if (_NSGetExecutablePath(exePath, &exeSize) == 0) {
+            std::string exeDir(exePath);
+            size_t lastSlash = exeDir.rfind('/');
+            if (lastSlash != std::string::npos)
+              exeDir = exeDir.substr(0, lastSlash);
+            toolsDir = exeDir + "/../tools";
+          }
+          // Fallback: ./tools/ relative to cwd
+          if (toolsDir.empty()) {
+            toolsDir = "./tools";
+          }
+        }
+        theDebugServer.Start(9980, toolsDir);
       } else {
-        // Resolve relative to the executable: <exe_dir>/../tools/
-        char exePath[1024];
-        uint32_t exeSize = sizeof(exePath);
-        if (_NSGetExecutablePath(exePath, &exeSize) == 0) {
-          std::string exeDir(exePath);
-          size_t lastSlash = exeDir.rfind('/');
-          if (lastSlash != std::string::npos)
-            exeDir = exeDir.substr(0, lastSlash);
-          toolsDir = exeDir + "/../tools";
-        }
-        // Fallback: ./tools/ relative to cwd
-        if (toolsDir.empty()) {
-          toolsDir = "./tools";
-        }
+        // API-only mode for MCP
+        theDebugServer.Start(9980);
       }
-      theDebugServer.Start(9980, toolsDir);
     }
 
     /* Initialize the SDL library (starts the event loop) */
@@ -296,7 +308,7 @@ int main(int argc, char *argv[]) {
           theApp.UpdateApp();
           theApp.GetInputManager().SysFlushEventBuffer();
         }
-        if (enableTools) theDebugServer.Poll();
+        if (enableTools || enableMCP) theDebugServer.Poll();
       }
 
       // Sleep for the remainder of the tick interval, mirroring the Windows
@@ -675,7 +687,7 @@ case WM_MOVE: {
   static void DoShutdown() {
     ourRunning = false;
 
-    if (enableTools) theDebugServer.Stop();
+    if (enableTools || enableMCP) theDebugServer.Stop();
 
     theApp.ShutDown();
   }

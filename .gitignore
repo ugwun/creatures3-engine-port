@@ -27,3 +27,6 @@ creatures_engine_logfile.txt
 
 # Monitor — Node.js dependencies (install via npm install)
 monitor/node_modules/
+
+# MCP server — Node.js dependencies (install via cd mcp && npm install)
+mcp/node_modules/

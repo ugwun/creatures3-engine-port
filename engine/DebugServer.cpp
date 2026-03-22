@@ -196,7 +196,7 @@ bool DebugServer::IsRunning() const {
 	return myImpl && myImpl->running;
 }
 
-// ── Start ──────────────────────────────────────────────────────────────────
+// ── Start (with static file serving — used by --tools) ────────────────────
 void DebugServer::Start(int port, const std::string& staticDir) {
 	if (myImpl) return; // already running
 	myImpl = new Impl();
@@ -204,7 +204,9 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 	myImpl->staticDir = staticDir;
 
 	// ── Static file serving ────────────────────────────────────────────
-	myImpl->svr.set_mount_point("/", staticDir.c_str());
+	if (!staticDir.empty()) {
+		myImpl->svr.set_mount_point("/", staticDir.c_str());
+	}
 
 	// ── CORS headers for local dev ─────────────────────────────────────
 	myImpl->svr.set_default_headers({
@@ -1332,7 +1334,21 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		myImpl->svr.listen("0.0.0.0", port);
 	});
 
-	fprintf(stderr, "[lc2e] Developer tools: http://localhost:%d/\n", port);
+	fprintf(stderr, "[lc2e] API server: http://localhost:%d/\n", port);
+	if (!myImpl->staticDir.empty()) {
+		fprintf(stderr, "[lc2e] Developer tools: http://localhost:%d/\n", port);
+	} else {
+		fprintf(stderr, "[lc2e] MCP mode: API-only (no browser UI)\n");
+		fprintf(stderr, "[lc2e] To connect an MCP client, add to your MCP config:\n");
+		fprintf(stderr, "[lc2e]   {\"mcpServers\":{\"creatures3\":{\"command\":\"node\",\"args\":[\"mcp/server.js\"]}}}\n");
+		fprintf(stderr, "[lc2e] Install MCP server deps: cd mcp && npm install\n");
+		fprintf(stderr, "[lc2e] See mcp/README.md for full setup instructions.\n");
+	}
+}
+
+// ── Start (API-only — used by --mcp) ──────────────────────────────────────
+void DebugServer::Start(int port) {
+	Start(port, "");
 }
 
 // ── Poll ───────────────────────────────────────────────────────────────────
