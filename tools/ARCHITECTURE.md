@@ -464,7 +464,8 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 ### ~~Phase 5 — CAOS IDE~~ ✅ Implemented
 
 - ✅ Scriptorium browser sidebar with classifier grouping and human-readable event labels (~30 standard events)
-- ✅ Search/filter by classifier number, event number, or event name (multi-word)
+- ✅ Agent name resolution — sidebar groups show human-readable names from `"Agent Help F G S"` catalogue tags via `GET /api/agent-names`
+- ✅ Search/filter by classifier number, event number, event name, or agent name (multi-word)
 - ✅ Code editor with syntax highlighting overlay (custom textarea + pre, no external dependencies)
 - ✅ Line numbers, tab insertion, Ctrl/Cmd+Enter run shortcut
 - ✅ Shared `highlightCAOS()` function in `caos_format.js` (keywords, flow control, commands, variables, strings, numbers, comments)

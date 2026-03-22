@@ -288,10 +288,11 @@ The **CAOS IDE** tab is a lightweight browser-based code editor for writing, edi
 The sidebar lists all scripts currently installed in the engine's scriptorium — the central registry that holds all CAOS event scripts loaded from `.cos` bootstrap files.
 
 - **Classifier grouping** — scripts are grouped by Family/Genus/Species (e.g. `2 18 16`)
+- **Agent names** — each group header shows the human-readable agent name from the catalogue (e.g. "Tuba seed" for `2 3 16`, "Teleporter" for `1 1 152`). Classifiers without catalogue entries show just the number
 - **Event labels** — each script entry shows both the event number and a human-readable name: `1` Push, `2` Pull, `9` Timer, `10` Constructor, `12` Eat, etc. (~30 standard events are labelled; unknown events show just the number)
 - **Click to load** — clicking a script entry fetches its source from the engine and loads it into the editor with syntax highlighting
 - **Collapsible groups** — click a group header to collapse/expand its event list
-- **Search** — filter scripts by classifier number, event number, or event name (e.g. type `timer` to find all Timer scripts, or `2 18` to find family 2 genus 18). Multi-word queries match all terms (e.g. `2 18 timer`). Groups auto-expand when filtering
+- **Search** — filter scripts by classifier number, event number, event name, or agent name (e.g. type `teleporter` to find all Teleporter scripts, or `carrot` to find the carrot agent). Multi-word queries match all terms. Groups auto-expand when filtering
 - **⟳ Scripts** — toolbar button to manually refresh the scriptorium list
 
 **Code Editor (Centre):**
@@ -440,6 +441,23 @@ Compile CAOS source and install it in the scriptorium under the given classifier
 ```
 
 **Timeout:** 10 seconds. Uses `Orderiser::OrderFromCAOS()` to compile, `MacroScript::SetClassifier()` to assign the classifier, and `Scriptorium::InstallScript()` to register it.
+
+### `GET /api/agent-names`
+
+Get human-readable agent names for all classifiers in the scriptorium, resolved from `"Agent Help F G S"` catalogue tags.
+
+**Response:**
+```json
+{
+  "2 3 16": "Tuba seed",
+  "1 1 152": "Teleporter",
+  "2 21 18": "Commedia"
+}
+```
+
+Keys are `"family genus species"` strings. Only classifiers with matching catalogue entries are included.
+
+**Timeout:** 5 seconds.
 
 ### `GET /api/agent/:id`
 

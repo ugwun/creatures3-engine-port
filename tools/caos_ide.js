@@ -77,6 +77,7 @@
 
     // ── State ─────────────────────────────────────────────────────────────
     let scriptoriumData = [];    // Array of { family, genus, species, event }
+    let agentNames = {};         // Map of "F G S" → agent name from catalogue
     let loadedClassifier = null; // Which script is loaded from scriptorium
     let isActive = false;
     let searchTerm = "";
@@ -84,8 +85,16 @@
     // ── Scriptorium browser ───────────────────────────────────────────────
     async function refreshScriptorium() {
         try {
-            const resp = await fetch("/api/scriptorium");
-            scriptoriumData = await resp.json();
+            const [scripResp, namesResp] = await Promise.all([
+                fetch("/api/scriptorium"),
+                fetch("/api/agent-names")
+            ]);
+            scriptoriumData = await scripResp.json();
+            try {
+                agentNames = await namesResp.json();
+            } catch (_) {
+                agentNames = {};
+            }
             renderScriptorium();
         } catch (e) {
             appendOutput("error", `Failed to fetch scriptorium: ${e.message}`);
@@ -118,9 +127,10 @@
             const groupEl = document.createElement("div");
             groupEl.className = "ide-group";
 
+            const name = agentNames[key] || "";
             const header = document.createElement("div");
             header.className = "ide-group-header";
-            header.innerHTML = `<span class="ide-group-classifier">${key}</span><span class="ide-group-count">${entries.length}</span>`;
+            header.innerHTML = `<span class="ide-group-label"><span class="ide-group-classifier">${key}</span>${name ? `<span class="ide-group-name">${escHtml(name)}</span>` : ""}</span><span class="ide-group-count">${entries.length}</span>`;
             header.addEventListener("click", () => {
                 groupEl.classList.toggle("ide-group--collapsed");
             });
@@ -128,9 +138,10 @@
 
             let visibleInGroup = 0;
             for (const entry of entries) {
-                // Build searchable text for this entry
+                // Build searchable text for this entry (includes agent name)
                 const evtName = EVENT_NAMES[entry.event] || "";
-                const searchText = `${entry.family} ${entry.genus} ${entry.species} ${entry.event} ${evtName}`.toLowerCase();
+                const agentName = agentNames[key] || "";
+                const searchText = `${entry.family} ${entry.genus} ${entry.species} ${entry.event} ${evtName} ${agentName}`.toLowerCase();
                 const matchesSearch = !searchTerm || searchTerm.split(/\s+/).every(t => searchText.includes(t));
 
                 const item = document.createElement("div");

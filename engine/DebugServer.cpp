@@ -578,6 +578,80 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── GET /api/agent-names ───────────────────────────────────────────
+	// Returns a map of "family genus species" → human-readable agent name
+	// by looking up "Agent Help F G S" tags in the Catalogue.
+	myImpl->svr.Get("/api/agent-names", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "{";
+			bool first = true;
+
+			try {
+				Scriptorium& scrip = theApp.GetWorld().GetScriptorium();
+				std::set<std::string> seen; // avoid duplicate lookups
+
+				IntegerSet families;
+				scrip.DumpFamilyIDs(families);
+
+				for (int f : families) {
+					IntegerSet genuses;
+					scrip.DumpGenusIDs(genuses, f);
+					for (int g : genuses) {
+						IntegerSet species;
+						scrip.DumpSpeciesIDs(species, f, g);
+						for (int s : species) {
+							std::ostringstream keyStream;
+							keyStream << f << " " << g << " " << s;
+							std::string key = keyStream.str();
+
+							if (seen.count(key)) continue;
+							seen.insert(key);
+
+							// Look up "Agent Help F G S" in the catalogue
+							std::ostringstream tagStream;
+							tagStream << "Agent Help " << f << " " << g << " " << s;
+							std::string tag = tagStream.str();
+
+							if (theCatalogue.TagPresent(tag)) {
+								try {
+									const char* name = theCatalogue.Get(tag, 0);
+									if (name && name[0] != '\0') {
+										if (!first) json << ",";
+										first = false;
+										json << "\"" << JsonEscape(key) << "\":\""
+											<< JsonEscape(name) << "\"";
+									}
+								} catch (...) {
+									// Skip entries that fail to resolve
+								}
+							}
+						}
+					}
+				}
+			} catch (...) {
+				// If no world loaded, return empty
+			}
+
+			json << "}";
+			return json.str();
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{}", "application/json");
+		}
+	});
+
 	// ── GET /api/agent/:id ─────────────────────────────────────────────
 	// Returns full details about a specific agent, its VM state,
 	// source code, breakpoints, and variables for the debugger view.

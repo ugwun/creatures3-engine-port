@@ -2288,6 +2288,25 @@ body.compact .log-row {
   letter-spacing: 0.5px;
 }
 
+.ide-group-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ide-group-name {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+  letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ide-group-count {
   font-family: var(--font-ui);
   font-size: 8px;
