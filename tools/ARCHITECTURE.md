@@ -135,7 +135,8 @@ Log streaming works differently — it doesn't use the work queue:
 | File | Purpose |
 |---|---|
 | [`tools/index.html`](index.html) | UI shell — tab navigation, panel containers, sidebar |
-| [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching |
+| [`tools/utils.js`](utils.js) | Shared utilities: `escHtml()` function + `DevToolsEvents` pub/sub event bus |
+| [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching + lifecycle events |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
@@ -150,6 +151,54 @@ Log streaming works differently — it doesn't use the work queue:
 |---|---|
 | [`tools/README.md`](README.md) | Usage guide: quick start, tab descriptions, API reference |
 | [`tools/ARCHITECTURE.md`](ARCHITECTURE.md) | This file — technical reference |
+
+---
+
+## Module Architecture
+
+### Script Loading Order
+
+Script tags in `index.html` load in this order:
+
+1. `utils.js` — shared `escHtml()` + `DevToolsEvents` event bus (must be first)
+2. `caos_format.js` — exposes `formatCAOS()` on `window`
+3. `app.js` — Log tab + tab switching / lifecycle events
+4. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
+5. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
+
+All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`) or communicated via the event bus.
+
+### DevToolsEvents — Cross-Module Communication
+
+`DevToolsEvents` (defined in `utils.js`) is a lightweight pub/sub event bus. It decouples modules so they don't query each other's DOM:
+
+```javascript
+// Subscribe
+DevToolsEvents.on('tab:activated', (tabName) => { ... });
+DevToolsEvents.on('creature:selected', (agentId) => { ... });
+
+// Publish
+DevToolsEvents.emit('tab:activated', 'scripts');
+DevToolsEvents.emit('creature:selected', 42);
+```
+
+**Current events:**
+
+| Event | Payload | Producer | Consumers |
+|---|---|---|---|
+| `tab:activated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js` |
+| `tab:deactivated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js` |
+| `creature:selected` | agent ID number | `creatures.js` | `brain.js` |
+
+### Tab-Aware Polling
+
+Modules that poll the server (Scripts, Debugger, Creatures, Brain) only poll when their tab is active:
+
+1. On `tab:activated` → start `setInterval` polling
+2. On `tab:deactivated` → `clearInterval` to stop
+3. On initial page load → **no polling** (wait for tab activation)
+
+This prevents unnecessary network traffic and CPU usage when tabs are hidden.
 
 ---
 
@@ -256,7 +305,7 @@ Tab switching is handled automatically by the event listeners in `app.js` — an
 If your tab needs header controls (buttons, toggles), add a controls div:
 
 ```html
-<!-- In #header-right -->
+<!-- In #toolbar -->
 <div id="newtool-controls" class="tab-controls" hidden>
   <button id="btn-newtool-action" class="btn">Action</button>
 </div>
