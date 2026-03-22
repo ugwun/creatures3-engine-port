@@ -19,8 +19,9 @@ function escHtml(s) {
 //   DevToolsEvents.emit("tab:activated", "scripts");
 //
 // Events:
-//   "tab:activated"   — fired with tab name when a tab becomes visible
-//   "tab:deactivated" — fired with tab name when a tab is hidden
+//   "tab:activated"      — fired with tab name when a tab becomes visible
+//   "tab:deactivated"    — fired with tab name when a tab is hidden
+//   "creature:selected"  — fired with agentId when a creature is selected in the list
 //
 const DevToolsEvents = (() => {
     const listeners = {};

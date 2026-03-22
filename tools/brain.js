@@ -4,7 +4,7 @@
 // are drawn as SVG lines between lobes. Click a tract or neuron to see
 // individual dendrite connections.
 
-(function () {
+(() => {
   'use strict';
 
   // ── State ──────────────────────────────────────────────────────────────
@@ -28,9 +28,11 @@
   const CELL_SIZE = 12;
   const PADDING = 20;
 
+  // Updated via DevToolsEvents 'creature:selected' — no DOM coupling to creatures.js
+  let selectedCreatureId = null;
+
   function getSelectedCreatureId() {
-    const sel = document.querySelector('.crt-list-item--selected');
-    return sel ? parseInt(sel.dataset.id) : null;
+    return selectedCreatureId;
   }
 
   // ── DOM refs ───────────────────────────────────────────────────────────
@@ -123,7 +125,7 @@
 
       renderSpatialBrain();
     } catch (e) {
-      // ignore
+      console.warn('DevTools: brain fetch failed', e);
     }
   }
 
@@ -138,7 +140,7 @@
       renderDendriteLines();
       renderInfoPanel(); // update sidebar with dendrite info
     } catch (e) {
-      // ignore
+      console.warn('DevTools: tract detail fetch failed', e);
     }
   }
 
@@ -689,6 +691,12 @@
     if (tab === 'creatures') stopBrainPolling();
   });
 
+  // Listen for creature selection from creatures.js (decoupled via event bus)
+  DevToolsEvents.on('creature:selected', (agentId) => {
+    selectedCreatureId = agentId;
+    if (isBrainVisible()) checkForCreatureChange();
+  });
+
   document.querySelectorAll('.crt-sub-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.subtab === 'brain') {
@@ -698,14 +706,5 @@
       }
     });
   });
-
-  const crtList = document.getElementById('crt-list');
-  if (crtList) {
-    crtList.addEventListener('click', () => {
-      setTimeout(() => {
-        if (isBrainVisible()) checkForCreatureChange();
-      }, 50);
-    });
-  }
 
 })();

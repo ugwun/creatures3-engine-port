@@ -2,6 +2,8 @@
 // WebSocket client that receives log lines from the embedded DebugServer.
 "use strict";
 
+(() => {
+
 // ── State ─────────────────────────────────────────────────────────────────
 let paused = false;
 let pauseBuffer = [];
@@ -307,3 +309,5 @@ function syncEngineState() {
 }
 // Fetch on page load (after SSE connects)
 setTimeout(syncEngineState, 500);
+
+})();

@@ -2,7 +2,7 @@
 // Live creature inspector: drives, chemistry, summary card.
 // Polls /api/creatures every 2s with optional /api/creature/:id/chemistry.
 
-(function () {
+(() => {
   'use strict';
 
   // ── Chemical name lookup (hardcoded ~50 well-known chemicals) ───────────
@@ -125,7 +125,7 @@
         fetchChemistry(selectedId);
       }
     } catch (e) {
-      // Network error — ignore
+      console.warn('DevTools: creatures fetch failed', e);
     }
   }
 
@@ -137,7 +137,7 @@
       if (chemData.error) { chemData = null; return; }
       renderChemistry();
     } catch (e) {
-      // ignore
+      console.warn('DevTools: chemistry fetch failed', e);
     }
   }
 
@@ -194,6 +194,8 @@
     listEl.querySelectorAll('.crt-list-item').forEach(el => {
       el.classList.toggle('crt-list-item--selected', parseInt(el.dataset.id) === agentId);
     });
+    // Notify other modules (e.g. brain.js) about the selection change
+    DevToolsEvents.emit('creature:selected', agentId);
     const c = creatures.find(c => c.agentId === agentId);
     if (c) {
       renderDrives(c);
