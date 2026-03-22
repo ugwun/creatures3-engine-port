@@ -71,13 +71,7 @@
         }
     }
 
-    function escHtml(s) {
-        return String(s)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
+    // escHtml is provided by utils.js
 
     // ── Controls ──────────────────────────────────────────────────────────
     if (btnRefresh) {
@@ -98,16 +92,28 @@
 
     if (optAuto) {
         optAuto.addEventListener("change", () => {
-            if (optAuto.checked) startAutoRefresh();
+            if (optAuto.checked && isScriptsTabActive) startAutoRefresh();
             else stopAutoRefresh();
         });
     }
 
-    // Start auto-refresh by default
-    if (optAuto && optAuto.checked) {
-        startAutoRefresh();
-    }
+    // ── Tab lifecycle: only poll when Scripts tab is active ───────────────
+    let isScriptsTabActive = false;
 
-    // Also do an immediate refresh
-    refreshScripts();
+    DevToolsEvents.on('tab:activated', (tab) => {
+        if (tab === 'scripts') {
+            isScriptsTabActive = true;
+            refreshScripts();
+            if (optAuto && optAuto.checked) startAutoRefresh();
+        }
+    });
+
+    DevToolsEvents.on('tab:deactivated', (tab) => {
+        if (tab === 'scripts') {
+            isScriptsTabActive = false;
+            stopAutoRefresh();
+        }
+    });
+
+    // Don't poll on load — wait for tab activation
 })();

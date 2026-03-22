@@ -8,7 +8,6 @@ let pauseBuffer = [];
 let allMessages = [];         // master log (never cleared by filter)
 let totalMessages = 0;
 let errorCount = 0;
-let recentTimestamps = [];    // for log/s calculation
 
 const MAX_VISIBLE_ROWS = 2000; // keep DOM lean
 
@@ -17,9 +16,6 @@ const logInner = document.getElementById("log-inner");
 const scrollAnchor = document.getElementById("scroll-anchor");
 const statusPill = document.getElementById("status-pill");
 const statusText = document.getElementById("status-text");
-const statTotal = document.getElementById("stat-total");
-const statErrors = document.getElementById("stat-errors");
-const statFps = document.getElementById("stat-fps");
 const searchInput = document.getElementById("search");
 const btnPause = document.getElementById("btn-pause");
 const btnClear = document.getElementById("btn-clear");
@@ -83,15 +79,9 @@ function setStatus(state) {
 function appendMessage(msg) {
     allMessages.push(msg);
     totalMessages++;
-    if (statTotal) statTotal.textContent = totalMessages;
 
     const cat = categorize(msg.cat);
-    if (msg.cat & 1) { errorCount++; if (statErrors) statErrors.textContent = errorCount; }
-
-    // log/s tracking
-    const now = Date.now();
-    recentTimestamps.push(now);
-    recentTimestamps = recentTimestamps.filter(t => now - t < 1000);
+    if (msg.cat & 1) { errorCount++; }
 
     // Format timestamp as relative seconds with 2 decimal places
     const tSec = (msg.t / 1000).toFixed(2);
@@ -149,13 +139,7 @@ function refilterAll() {
     for (const row of logInner.children) applyRowFilter(row);
 }
 
-function escHtml(s) {
-    return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
+// escHtml is provided by utils.js
 
 // ── Controls ──────────────────────────────────────────────────────────────
 btnPause.addEventListener("click", () => {
@@ -175,8 +159,6 @@ btnClear.addEventListener("click", () => {
     logInner.innerHTML = "";
     allMessages = [];
     totalMessages = 0; errorCount = 0;
-    if (statTotal) statTotal.textContent = "0";
-    if (statErrors) statErrors.textContent = "0";
 });
 
 btnExport.addEventListener("click", () => {
@@ -251,19 +233,22 @@ optCompact.addEventListener("change", () => {
     document.body.classList.toggle("compact", optCompact.checked);
 });
 
-// ── log/s counter ─────────────────────────────────────────────────────────
-setInterval(() => {
-    const now = Date.now();
-    recentTimestamps = recentTimestamps.filter(t => now - t < 1000);
-    if (statFps) statFps.textContent = recentTimestamps.length;
-}, 500);
+
 
 // ── Boot ─────────────────────────────────────────────────────────────────
 connect();
 
 // ── Tab switching ────────────────────────────────────────────────────────
+let activeTab = 'log'; // track current active tab
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+        const newTab = btn.dataset.tab;
+        if (newTab === activeTab) return; // already active
+
+        // Notify the outgoing tab
+        DevToolsEvents.emit('tab:deactivated', activeTab);
+
         // Deactivate all tabs
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-btn--active'));
         document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = true; p.classList.remove('tab-panel--active'); });
@@ -271,13 +256,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
         // Activate clicked tab
         btn.classList.add('tab-btn--active');
-        const tabId = `tab-${btn.dataset.tab}`;
+        const tabId = `tab-${newTab}`;
         const panel = document.getElementById(tabId);
         if (panel) { panel.hidden = false; panel.classList.add('tab-panel--active'); }
 
         // Show matching controls
-        const ctrl = document.getElementById(`${btn.dataset.tab}-controls`);
+        const ctrl = document.getElementById(`${newTab}-controls`);
         if (ctrl) ctrl.hidden = false;
+
+        // Notify the incoming tab
+        activeTab = newTab;
+        DevToolsEvents.emit('tab:activated', newTab);
     });
 });
 

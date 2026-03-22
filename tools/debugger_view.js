@@ -454,9 +454,7 @@
         "agnt", "pray",
     ]);
 
-    function htmlEscape(str) {
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    // escHtml + htmlEscape are provided by utils.js as escHtml()
 
     function highlightCAOS(line) {
         // Tokenize: strings, numbers, comments, words
@@ -468,7 +466,7 @@
         while ((match = re.exec(line)) !== null) {
             // Append any whitespace between last match and this one
             if (match.index > lastIndex) {
-                result += htmlEscape(line.substring(lastIndex, match.index));
+                result += escHtml(line.substring(lastIndex, match.index));
             }
             lastIndex = re.lastIndex;
 
@@ -476,36 +474,36 @@
 
             if (match[1]) {
                 // String literal
-                result += `<span class="hl-string">${htmlEscape(token)}</span>`;
+                result += `<span class="hl-string">${escHtml(token)}</span>`;
             } else if (match[2]) {
                 // Comment
-                result += `<span class="hl-comment">${htmlEscape(token)}</span>`;
+                result += `<span class="hl-comment">${escHtml(token)}</span>`;
             } else if (match[3]) {
                 // Number
-                result += `<span class="hl-number">${htmlEscape(token)}</span>`;
+                result += `<span class="hl-number">${escHtml(token)}</span>`;
             } else if (match[4]) {
                 // Word — check if keyword
                 const lower = token.toLowerCase();
                 if (CAOS_FLOW.has(lower)) {
-                    result += `<span class="hl-flow">${htmlEscape(token)}</span>`;
+                    result += `<span class="hl-flow">${escHtml(token)}</span>`;
                 } else if (CAOS_COMMANDS.has(lower)) {
-                    result += `<span class="hl-command">${htmlEscape(token)}</span>`;
+                    result += `<span class="hl-command">${escHtml(token)}</span>`;
                 } else if (lower.startsWith("ov") && /^ov\d{2}$/.test(lower)) {
-                    result += `<span class="hl-var">${htmlEscape(token)}</span>`;
+                    result += `<span class="hl-var">${escHtml(token)}</span>`;
                 } else if (lower.startsWith("va") && /^va\d{2}$/.test(lower)) {
-                    result += `<span class="hl-var">${htmlEscape(token)}</span>`;
+                    result += `<span class="hl-var">${escHtml(token)}</span>`;
                 } else {
-                    result += htmlEscape(token);
+                    result += escHtml(token);
                 }
             } else {
                 // Other single chars (operators etc.)
-                result += htmlEscape(token);
+                result += escHtml(token);
             }
         }
 
         // Append remaining
         if (lastIndex < line.length) {
-            result += htmlEscape(line.substring(lastIndex));
+            result += escHtml(line.substring(lastIndex));
         }
 
         return result || " ";
@@ -739,7 +737,19 @@
         }
     }
 
-    // Start polling and initial fetch
-    startPolling();
-    refreshAgentList();
+    // ── Tab lifecycle: only poll when Debugger tab is active ───────────
+    DevToolsEvents.on('tab:activated', (tab) => {
+        if (tab === 'debugger') {
+            startPolling();
+            refreshAgentList();
+        }
+    });
+
+    DevToolsEvents.on('tab:deactivated', (tab) => {
+        if (tab === 'debugger') {
+            stopPolling();
+        }
+    });
+
+    // Don't poll on load — wait for tab activation
 })();

@@ -681,14 +681,13 @@
     if (brainTimer) { clearInterval(brainTimer); brainTimer = null; }
   }
 
-  const creaturesPanel = document.getElementById('tab-creatures');
-  if (creaturesPanel) {
-    const obs = new MutationObserver(() => {
-      if (!creaturesPanel.hidden) startBrainPolling();
-      else stopBrainPolling();
-    });
-    obs.observe(creaturesPanel, { attributes: true, attributeFilter: ['hidden'] });
-  }
+  DevToolsEvents.on('tab:activated', (tab) => {
+    if (tab === 'creatures') startBrainPolling();
+  });
+
+  DevToolsEvents.on('tab:deactivated', (tab) => {
+    if (tab === 'creatures') stopBrainPolling();
+  });
 
   document.querySelectorAll('.crt-sub-btn').forEach(btn => {
     btn.addEventListener('click', () => {

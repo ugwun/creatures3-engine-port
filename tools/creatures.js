@@ -362,24 +362,18 @@
 
   optNonZero.addEventListener('change', () => renderChemistry());
 
-  // ── Tab visibility hook ───────────────────────────────────────────────
-  // Start/stop polling when the creatures tab becomes visible/hidden
-  const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      if (m.attributeName === 'hidden') {
-        const panel = document.getElementById('tab-creatures');
-        if (!panel.hidden) {
-          fetchCreatures();
-          startAutoRefresh();
-        } else {
-          stopAutoRefresh();
-        }
-      }
+  // ── Tab visibility via DevToolsEvents ────────────────────────────────
+  DevToolsEvents.on('tab:activated', (tab) => {
+    if (tab === 'creatures') {
+      fetchCreatures();
+      startAutoRefresh();
     }
   });
-  const creaturesPanel = document.getElementById('tab-creatures');
-  if (creaturesPanel) {
-    observer.observe(creaturesPanel, { attributes: true, attributeFilter: ['hidden'] });
-  }
+
+  DevToolsEvents.on('tab:deactivated', (tab) => {
+    if (tab === 'creatures') {
+      stopAutoRefresh();
+    }
+  });
 
 })();

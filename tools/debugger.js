@@ -56,13 +56,7 @@
         output.scrollTop = output.scrollHeight;
     }
 
-    function escHtml(s) {
-        return String(s)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
+    // escHtml is provided by utils.js
 
     // ── Input handling ────────────────────────────────────────────────────
     input.addEventListener("keydown", (e) => {
