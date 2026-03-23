@@ -87,6 +87,23 @@ char *BuildFsp(DWORD fsp, char const *ext, int SubDir /* =-1 */,
 
   strcat(SFPath, ourlocalTemplate); // add filename to optional path
 
+#ifndef _WIN32
+  // If the file doesn't exist at the primary path, fall back to the
+  // auxiliary directory (e.g. ../Creatures 3/Sounds/) where C3 assets live.
+  if (SubDir != -1 && !FileExists(SFPath)) {
+    const char *auxDir = theApp.GetAuxiliaryDirectory(SubDir);
+    if (auxDir) {
+      static char AuxPath[MAX_PATH];
+      strcpy(AuxPath, auxDir);
+      if (isOverlay)
+        strcat(AuxPath, "over_");
+      strcat(AuxPath, ourlocalTemplate);
+      if (FileExists(AuxPath))
+        return AuxPath;
+    }
+  }
+#endif
+
   // Error handling info.
   //	strcpy(dderr_extra, SFPath);
 

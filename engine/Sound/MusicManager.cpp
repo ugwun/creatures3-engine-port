@@ -163,6 +163,7 @@ bool MusicManager::LoadScrambled() {
       for (size_t i = 0; i < lowerTarget.size(); i++)
         lowerTarget[i] = tolower((unsigned char)lowerTarget[i]);
 
+      bool found = false;
       DIR *dp = opendir(dir.c_str());
       if (dp) {
         struct dirent *entry;
@@ -174,11 +175,48 @@ bool MusicManager::LoadScrambled() {
           if (lowerName == lowerTarget) {
             path = dir + name;
             currentMNG = name; // Update so future SetMNGFile comparisons work
+            found = true;
             break;
           }
         }
         closedir(dp);
       }
+
+#ifndef _WIN32
+      // If not found in primary Sounds dir, try the auxiliary Sounds
+      // directory (e.g. ../Creatures 3/Sounds/) where C3 assets live.
+      if (!found) {
+        const char *auxDir = theApp.GetAuxiliaryDirectory(SOUNDS_DIR);
+        if (auxDir) {
+          std::string auxPath = std::string(auxDir) + currentMNG;
+          if (access(auxPath.c_str(), F_OK) == 0) {
+            dir = auxDir;
+            path = auxPath;
+            found = true;
+          } else {
+            // Case-insensitive scan of auxiliary directory
+            DIR *adp = opendir(auxDir);
+            if (adp) {
+              struct dirent *aentry;
+              while ((aentry = readdir(adp)) != NULL) {
+                std::string aname(aentry->d_name);
+                std::string lowerAName = aname;
+                for (size_t i = 0; i < lowerAName.size(); i++)
+                  lowerAName[i] = tolower((unsigned char)lowerAName[i]);
+                if (lowerAName == lowerTarget) {
+                  dir = auxDir;
+                  path = std::string(auxDir) + aname;
+                  currentMNG = aname;
+                  found = true;
+                  break;
+                }
+              }
+              closedir(adp);
+            }
+          }
+        }
+      }
+#endif
     }
 
     file.Open(path, GENERIC_READ);

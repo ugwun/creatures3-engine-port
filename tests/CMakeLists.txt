@@ -338,3 +338,15 @@ target_include_directories(test_UITextFormatting PRIVATE
 )
 target_link_libraries(test_UITextFormatting PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_UITextFormatting)
+
+# ---------------------------------------------------------------------------
+# test_MNGFormat — MNG music file parsing and WAV reconstruction (header-only)
+# ---------------------------------------------------------------------------
+add_executable(test_MNGFormat test_MNGFormat.cpp)
+target_include_directories(test_MNGFormat PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_MNGFormat PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_MNGFormat)

@@ -9,6 +9,7 @@
 #include "../../FlightRecorder.h"
 #include "../../General.h"
 #include "../MidiModule.h"
+#include "../MNGFormat.h"
 
 // SDL2_mixer — included only in this .cpp to avoid SDL1/SDL2 header conflicts
 #include <SDL_mixer.h>
@@ -144,12 +145,83 @@ void *SoundManager::LoadWavForID(DWORD wave) {
     return it->second;
   }
 
-  // MNG sounds not supported yet
+  // MNG-embedded sounds (wave ID >= 0xff000000)
   if (wave >= 0xff000000) {
-    return NULL;
+    // Open the MNG file from the Sounds directory
+    char buf[512];
+    theApp.GetDirectory(SOUNDS_DIR, buf);
+    std::string mngPath = std::string(buf) + mungeFile;
+
+    FILE *fp = fopen(mngPath.c_str(), "rb");
+#ifndef _WIN32
+    // Try auxiliary Sounds directory (e.g. ../Creatures 3/Sounds/)
+    if (!fp) {
+      const char *auxDir = theApp.GetAuxiliaryDirectory(SOUNDS_DIR);
+      if (auxDir) {
+        mngPath = std::string(auxDir) + mungeFile;
+        fp = fopen(mngPath.c_str(), "rb");
+      }
+    }
+#endif
+    if (!fp) {
+      return NULL;
+    }
+
+    // Read the voice entry from the MNG header
+    DWORD index = wave - 0xff000000;
+    MNGVoiceEntry entry = MNGReadVoiceEntry(fp, index);
+    if (!entry.valid) {
+      fclose(fp);
+      return NULL;
+    }
+
+    // Seek to the voice data and read it
+    fseek(fp, entry.offset, SEEK_SET);
+    unsigned char *rawData = new unsigned char[entry.size];
+    size_t bytesRead = fread(rawData, 1, entry.size, fp);
+    fclose(fp);
+
+    if ((int)bytesRead != entry.size) {
+      delete[] rawData;
+      return NULL;
+    }
+
+    // Reconstruct a valid WAV and write to a temp file.
+    // (We use a temp file because the engine links both SDL 1.2 and SDL 2.0,
+    // and the RWops interop adapter crashes with Mix_LoadWAV_RW.)
+    int wavSize = 0;
+    unsigned char *wavData = new unsigned char[entry.size + 16];
+    if (!MNGReconstructWAV(rawData, entry.size, wavData, wavSize)) {
+      delete[] rawData;
+      delete[] wavData;
+      return NULL;
+    }
+    delete[] rawData;
+
+    char tmpPath[256];
+    snprintf(tmpPath, sizeof(tmpPath), "/tmp/lc2e_mng_%08x.wav", wave);
+    FILE *tmpFp = fopen(tmpPath, "wb");
+    if (!tmpFp) {
+      delete[] wavData;
+      return NULL;
+    }
+    fwrite(wavData, 1, wavSize, tmpFp);
+    fclose(tmpFp);
+    delete[] wavData;
+
+    // Load the reconstructed WAV via file path (avoids SDL1/SDL2 interop)
+    Mix_Chunk *chunk = Mix_LoadWAV(tmpPath);
+    unlink(tmpPath); // Clean up temp file
+
+    if (!chunk) {
+      return NULL;
+    }
+
+    sound_cache[wave] = (void *)chunk;
+    return (void *)chunk;
   }
 
-  // Build the file path using the engine's BuildFsp
+  // Regular WAV file — build the file path using the engine's BuildFsp
   std::string path(BuildFsp(wave, "wav", SOUNDS_DIR));
 
   Mix_Chunk *chunk = Mix_LoadWAV(path.c_str());
