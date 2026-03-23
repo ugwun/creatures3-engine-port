@@ -160,6 +160,11 @@ public:
 	virtual void SetText( std::string text ){}
 	virtual std::string GetText() const {return "";}
 
+	// Strip DS-specific inline formatting tags (e.g. "<tint R G B>") from text.
+	// The DS engine uses these to colour text parts, but the C3 renderer
+	// draws character-by-character from a sprite sheet without colour support.
+	static std::string StripInlineFormattingTags(const std::string& text);
+
 	void SetAttributes( const TextAttributes &attributes ) {myAttributes = attributes;}
 
 	int GetPageCount();

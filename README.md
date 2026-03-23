@@ -178,7 +178,7 @@ For setup instructions and full tool reference, see [`mcp/README.md`](./mcp/READ
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **372 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **387 tests**.
 
 ### Running the tests
 
@@ -213,6 +213,7 @@ cd build && ctest --output-on-failure
 | `test_CompoundAgent` | Compound part slot replacement logic (AddPart with occupied slots) |
 | `test_CAOSMachineCallStack` | CALL command call stack state bundle (save/restore/copy semantics) |
 | `test_StringIntGroup` | PRAY chunk binary tag parsing (int/string maps, round-trip) |
+| `test_UITextFormatting` | DS-specific inline `<tint>` text formatting tag stripping |
 
 ### Writing a new test
 

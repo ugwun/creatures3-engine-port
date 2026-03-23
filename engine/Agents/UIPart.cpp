@@ -3,6 +3,7 @@
 #endif
 
 #include "UIPart.h"
+#include "TextFormatting.h"
 #include "../AgentManager.h"
 #include "../App.h"
 #include "../Display/DisplayEngine.h" // for theMainView
@@ -243,6 +244,11 @@ CreaturesArchive &operator>>(CreaturesArchive &archive, TextAttributes &a) {
       a.myBottomMargin >> a.myLineSpacing >> a.myCharacterSpacing >>
       a.myJustification;
   return archive;
+}
+
+// Delegate to the header-only shared implementation.
+std::string UITextPart::StripInlineFormattingTags(const std::string &text) {
+  return ::StripInlineFormattingTags(text);
 }
 
 bool UITextPartHelperCanBreak(const std::string &text, int index) {
@@ -496,7 +502,7 @@ void UIText::MoveCursor() {
 }
 
 void UIText::SetText(std::string text) {
-  myText = text;
+  myText = StripInlineFormattingTags(text);
   myCurrentPage = 0;
   Draw();
   MoveCursor();
@@ -569,7 +575,7 @@ UIFixedText::UIFixedText(FilePath const &gallery, int baseimage, int numImages,
 UIFixedText::~UIFixedText() {}
 
 void UIFixedText::SetText(std::string text) {
-  myText = text;
+  myText = StripInlineFormattingTags(text);
   ConvertDullText(myText);
   myCurrentPage = 0;
   Draw();
