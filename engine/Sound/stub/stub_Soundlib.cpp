@@ -254,6 +254,8 @@ SOUNDERROR SoundManager::PlaySoundEffect(DWORD wave, int ticks, long volume,
                                          long pan) {
   if (mixer_suspended || !sound_initialised)
     return SOUND_MIXER_SUSPENDED;
+  if (faded)
+    return NO_SOUND_ERROR;
 
   // Queue for later if ticks > 0
   if (ticks > 0) {
@@ -320,6 +322,8 @@ SOUNDERROR SoundManager::StartControlledSound(DWORD wave, SOUNDHANDLE &handle,
                                               long volume, long pan,
                                               BOOL looped) {
   if (mixer_suspended || !sound_initialised)
+    return SOUND_MIXER_SUSPENDED;
+  if (faded)
     return SOUND_MIXER_SUSPENDED;
 
   Mix_Chunk *chunk = (Mix_Chunk *)LoadWavForID(wave);
@@ -524,7 +528,17 @@ void SoundManager::Update() {
       long effectiveVol = active_sounds[i].volume + current_volume;
       if (effectiveVol < SoundMinVolume)
         effectiveVol = SoundMinVolume;
-      Mix_Volume(i, DSVolumeToSDL(effectiveVol));
+      // If effective volume has reached silence, halt the channel
+      if (effectiveVol <= SoundMinVolume) {
+        Mix_HaltChannel(i);
+        active_sounds[i].waveID = 0;
+        active_sounds[i].locked = false;
+        active_sounds[i].chunk = NULL;
+        if (sounds_playing > 0)
+          sounds_playing--;
+      } else {
+        Mix_Volume(i, DSVolumeToSDL(effectiveVol));
+      }
     }
   }
 }
@@ -547,7 +561,9 @@ SOUNDERROR SoundManager::FadeOut() {
     return SOUND_MIXER_SUSPENDED;
 
   target_volume = SoundMinVolume;
+  current_volume = SoundMinVolume;
   faded = true;
+  StopAllSounds();
   return NO_SOUND_ERROR;
 }
 
