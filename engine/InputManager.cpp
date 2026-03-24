@@ -49,6 +49,7 @@ InputManager::InputManager() {
   }
 
   myTranslatedCharTarget = 0;
+  memset(myKeyStates, 0, sizeof(myKeyStates));
 }
 
 int InputManager::GetEventCount() { return myEventBuffer.size(); }
@@ -77,6 +78,8 @@ void InputManager::SysAddKeyDownEvent(int keycode) {
   myEventBuffer.push_back(ev);
 
   myEventPendingMask |= InputEvent::eventKeyDown;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = true;
 }
 
 void InputManager::SysAddKeyUpEvent(int keycode) {
@@ -86,6 +89,8 @@ void InputManager::SysAddKeyUpEvent(int keycode) {
   myEventBuffer.push_back(ev);
 
   myEventPendingMask |= InputEvent::eventKeyUp;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = false;
 }
 
 void InputManager::SysAddTranslatedCharEvent(int keycode) {
@@ -159,7 +164,8 @@ bool InputManager::IsKeyDown(int keycode) {
   else
     return false;
 #else
-#warning keyboard polling not implemented
+  if (keycode >= 0 && keycode < 256)
+    return myKeyStates[keycode];
   return false;
 #endif // WIN32
 }

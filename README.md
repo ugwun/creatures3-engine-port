@@ -320,20 +320,10 @@ For details on the technical changes made during the porting process, see [READM
 
 ## Known Issues
 
-### Engine Monitor
-
-- [x] ~~Gene file not found errors when Ettin/Grendel egg-laying machines try to create eggs (`gene load targ 1 "e*"` / `"g*"`).~~ Fixed: `GetFilesInDirectory` on macOS now uses `fnmatch()` for proper glob matching (previously only handled `*.ext`), and `GenomeStore::LoadEngineeredFile` now searches the C3 auxiliary Genetics directory as a fallback.
-- [x] ~~Replicator (agent 3 3 25) throws `AHE0001: Attempt to access NULL handle` when cloning any agent.~~ Fixed: the `TWIN` command's serialization code was inside a `#ifndef C2E_OLD_CPP_LIB` block, but `C2E_OLD_CPP_LIB` is defined globally. The fallback `#else` path created a NULL clone handle. Removed the preprocessor guard so the `std::stringstream` serialization always compiles.
-- [x] ~~Learning Machine (agent 1 1 80) fails to load catalogue tags.~~ Fixed: added `"Scrolls of Learning.catalogue"` to the auxiliary catalogue loading list in `App::InitLocalisation`.
-- [ ] Runtime error in agent 2 21 18 script 2 21 18 9
-```
-Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible type: agent expectedlock doif carr = null and fall = 0 gsub mycommedia gsub creaturecheck doif ov00 = 0 gsub moveit endi endi subr mycommedia rtar 2 23 8 {@}seta va99 name "MyCommedia" targ ownr doif targ <> va99 setv va00 0 loop addv va00 8 part -1 alph va00 1 untl va00 >= 256 kill ownr endi retn subr creaturecheck rnge 300 inst esee 4 0 0 setv va00 1 next targ ownr doif va00 = 1 and ov00 = 0 and carr = null and fall = 0 gsub inspiration elif va00 = 0 and ov00 = 1 and carr = null and fall = 0 gsub bethyself endi retn subr moveit setv va00 rand 1 3 doif va00 = 1 doif ov40 = 1 setv ov40 0 fric 100 elif ov40 = 0 setv ov40 1 fric 40 endi endi doif ov40 = 1 doif obst left < 50 addv ov71 1 endi doif obst rght < 50 subv ov71 1 endi doif ov71 <= -10 setv ov10 -1 setv ov71 0 endi doif ov71 >= 10 setv ov10 1 setv ov71 0 endi doif ov10 = -1 setv velx rand -7 -14 elif ov10 = 1 se�
-```
-
 ### Other
 - [x] ~~It seems game ticks are too fast, or somehow out of sync. The game appears to be running too fast.~~ Fixed: replaced `SDL_Delay(20)` with tick-rate-aware sleep using `GetWorldTickInterval()` (50ms / 20Hz).
 - [x] ~~When clicking on an agent with the hand, the click is registered with all agents within that exact position. For example, when use clicks on the rightmost question mark, which opens the world menu, and if this question mark happens to be on top of a lift button, the lift button is activated.~~ Fixed: when `Find()` identifies the topmost agent, reuse it for activation instead of doing a second `IsTouching()` lookup that could match a different overlapping agent.
-- [ ] The "hand" agent (representing the user) is not able to talk by pressing Enter key.
+- [x] ~~The "hand" agent (representing the user) is not able to talk by pressing Enter key.~~ Fixed: `InputManager::IsKeyDown()` always returned `false` on non-Windows (keyboard polling was unimplemented). Added key state tracking via the existing `SysAddKeyDownEvent`/`SysAddKeyUpEvent` calls. This also fixes the CAOS `KEYD` command for all keys, not just Enter.
 - [x] ~~Sounds stop playing after few minutes. Update: after leaving the game, starting it again and loading a world makes the sounds work again - the Docking Station sounds, Creatures 3 sounds are broken.~~ Fixed: `BuildFsp` now falls back to auxiliary directories (e.g. `../Creatures 3/Sounds/`) for WAV lookups, and MNG-embedded voice samples are extracted and loaded via SDL_mixer.
 - [x] ~~Music doesn't load at all.~~ Fixed: `MusicManager::LoadScrambled` now searches auxiliary Sounds directories for MNG files (e.g. C3's `Music.mng`), with case-insensitive matching.
 - [x] ~~Creatures 3 sounds are not playing, only Docking Station sounds are playing.~~ Fixed: same auxiliary directory fallback in `BuildFsp` and MNG voice loading.

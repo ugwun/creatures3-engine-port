@@ -92,6 +92,10 @@ private:
 	std::vector< int > myRecentMouseY;
 
 	TranslatedCharTarget *myTranslatedCharTarget;
+
+	// Key state tracking for IsKeyDown() polling on non-Windows.
+	// Updated by SysAddKeyDownEvent/SysAddKeyUpEvent.
+	bool myKeyStates[256];
 };
 
 inline int InputManager::GetMouseX()
