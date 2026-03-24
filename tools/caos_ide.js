@@ -75,12 +75,38 @@
         return name ? `${num} ${name}` : `${num}`;
     }
 
+    // Error bar DOM refs
+    const errorBar = document.getElementById("ide-error-bar");
+    const errorMsg = document.getElementById("ide-error-msg");
+    const errorDismiss = document.getElementById("ide-error-dismiss");
+    const autocompleteEl = document.getElementById("ide-autocomplete");
+    const helpPopupEl = document.getElementById("ide-help-popup");
+    const helpNameEl = document.getElementById("ide-help-name");
+    const helpTypeEl = document.getElementById("ide-help-type");
+    const helpParamsEl = document.getElementById("ide-help-params");
+    const helpDescEl = document.getElementById("ide-help-desc");
+    const helpCloseEl = document.getElementById("ide-help-close");
+
     // ── State ─────────────────────────────────────────────────────────────
     let scriptoriumData = [];    // Array of { family, genus, species, event }
     let agentNames = {};         // Map of "F G S" → agent name from catalogue
     let loadedClassifier = null; // Which script is loaded from scriptorium
     let isActive = false;
     let searchTerm = "";
+
+    // Validation state
+    let validateTimer = null;
+    let errorLine = -1;          // 1-indexed line with error, or -1
+
+    // Autocomplete state
+    let caosCommands = null;     // Cached command dictionary from API
+    let acVisible = false;
+    let acItems = [];            // Filtered items currently shown
+    let acIndex = -1;            // Active selection index
+    let acTypingTimer = null;
+
+    // Help state
+    let helpVisible = false;
 
     // ── Scriptorium browser ───────────────────────────────────────────────
     async function refreshScriptorium() {
@@ -214,12 +240,15 @@
         const text = editorTextarea.value;
         const lines = text.split("\n");
 
-        // Line numbers
-        let numsHtml = "";
+        // Line numbers — with error line highlighting
+        editorLineNums.innerHTML = "";
         for (let i = 1; i <= lines.length; i++) {
-            numsHtml += i + "\n";
+            const span = document.createElement("span");
+            span.textContent = i;
+            if (i === errorLine) span.className = "ide-line-error";
+            editorLineNums.appendChild(span);
+            editorLineNums.appendChild(document.createTextNode("\n"));
         }
-        editorLineNums.textContent = numsHtml;
 
         // Syntax highlight overlay
         let highlightHtml = "";
@@ -231,8 +260,12 @@
         editorHighlight.innerHTML = highlightHtml;
     }
 
-    // Sync on any input
-    editorTextarea.addEventListener("input", syncEditorDisplay);
+    // Sync on any input — also trigger debounced validation
+    editorTextarea.addEventListener("input", () => {
+        syncEditorDisplay();
+        scheduleValidation();
+        scheduleAutocomplete();
+    });
 
     // Sync scroll
     editorTextarea.addEventListener("scroll", () => {
@@ -241,29 +274,494 @@
         editorLineNums.scrollTop = editorTextarea.scrollTop;
     });
 
-    // Tab key inserts 4 spaces
+    // CAOS block-opening keywords — trigger +1 indent on Enter
+    const INDENT_OPEN = new Set([
+        "doif", "elif", "else", "enum", "esee", "etch", "epas", "econ",
+        "loop", "reps", "subr"
+    ]);
+    const TAB = "    "; // 4 spaces
+
+    // Tab key inserts 4 spaces (or accepts autocomplete)
     editorTextarea.addEventListener("keydown", (e) => {
-        if (e.key === "Tab") {
+        // Autocomplete navigation
+        if (acVisible) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                acIndex = Math.min(acIndex + 1, acItems.length - 1);
+                renderAutocomplete();
+                return;
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                acIndex = Math.max(acIndex - 1, 0);
+                renderAutocomplete();
+                return;
+            }
+            if (e.key === "Enter" || e.key === "Tab") {
+                if (acIndex >= 0 && acIndex < acItems.length) {
+                    e.preventDefault();
+                    acceptAutocomplete(acItems[acIndex]);
+                    return;
+                }
+            }
+            if (e.key === "Escape") {
+                e.preventDefault();
+                hideAutocomplete();
+                return;
+            }
+        }
+
+        // ── Smart Enter — auto-indent ─────────────────────────────────────
+        if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+
+            const cursor = editorTextarea.selectionStart;
+            const val = editorTextarea.value;
+
+            // Find the start of the current line
+            let lineStart = cursor;
+            while (lineStart > 0 && val[lineStart - 1] !== "\n") lineStart--;
+
+            // Extract existing leading whitespace
+            let indentLen = 0;
+            while (lineStart + indentLen < cursor && val[lineStart + indentLen] === " ") indentLen++;
+            const currentIndent = " ".repeat(indentLen);
+
+            // Check if the current line starts with a block-opening keyword
+            const lineText = val.substring(lineStart, cursor).trimStart().split(/\s+/)[0].toLowerCase();
+            const extraIndent = INDENT_OPEN.has(lineText) ? TAB : "";
+
+            const insert = "\n" + currentIndent + extraIndent;
+            editorTextarea.value = val.substring(0, cursor) + insert + val.substring(editorTextarea.selectionEnd);
+            editorTextarea.selectionStart = editorTextarea.selectionEnd = cursor + insert.length;
+
+            syncEditorDisplay();
+            scheduleValidation();
+            return;
+        }
+
+        // ── Smart Backspace — dedent by full indent level ─────────────────
+        if (e.key === "Backspace" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const cursor = editorTextarea.selectionStart;
+            const selEnd = editorTextarea.selectionEnd;
+
+            // Only act when there's no selection
+            if (cursor === selEnd && cursor > 0) {
+                const val = editorTextarea.value;
+
+                // Find the start of the current line
+                let lineStart = cursor;
+                while (lineStart > 0 && val[lineStart - 1] !== "\n") lineStart--;
+
+                // Text before cursor on this line
+                const beforeCursor = val.substring(lineStart, cursor);
+
+                // Only smart-delete if cursor is in leading whitespace (pure spaces)
+                if (/^ +$/.test(beforeCursor) && beforeCursor.length > 0) {
+                    e.preventDefault();
+
+                    // Snap back to the previous tab stop
+                    const col = beforeCursor.length;
+                    const deleteCount = ((col - 1) % 4) + 1 || 4;
+
+                    editorTextarea.value = val.substring(0, cursor - deleteCount) + val.substring(cursor);
+                    editorTextarea.selectionStart = editorTextarea.selectionEnd = cursor - deleteCount;
+
+                    syncEditorDisplay();
+                    scheduleValidation();
+                    return;
+                }
+            }
+        }
+
+        // ── Tab — insert 4 spaces (or dedent with Shift+Tab) ─────────────
+        if (e.key === "Tab" && !acVisible) {
             e.preventDefault();
             const start = editorTextarea.selectionStart;
             const end = editorTextarea.selectionEnd;
             const val = editorTextarea.value;
-            editorTextarea.value = val.substring(0, start) + "    " + val.substring(end);
-            editorTextarea.selectionStart = editorTextarea.selectionEnd = start + 4;
-            syncEditorDisplay();
-        }
-    });
 
-    // Ctrl/Cmd+Enter to run
-    editorTextarea.addEventListener("keydown", (e) => {
+            if (e.shiftKey) {
+                // Shift+Tab: remove up to 4 spaces before cursor on this line
+                let lineStart = start;
+                while (lineStart > 0 && val[lineStart - 1] !== "\n") lineStart--;
+                const beforeCursor = val.substring(lineStart, start);
+                const leading = beforeCursor.match(/^ */)[0];
+                const remove = Math.min(leading.length, 4);
+                if (remove > 0) {
+                    editorTextarea.value = val.substring(0, lineStart) + val.substring(lineStart + remove, start) + val.substring(end);
+                    editorTextarea.selectionStart = editorTextarea.selectionEnd = start - remove;
+                    syncEditorDisplay();
+                    scheduleValidation();
+                }
+            } else {
+                editorTextarea.value = val.substring(0, start) + TAB + val.substring(end);
+                editorTextarea.selectionStart = editorTextarea.selectionEnd = start + 4;
+                syncEditorDisplay();
+            }
+            return;
+        }
+
+        // Ctrl/Cmd+Enter to run
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
             btnRun.click();
+            return;
+        }
+
+        // Ctrl+Space to trigger autocomplete (Cmd+Space is Spotlight on macOS)
+        if (e.ctrlKey && !e.metaKey && e.key === " ") {
+            e.preventDefault();
+            triggerAutocomplete();
+            return;
+        }
+
+        // F1 to show command help
+        if (e.key === "F1") {
+            e.preventDefault();
+            triggerHelp();
+            return;
+        }
+    });
+
+    // Hide autocomplete and help on blur
+    editorTextarea.addEventListener("blur", () => {
+        setTimeout(() => {
+            hideAutocomplete();
+            // Don't hide help on blur — user should be able to read it
+        }, 150);
+    });
+
+    // Dismiss help popup with Escape even when editor is not focused
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && helpVisible) {
+            hideHelp();
         }
     });
 
     // Initial sync
     syncEditorDisplay();
+
+    // ── Syntax Validation ─────────────────────────────────────────────────
+    function scheduleValidation() {
+        if (validateTimer) clearTimeout(validateTimer);
+        validateTimer = setTimeout(runValidation, 500);
+    }
+
+    async function runValidation() {
+        const code = editorTextarea.value.trim();
+        if (!code || !isActive) {
+            clearError();
+            return;
+        }
+
+        try {
+            const resp = await fetch("/api/validate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caos: code })
+            });
+            const data = await resp.json();
+
+            if (data.ok) {
+                clearError();
+            } else {
+                showError(data.error || "Unknown error", data.position, code);
+            }
+        } catch (_) {
+            // Network error — don't show validation errors if server unreachable
+        }
+    }
+
+    function showError(msg, position, code) {
+        // Map character position to line number
+        errorLine = -1;
+        if (position >= 0 && code) {
+            let line = 1;
+            for (let i = 0; i < Math.min(position, code.length); i++) {
+                if (code[i] === "\n") line++;
+            }
+            errorLine = line;
+        }
+
+        if (errorBar && errorMsg) {
+            errorMsg.textContent = msg + (errorLine > 0 ? ` (line ${errorLine})` : "");
+            errorBar.hidden = false;
+        }
+        syncEditorDisplay(); // re-render to show gutter highlight
+    }
+
+    function clearError() {
+        errorLine = -1;
+        if (errorBar) errorBar.hidden = true;
+        syncEditorDisplay();
+    }
+
+    if (errorDismiss) {
+        errorDismiss.addEventListener("click", clearError);
+    }
+
+    // ── Auto-Complete ─────────────────────────────────────────────────────
+    async function fetchCommandDictionary() {
+        if (caosCommands) return;
+        try {
+            const resp = await fetch("/api/caos-commands");
+            caosCommands = await resp.json();
+        } catch (_) {
+            caosCommands = [];
+        }
+    }
+
+    function getWordAtCursor() {
+        const pos = editorTextarea.selectionStart;
+        const text = editorTextarea.value;
+        // Walk back to find word start
+        let start = pos;
+        while (start > 0 && /[a-zA-Z0-9_:#]/.test(text[start - 1])) start--;
+        // Walk forward to find word end
+        let end = pos;
+        while (end < text.length && /[a-zA-Z0-9_:#]/.test(text[end])) end++;
+        return {
+            word: text.substring(start, pos).toLowerCase(),
+            fullWord: text.substring(start, end),
+            start,
+            end: pos
+        };
+    }
+
+    function isInsideString() {
+        const pos = editorTextarea.selectionStart;
+        const text = editorTextarea.value.substring(0, pos);
+        let inStr = false;
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '"') inStr = !inStr;
+        }
+        return inStr;
+    }
+
+    function scheduleAutocomplete() {
+        if (acTypingTimer) clearTimeout(acTypingTimer);
+        acTypingTimer = setTimeout(() => {
+            const { word } = getWordAtCursor();
+            if (word.length >= 3 && !isInsideString()) {
+                triggerAutocomplete();
+            } else {
+                hideAutocomplete();
+            }
+        }, 200);
+    }
+
+    async function triggerAutocomplete() {
+        await fetchCommandDictionary();
+        if (!caosCommands || caosCommands.length === 0) return;
+        if (isInsideString()) return;
+
+        const { word } = getWordAtCursor();
+        if (!word) { hideAutocomplete(); return; }
+
+        // Filter by prefix match, deduplicate by name
+        const seen = new Set();
+        acItems = [];
+        for (const cmd of caosCommands) {
+            const lowerName = cmd.name.toLowerCase();
+            if (lowerName.startsWith(word) && !seen.has(lowerName)) {
+                seen.add(lowerName);
+                acItems.push(cmd);
+                if (acItems.length >= 12) break;
+            }
+        }
+
+        if (acItems.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+
+        // If exact match is the only result, don't show
+        if (acItems.length === 1 && acItems[0].name.toLowerCase() === word) {
+            hideAutocomplete();
+            return;
+        }
+
+        acIndex = 0;
+        acVisible = true;
+        positionAutocomplete();
+        renderAutocomplete();
+    }
+
+    function positionAutocomplete() {
+        if (!autocompleteEl) return;
+        // Compute cursor position in the textarea
+        const pos = editorTextarea.selectionStart;
+        const text = editorTextarea.value.substring(0, pos);
+        const lines = text.split("\n");
+        const lineNum = lines.length;
+        const colNum = lines[lines.length - 1].length;
+
+        // Approximate pixel position (using font metrics)
+        const lineHeight = 20; // matches CSS line-height
+        const charWidth = 7.8; // approximate for JetBrains Mono 13px
+        const gutterWidth = 44; // line numbers width
+
+        const top = (lineNum * lineHeight) - editorTextarea.scrollTop + 2;
+        const left = (colNum * charWidth) + gutterWidth - editorTextarea.scrollLeft;
+
+        autocompleteEl.style.top = Math.max(0, top) + "px";
+        autocompleteEl.style.left = Math.max(0, Math.min(left, editorTextarea.clientWidth - 200)) + "px";
+    }
+
+    function renderAutocomplete() {
+        if (!autocompleteEl) return;
+        autocompleteEl.innerHTML = "";
+        autocompleteEl.hidden = false;
+
+        acItems.forEach((cmd, i) => {
+            const div = document.createElement("div");
+            div.className = "ide-ac-item" + (i === acIndex ? " ide-ac-item--active" : "");
+
+            const typeClass = cmd.type.toLowerCase().replace(/\s+/g, "-");
+
+            div.innerHTML =
+                `<span class="ide-ac-name">${escHtml(cmd.name)}</span>` +
+                `<span class="ide-ac-type ide-ac-type--${typeClass}">${escHtml(cmd.type)}</span>` +
+                (cmd.params ? `<span class="ide-ac-params">${escHtml(cmd.params)}</span>` : "") +
+                `<span class="ide-ac-desc">${escHtml(cmd.description)}</span>`;
+
+            div.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                acceptAutocomplete(cmd);
+            });
+
+            autocompleteEl.appendChild(div);
+        });
+
+        // Scroll active item into view
+        const activeEl = autocompleteEl.querySelector(".ide-ac-item--active");
+        if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+    }
+
+    function acceptAutocomplete(cmd) {
+        const { start, end } = getWordAtCursor();
+        const text = editorTextarea.value;
+        const insertName = cmd.name.toLowerCase();
+
+        editorTextarea.value = text.substring(0, start) + insertName + text.substring(end);
+        editorTextarea.selectionStart = editorTextarea.selectionEnd = start + insertName.length;
+        editorTextarea.focus();
+
+        hideAutocomplete();
+        syncEditorDisplay();
+        scheduleValidation();
+    }
+
+    function hideAutocomplete() {
+        acVisible = false;
+        acItems = [];
+        acIndex = -1;
+        if (autocompleteEl) autocompleteEl.hidden = true;
+    }
+
+    // ── Command Help (F1) ─────────────────────────────────────────────
+    async function triggerHelp() {
+        await fetchCommandDictionary();
+        if (!caosCommands || caosCommands.length === 0) return;
+
+        // Get the full word under the cursor (walk both directions)
+        const pos = editorTextarea.selectionStart;
+        const text = editorTextarea.value;
+        let start = pos;
+        let end = pos;
+        while (start > 0 && /[a-zA-Z0-9_:#]/.test(text[start - 1])) start--;
+        while (end < text.length && /[a-zA-Z0-9_:#]/.test(text[end])) end++;
+        const word = text.substring(start, end).toUpperCase();
+        if (!word) return;
+
+        // Find all entries matching this name (may be multiple types)
+        const matches = caosCommands.filter(c => c.name.toUpperCase() === word);
+        if (matches.length === 0) {
+            // Not a known command — show a brief "not found" note
+            showHelp({ name: word, type: "unknown", params: "", description: "No help available for '" + word + "'." }, start, text);
+            return;
+        }
+
+        // Merge multiple type entries into one help card:
+        // primary entry = the command table entry (preferred), fallback to first
+        const primary = matches.find(c => c.type === "command") || matches[0];
+        showHelp(primary, start, text, matches.length > 1 ? matches : null);
+    }
+
+    function showHelp(cmd, wordStart, text, allMatches) {
+        if (!helpPopupEl) return;
+
+        // Populate header
+        helpNameEl.textContent = cmd.name;
+        helpTypeEl.textContent = cmd.type;
+
+        // Build params list
+        helpParamsEl.innerHTML = "";
+        if (allMatches && allMatches.length > 1) {
+            // Show all type variants
+            for (const m of allMatches) {
+                const row = document.createElement("div");
+                row.className = "ide-help-param";
+                row.innerHTML =
+                    `<span class="ide-help-param-type">${escHtml(m.type)}</span>` +
+                    (m.params ? `<span class="ide-help-param-name">${escHtml(m.params)}</span>` : "");
+                helpParamsEl.appendChild(row);
+            }
+        } else if (cmd.params) {
+            // Parse space-separated param names — pair them with type chars from the format string
+            const paramNames = cmd.params.split(" ").filter(Boolean);
+            for (const pname of paramNames) {
+                const row = document.createElement("div");
+                row.className = "ide-help-param";
+                row.innerHTML =
+                    `<span class="ide-help-param-name">${escHtml(pname)}</span>`;
+                helpParamsEl.appendChild(row);
+            }
+        }
+
+        // Description — use the full description from the command
+        helpDescEl.textContent = cmd.description || "(no description)";
+
+        // Position the popup at the word location
+        const lines = text.substring(0, wordStart).split("\n");
+        const lineNum = lines.length;
+        const colNum = lines[lines.length - 1].length;
+        const lineHeight = 20;
+        const charWidth = 7.8;
+        const gutterWidth = 44;
+
+        let top = (lineNum * lineHeight) - editorTextarea.scrollTop - 2;
+        let left = (colNum * charWidth) + gutterWidth - editorTextarea.scrollLeft;
+
+        // Ensure popup stays within the editor area
+        const editorRect = editorTextarea.getBoundingClientRect();
+        const maxLeft = editorTextarea.clientWidth - 370;
+        left = Math.max(0, Math.min(left, maxLeft));
+
+        // If near the bottom, flip upward
+        const editorHeight = editorTextarea.clientHeight;
+        if (top + 180 > editorHeight) {
+            top = Math.max(0, top - 180);
+        }
+
+        helpPopupEl.style.top = top + "px";
+        helpPopupEl.style.left = left + "px";
+        helpPopupEl.hidden = false;
+        helpVisible = true;
+
+        // Close autocomplete if open
+        hideAutocomplete();
+    }
+
+    function hideHelp() {
+        helpVisible = false;
+        if (helpPopupEl) helpPopupEl.hidden = true;
+    }
+
+    if (helpCloseEl) {
+        helpCloseEl.addEventListener("click", hideHelp);
+    }
 
     // ── Run ───────────────────────────────────────────────────────────────
     btnRun.addEventListener("click", async () => {
@@ -447,12 +945,15 @@
         if (tab === "ide") {
             isActive = true;
             refreshScriptorium();
+            fetchCommandDictionary(); // pre-fetch for autocomplete and help
         }
     });
 
     DevToolsEvents.on("tab:deactivated", (tab) => {
         if (tab === "ide") {
             isActive = false;
+            hideAutocomplete();
+            hideHelp();
         }
     });
 })();

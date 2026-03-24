@@ -373,6 +373,10 @@
           <input id="ide-species" type="number" class="ide-classifier-input" placeholder="S" title="Species" min="0" value="0" />
           <input id="ide-event" type="number" class="ide-classifier-input" placeholder="E" title="Event" min="0" value="0" />
         </div>
+        <div id="ide-error-bar" hidden>
+          <span id="ide-error-msg"></span>
+          <button id="ide-error-dismiss" title="Dismiss">✕</button>
+        </div>
         <div id="ide-editor-wrap">
           <pre id="ide-line-numbers" aria-hidden="true">1
 </pre>
@@ -380,6 +384,16 @@
             <pre id="ide-highlight" aria-hidden="true"></pre>
             <textarea id="ide-editor" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="* Write CAOS code here…
 * Click Run to execute, or Inject to install in the scriptorium."></textarea>
+            <div id="ide-autocomplete" hidden></div>
+            <div id="ide-help-popup" hidden>
+              <div id="ide-help-header">
+                <span id="ide-help-name"></span>
+                <span id="ide-help-type"></span>
+                <button id="ide-help-close" title="Close (Escape)">✕</button>
+              </div>
+              <div id="ide-help-params"></div>
+              <div id="ide-help-desc"></div>
+            </div>
           </div>
         </div>
         <!-- Output panel -->

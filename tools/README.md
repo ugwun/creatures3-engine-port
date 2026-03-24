@@ -298,8 +298,14 @@ The sidebar lists all scripts currently installed in the engine's scriptorium �
 **Code Editor (Centre):**
 
 - **Syntax highlighting** — CAOS keywords, flow control (`doif`, `loop`, `scrp`, `endm`), commands (`setv`, `targ`, `mvto`), variables (`va00`–`va99`, `ov00`–`ov99`), strings, numbers, and comments are colour-coded using the shared `highlightCAOS()` tokenizer
-- **Line numbers** — displayed in a gutter on the left
-- **Tab insertion** — pressing Tab inserts 4 spaces
+- **Live syntax validation** — editor content is validated against the engine's compiler 500ms after typing stops. On error, a red error bar appears below the header showing the error message with line number, and the gutter highlights the offending line in red. Validation uses `POST /api/validate` which compiles without executing
+- **Auto-complete** — press **Ctrl+Space** to show a dropdown of matching CAOS commands at the cursor position, or just type 3+ characters for automatic suggestions. The dropdown shows the command name, type badge (command/integer/float/string/agent/variable), parameter signature, and a brief description. Navigate with ↑↓ arrows, accept with Enter/Tab, dismiss with Escape. The command dictionary is fetched once from `GET /api/caos-commands` and cached in memory
+- **Line numbers** — displayed in a gutter on the left; the error line is highlighted red when a syntax error is detected
+- **Smart indentation** — the editor behaves like a code editor:
+  - **Enter** continues at the same indent level. After a block-opening keyword (`doif`, `elif`, `else`, `enum`, `esee`, `etch`, `epas`, `econ`, `loop`, `reps`, `subr`) the next line is indented one level deeper (4 spaces)
+  - **Backspace** in leading whitespace snaps back to the previous tab stop (deletes to the nearest multiple of 4), not one character at a time
+  - **Tab** inserts 4 spaces; **Shift+Tab** removes up to 4 leading spaces (dedent)
+- **Command help (F1)** — press F1 with the cursor on any CAOS word to show a floating popup with the command name, type, parameter names, and full description. Dismiss with Escape or the ✕ button
 - **No external dependencies** — custom editor using a `<textarea>` overlaid with a syntax highlighting `<pre>`, no CodeMirror or Monaco
 
 **Classifier Header:**
@@ -329,6 +335,7 @@ Four numeric input fields (Family, Genus, Species, Event) above the editor. Thes
 - **Inject** requires the classifier fields to be set. If all four are zero, it shows an error
 - **Source availability** — scripts compiled without debug info (e.g. from binary-only worlds) may report "No source available" when loaded
 - **Script locking** — if a scriptorium script is currently being executed by an agent, Inject will fail with "script may be locked"
+- **Auto-complete positioning** — the dropdown uses approximate font metrics; on non-standard zoom levels the position may drift slightly
 
 ---
 
@@ -458,6 +465,55 @@ Get human-readable agent names for all classifiers in the scriptorium, resolved 
 Keys are `"family genus species"` strings. Only classifiers with matching catalogue entries are included.
 
 **Timeout:** 5 seconds.
+
+### `POST /api/validate`
+
+Compile CAOS code without executing it. Returns success or error details. Used by the IDE for live syntax error highlighting.
+
+**Request:** `Content-Type: application/json`
+```json
+{ "caos": "setv va00 42\noutv va00" }
+```
+
+**Response (ok):**
+```json
+{ "ok": true }
+```
+
+**Response (error):**
+```json
+{ "ok": false, "error": "Invalid command", "position": 24 }
+```
+
+The `position` field is the character offset within the source text (0-indexed), or -1 if unavailable. The IDE maps this to a line number for gutter highlighting.
+
+**Timeout:** 5 seconds. Uses `Orderiser::OrderFromCAOS()` and discards the compiled script.
+
+### `GET /api/caos-commands`
+
+Returns the full CAOS command dictionary for auto-complete. Built from `CAOSDescription::MakeGrandTable()`, sorted alphabetically, and cached after first call.
+
+**Response:**
+```json
+[
+  {
+    "name": "SETV",
+    "type": "command",
+    "params": "variable_name value",
+    "description": "Sets the given variable to the given value."
+  },
+  {
+    "name": "POSX",
+    "type": "integer",
+    "params": "",
+    "description": "Returns the X position of TARG."
+  }
+]
+```
+
+Each entry includes the command name, type (command/integer/float/string/agent/variable), parameter help names, and a one-line description (HTML-stripped, truncated to ~150 chars). Undocumented commands are excluded.
+
+**Timeout:** 5 seconds on first call; subsequent calls return from cache without hitting the main thread.
 
 ### `GET /api/agent/:id`
 

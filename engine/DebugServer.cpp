@@ -37,6 +37,7 @@
 #include "Caos/MacroScript.h"
 #include "Caos/Orderiser.h"
 #include "Caos/Scriptorium.h"
+#include "Caos/CAOSTables.h"
 #include "Classifier.h"
 #include "Creature/Creature.h"
 #include "Creature/Biochemistry/Biochemistry.h"
@@ -55,6 +56,7 @@
 #include "World.h"
 
 #include <arpa/inet.h>
+#include <algorithm>
 #include <cstring>
 #include <condition_variable>
 #include <fcntl.h>
@@ -649,6 +651,173 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		} else {
 			res.status = 504;
 			res.set_content("{}", "application/json");
+		}
+	});
+
+	// ── POST /api/validate ────────────────────────────────────────────
+	// Compile CAOS code without executing it. Returns success or error
+	// message + character position. Used for live syntax checking.
+	myImpl->svr.Post("/api/validate", [this](const httplib::Request& req, httplib::Response& res) {
+		// Parse body — same JSON extraction as /api/execute
+		std::string caos = req.body;
+		if (!caos.empty() && caos[0] == '{') {
+			size_t start = caos.find("\"caos\"");
+			if (start != std::string::npos) {
+				start = caos.find('"', start + 6);
+				if (start != std::string::npos) {
+					start++;
+					std::string val;
+					for (size_t i = start; i < caos.size(); ++i) {
+						if (caos[i] == '\\' && i + 1 < caos.size()) {
+							char next = caos[i + 1];
+							if (next == '"') { val += '"'; ++i; }
+							else if (next == '\\') { val += '\\'; ++i; }
+							else if (next == 'n') { val += '\n'; ++i; }
+							else if (next == 'r') { val += '\r'; ++i; }
+							else if (next == 't') { val += '\t'; ++i; }
+							else { val += caos[i]; }
+						} else if (caos[i] == '"') {
+							break;
+						} else {
+							val += caos[i];
+						}
+					}
+					caos = val;
+				}
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = [caos]() -> std::string {
+			try {
+				Orderiser o;
+				MacroScript* m = o.OrderFromCAOS(caos.c_str());
+				if (m) {
+					delete m;
+					return "{\"ok\":true}";
+				} else {
+					return "{\"ok\":false,\"error\":\"" + JsonEscape(o.GetLastError()) +
+						"\",\"position\":" + std::to_string(o.GetLastErrorPos()) + "}";
+				}
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) +
+					"\",\"position\":-1}";
+			} catch (...) {
+				return "{\"ok\":false,\"error\":\"Unknown error during validation\",\"position\":-1}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\",\"position\":-1}", "application/json");
+		}
+	});
+
+	// ── GET /api/caos-commands ─────────────────────────────────────────
+	// Returns the full CAOS command dictionary for auto-complete.
+	// Built from CAOSDescription::MakeGrandTable(). Cached on first call.
+	myImpl->svr.Get("/api/caos-commands", [this](const httplib::Request& req, httplib::Response& res) {
+		// Cache the response — command tables are static after engine init
+		static std::string cachedResponse;
+		static std::mutex cacheMutex;
+
+		{
+			std::lock_guard<std::mutex> lock(cacheMutex);
+			if (!cachedResponse.empty()) {
+				res.set_content(cachedResponse, "application/json");
+				return;
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "[";
+			bool first = true;
+
+			try {
+				std::vector<OpSpec> grandTable;
+				theCAOSDescription.MakeGrandTable(grandTable);
+				std::sort(grandTable.begin(), grandTable.end(), OpSpec::CompareAlphabetic);
+
+				std::string lastName;
+				for (auto& op : grandTable) {
+					const char* name = op.GetName();
+					if (!name || name[0] == '\0') continue;
+
+					// Skip undocumented commands
+					std::string helpGeneral = op.GetHelpGeneral();
+					if (helpGeneral == "X" || helpGeneral.empty()) continue;
+
+					std::string prettyName = op.GetPrettyName();
+
+					// Deduplicate — same name can appear in multiple tables
+					// (e.g. as both command and rvalue)
+					// We keep all entries since they have different types
+					std::string typeStr = op.GetPrettyCommandTableString();
+
+					// Strip HTML from help text for a clean one-line description
+					std::string desc;
+					for (size_t i = 0; i < helpGeneral.size(); ++i) {
+						char ch = helpGeneral[i];
+						if (ch == '<') {
+							while (i < helpGeneral.size() && helpGeneral[i] != '>') ++i;
+						} else if (ch == '@' || ch == '#') {
+							// skip CAOS doc markers
+						} else {
+							desc += ch;
+						}
+					}
+					// Trim to first sentence (up to first period followed by space, or 120 chars)
+					size_t dotPos = desc.find(". ");
+					if (dotPos != std::string::npos && dotPos < 150)
+						desc = desc.substr(0, dotPos + 1);
+					else if (desc.size() > 150)
+						desc = desc.substr(0, 147) + "...";
+
+					// Build parameter string from help parameters
+					std::string params = op.GetHelpParameters();
+
+					if (!first) json << ",";
+					first = false;
+
+					json << "{\"name\":\"" << JsonEscape(prettyName)
+						<< "\",\"type\":\"" << JsonEscape(typeStr)
+						<< "\",\"params\":\"" << JsonEscape(params)
+						<< "\",\"description\":\"" << JsonEscape(desc) << "\"}";
+				}
+			} catch (...) {
+				// If tables not loaded yet, return empty
+			}
+
+			json << "]";
+			return json.str();
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			std::string result = future.get();
+			{
+				std::lock_guard<std::mutex> lock(cacheMutex);
+				cachedResponse = result;
+			}
+			res.set_content(result, "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("[]", "application/json");
 		}
 	});
 
