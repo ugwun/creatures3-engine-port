@@ -353,10 +353,61 @@ bool GetMissingDirsInDirectory(
 }
 
 bool CopyDirectory(std::string const &source, std::string const &destination) {
+  // Create destination directory
+  mkdir(destination.c_str(), 0755);
+
+  DIR *dir = opendir(source.c_str());
+  if (!dir)
+    return false;
+
+  struct dirent *ent;
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+      continue;
+
+    std::string srcPath = source + "/" + ent->d_name;
+    std::string dstPath = destination + "/" + ent->d_name;
+
+    struct stat st;
+    if (stat(srcPath.c_str(), &st) != 0)
+      continue;
+
+    if (S_ISDIR(st.st_mode)) {
+      CopyDirectory(srcPath, dstPath);
+    } else {
+      CopyFile(srcPath.c_str(), dstPath.c_str(), false);
+    }
+  }
+  closedir(dir);
   return true;
 }
 
-bool DeleteDirectory(std::string directory) { return true; }
+bool DeleteDirectory(std::string directory) {
+  DIR *dir = opendir(directory.c_str());
+  if (!dir)
+    return false;
+
+  struct dirent *ent;
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+      continue;
+
+    std::string path = directory + "/" + ent->d_name;
+
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0)
+      continue;
+
+    if (S_ISDIR(st.st_mode)) {
+      DeleteDirectory(path);
+    } else {
+      unlink(path.c_str());
+    }
+  }
+  closedir(dir);
+  rmdir(directory.c_str());
+  return true;
+}
 #endif //_WIN32
 
 std::string GenerateUniqueIdentifier(std::string extraFood1,
