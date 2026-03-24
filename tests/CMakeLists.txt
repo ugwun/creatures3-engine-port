@@ -350,3 +350,18 @@ target_include_directories(test_MNGFormat PRIVATE
 )
 target_link_libraries(test_MNGFormat PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_MNGFormat)
+
+# ---------------------------------------------------------------------------
+# test_GetFilesInDirectory — fnmatch-based glob matching for file listing
+# ---------------------------------------------------------------------------
+add_executable(test_GetFilesInDirectory
+  test_GetFilesInDirectory.cpp
+  stub_General.cpp
+)
+target_include_directories(test_GetFilesInDirectory PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_GetFilesInDirectory PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_GetFilesInDirectory)

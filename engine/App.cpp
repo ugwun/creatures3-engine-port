@@ -947,6 +947,7 @@ bool App::InitLocalisation() {
         // → AHE0009 crash.
         static const char *allowedFiles[] = {
             "Patch.catalogue",
+            "Scrolls of Learning.catalogue",
         };
         for (size_t af = 0; af < sizeof(allowedFiles) / sizeof(allowedFiles[0]);
              ++af) {

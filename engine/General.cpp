@@ -290,6 +290,7 @@ bool DeleteDirectory(std::string directory) {
 #include <algorithm>
 #include <cstring>
 #include <dirent.h>
+#include <fnmatch.h>
 #include <sys/stat.h>
 
 bool GetFilesInDirectory(const std::string &path,
@@ -301,19 +302,12 @@ bool GetFilesInDirectory(const std::string &path,
     while ((ent = readdir(dir)) != NULL) {
       if (ent->d_type == DT_REG || ent->d_type == DT_UNKNOWN ||
           ent->d_type == DT_LNK) {
-        // Simple extension check if wildcard starts with *.
-        if (wildcard.size() > 2 && wildcard.substr(0, 2) == "*.") {
-          std::string ext = wildcard.substr(1);
-          std::string filename = ent->d_name;
-          if (filename.size() >= ext.size() &&
-              filename.substr(filename.size() - ext.size()) == ext) {
-            files.push_back(filename);
-          }
-        } else if (wildcard == "*") {
+        if (wildcard == "*") {
           files.push_back(ent->d_name);
-        } else if (wildcard.find('*') == std::string::npos) {
-          // Exact filename match (no wildcard characters)
-          if (std::string(ent->d_name) == wildcard) {
+        } else {
+          // Use fnmatch for glob matching (handles *.ext, e*.gen, etc.)
+          // FNM_CASEFOLD for case-insensitive matching like Windows FindFirstFile
+          if (fnmatch(wildcard.c_str(), ent->d_name, FNM_CASEFOLD) == 0) {
             files.push_back(ent->d_name);
           }
         }

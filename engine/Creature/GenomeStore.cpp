@@ -91,6 +91,18 @@ bool GenomeStore::LoadEngineeredFile(int index,
     GetFilesInDirectory(worldDir, files, engineeredFilename + ".gen");
   }
 
+#ifndef _WIN32
+  // Also search auxiliary (C3) genetics directory — C3 agents like the
+  // Grendel/Ettin egg-laying machines reference genetics files (e.g. "g*.gen",
+  // "e*.gen") that only exist in the Creatures 3 game data.
+  if (files.size() == 0) {
+    const char *auxDir = theApp.GetAuxiliaryDirectory(GENETICS_DIR);
+    if (auxDir) {
+      GetFilesInDirectory(auxDir, files, engineeredFilename + ".gen");
+    }
+  }
+#endif
+
   if (files.size() == 0)
     return false;
 

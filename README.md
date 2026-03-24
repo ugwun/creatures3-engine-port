@@ -178,7 +178,7 @@ For setup instructions and full tool reference, see [`mcp/README.md`](./mcp/READ
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **396 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **409 tests**.
 
 ### Running the tests
 
@@ -215,6 +215,7 @@ cd build && ctest --output-on-failure
 | `test_StringIntGroup` | PRAY chunk binary tag parsing (int/string maps, round-trip) |
 | `test_UITextFormatting` | DS-specific inline `<tint>` text formatting tag stripping |
 | `test_MNGFormat` | MNG music file parsing and WAV voice reconstruction |
+| `test_GetFilesInDirectory` | Filesystem glob matching (`fnmatch`): extension, prefix, exact, case-insensitive |
 
 ### Writing a new test
 
@@ -321,26 +322,7 @@ For details on the technical changes made during the porting process, see [READM
 
 ### Engine Monitor
 
-- [ ] When an ettin egg in the Desert Terrarium is about to be laid, an error occurs
-```
-ERR
-Agent runtime error:
-422482.16s
-ERR
-Runtime error in agent 1 1 101 script 1 1 101 9 unique id 311 Gene file not found or attempt to load into invalid slotinst setv va00 0 enum 4 3 0 doif dead = 0 addv va00 1 endi next addv va00 totl 3 4 3 slow doif va00 lt 2 gsub egg_ endi subr egg_ sndc "egg1" anim [0 1 2 3 4 5] over inst setv va00 posl setv va01 post addv va00 46 addv va01 65 new: simp 3 4 3 "greneggmask" 7 8 10 elas 10 fric 100 attr 195 bhvr 32 aero 10 accg 4 perm 60 {@}gene load targ 1 "e*" setv ov01 2 mvto va00 va01 tick 60 targ ownr pose 0 retn Mon Mar 16 15:15:00 2026 - root - 1.154
-422482.16s
-ERR
-Action: Stop Script
-```
-
-- [ ] Runtime error in agent 1 1 99 script 1 1 99 9
-```
-Runtime error in agent 1 1 99 script 1 1 99 9 unique id 24801 Gene file not found or attempt to load into invalid slotdoif ov99 lt 8 inst setv va99 0 enum 4 1 0 doif gmap posx posy ne 0 and gmap posx posy ne 7 setv va99 1 endi next addv ov99 1 doif va99 ne 1 stop endi endi inst setv va00 0 enum 4 2 0 doif dead = 0 addv va00 1 endi next addv va00 totl 3 4 2 slow doif va00 lt 2 gsub egg_ endi subr egg_sndc "egg1" inst setv va00 posl setv va01 post subv va00 10 addv va01 10 new: simp 3 4 2 "greneggmask" 7 1 10 elas 10 fric 100 attr 195 bhvr 32 aero 10 accg 4 perm 60 {@}gene load targ 1 "g*" setv ov01 1 mvto va00 va01 velo -10 -5 tick 600 retn Sun Mar 8 10:10:08 2026 - root - 1.154
-```
-- [ ] Runtime error in agent 1 1 101 script 1 1 101 9
-```
-Runtime error in agent 1 1 101 script 1 1 101 9 unique id 24802 Gene file not found or attempt to load into invalid slotinst setv va00 0 enum 4 3 0 doif dead = 0 addv va00 1 endi next addv va00 totl 3 4 3 slow doif va00 lt 2 gsub egg_ endi subr egg_ sndc "egg1" anim [0 1 2 3 4 5] over inst setv va00 posl setv va01 post addv va00 46 addv va01 65 new: simp 3 4 3 "greneggmask" 7 8 10 elas 10 fric 100 attr 195 bhvr 32 aero 10 accg 4 perm 60 {@}gene load targ 1 "e*" setv ov01 2 mvto va00 va01 tick 60 targ ownr pose 0 retn Sun Mar 8 10:10:08 2026 - root - 1.154
-```
+- [x] ~~Gene file not found errors when Ettin/Grendel egg-laying machines try to create eggs (`gene load targ 1 "e*"` / `"g*"`).~~ Fixed: `GetFilesInDirectory` on macOS now uses `fnmatch()` for proper glob matching (previously only handled `*.ext`), and `GenomeStore::LoadEngineeredFile` now searches the C3 auxiliary Genetics directory as a fallback.
 - [ ] Runtime error in agent 2 21 18 script 2 21 18 9
 ```
 Runtime error in agent 2 21 18 script 2 21 18 9 unique id 26325 Incompatible type: agent expectedlock doif carr = null and fall = 0 gsub mycommedia gsub creaturecheck doif ov00 = 0 gsub moveit endi endi subr mycommedia rtar 2 23 8 {@}seta va99 name "MyCommedia" targ ownr doif targ <> va99 setv va00 0 loop addv va00 8 part -1 alph va00 1 untl va00 >= 256 kill ownr endi retn subr creaturecheck rnge 300 inst esee 4 0 0 setv va00 1 next targ ownr doif va00 = 1 and ov00 = 0 and carr = null and fall = 0 gsub inspiration elif va00 = 0 and ov00 = 1 and carr = null and fall = 0 gsub bethyself endi retn subr moveit setv va00 rand 1 3 doif va00 = 1 doif ov40 = 1 setv ov40 0 fric 100 elif ov40 = 0 setv ov40 1 fric 40 endi endi doif ov40 = 1 doif obst left < 50 addv ov71 1 endi doif obst rght < 50 subv ov71 1 endi doif ov71 <= -10 setv ov10 -1 setv ov71 0 endi doif ov71 >= 10 setv ov10 1 setv ov71 0 endi doif ov10 = -1 setv velx rand -7 -14 elif ov10 = 1 se�
