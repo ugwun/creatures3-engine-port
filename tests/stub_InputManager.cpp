@@ -10,6 +10,7 @@
 // here uses TranslatedCharTarget.
 
 #include "engine/InputManager.h"
+#include <cstring>
 
 // Static constants
 const int InputManager::ourRecentPositions = 3;
@@ -20,6 +21,7 @@ InputManager::InputManager()
       myTranslatedCharTarget(nullptr) {
   myRecentMouseX.resize(ourRecentPositions, 0);
   myRecentMouseY.resize(ourRecentPositions, 0);
+  memset(myKeyStates, 0, sizeof(myKeyStates));
 }
 
 int InputManager::GetEventCount() { return (int)myEventBuffer.size(); }
@@ -40,6 +42,8 @@ void InputManager::SysAddKeyDownEvent(int keycode) {
   ev.KeyData.keycode = keycode;
   myEventBuffer.push_back(ev);
   myEventPendingMask |= InputEvent::eventKeyDown;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = true;
 }
 
 void InputManager::SysAddKeyUpEvent(int keycode) {
@@ -48,6 +52,8 @@ void InputManager::SysAddKeyUpEvent(int keycode) {
   ev.KeyData.keycode = keycode;
   myEventBuffer.push_back(ev);
   myEventPendingMask |= InputEvent::eventKeyUp;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = false;
 }
 
 void InputManager::SysAddTranslatedCharEvent(int keycode) {
@@ -103,8 +109,11 @@ void InputManager::SysAddMouseWheelEvent(int mx, int my, int delta) {
   myEventPendingMask |= InputEvent::eventMouseWheel;
 }
 
-// On non-Win32 IsKeyDown always returns false — no async keyboard polling.
-bool InputManager::IsKeyDown(int /*keycode*/) { return false; }
+bool InputManager::IsKeyDown(int keycode) {
+  if (keycode >= 0 && keycode < 256)
+    return myKeyStates[keycode];
+  return false;
+}
 
 void InputManager::SetMousePosition(int newX, int newY) {
   myMouseX = newX;

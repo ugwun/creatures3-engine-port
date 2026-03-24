@@ -365,3 +365,18 @@ target_include_directories(test_GetFilesInDirectory PRIVATE
 )
 target_link_libraries(test_GetFilesInDirectory PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_GetFilesInDirectory)
+
+# ---------------------------------------------------------------------------
+# test_InputManager — key state tracking for IsKeyDown() polling
+# ---------------------------------------------------------------------------
+add_executable(test_InputManager
+  test_InputManager.cpp
+  stub_InputManager.cpp
+)
+target_include_directories(test_InputManager PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_InputManager PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_InputManager)

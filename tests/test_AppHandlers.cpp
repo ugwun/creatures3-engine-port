@@ -203,13 +203,12 @@ TEST(AppHandlerLogicTest, GetMouseVX_AfterMove_NonZero) {
 // (no async keyboard polling). The logic layer faithfully forwards this.
 // ==========================================================================
 
-TEST(AppHandlerLogicTest, IsKeyDown_OnMacOS_AlwaysFalse) {
+TEST(AppHandlerLogicTest, IsKeyDown_ReflectsKeyState) {
   FakeApp app;
-  // Key 65 = 'A'. Even if we fire a key-down event into the buffer,
-  // IsKeyDown() reads from Win32 GetAsyncKeyState, which is not available on
-  // macOS — so it always returns 0.
+  // Key 65 = 'A'. With the new KeyStates array in InputManager,
+  // SysAddKeyDownEvent sets the state to true, so IsKeyDown returns 1.
   app.GetInputManager().SysAddKeyDownEvent(65);
-  EXPECT_EQ(GeneralHandlers::IsKeyDown(app, 65), 0);
+  EXPECT_EQ(GeneralHandlers::IsKeyDown(app, 65), 1);
 }
 
 TEST(AppHandlerLogicTest, IsKeyDown_UnpressedKey_ReturnsFalse) {
