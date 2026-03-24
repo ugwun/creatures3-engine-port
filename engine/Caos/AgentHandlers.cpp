@@ -22,11 +22,7 @@
 #endif
 
 #include <string>
-#ifndef C2E_OLD_CPP_LIB
 #include <sstream>
-#endif
-
-#include <strstream>
 
 #include "../AgentManager.h"
 #include "../Agents/Agent.h"
@@ -1316,7 +1312,6 @@ AgentHandle AgentHandlers::AgentRV_TWIN(CAOSMachine &vm) {
   // disconnect all links to other agents
   original.GetAgentReference().BreakLinksToOtherAgents();
 
-#ifndef C2E_OLD_CPP_LIB
   // serialise an agent to memory, and back in again
   std::stringstream memory_out;
   {
@@ -1326,10 +1321,8 @@ AgentHandle AgentHandlers::AgentRV_TWIN(CAOSMachine &vm) {
   }
 
   std::string serialised_agent = memory_out.str();
-  const char *data = serialised_agent.data();
-  int data_size = memory_out.tellp();
 
-  std::strstream memory_in(const_cast<char *>(data), data_size);
+  std::stringstream memory_in(serialised_agent);
   AgentHandle clone;
   {
     CreaturesArchive archive(memory_in, CreaturesArchive::Mode::Load);
@@ -1337,14 +1330,6 @@ AgentHandle AgentHandlers::AgentRV_TWIN(CAOSMachine &vm) {
     archive.SetCloningACreature(true);
     archive >> clone;
   }
-#else
-  // TODO: maybe just serialise out to a temp file?
-
-#warning "fix me!"
-  ASSERT(false);
-
-  AgentHandle clone;
-#endif
 
   // clone genome store (duplicating the *.gen files referenced by the agent)
   clone.GetAgentReference().GetGenomeStore().ClonedEntirely();
