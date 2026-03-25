@@ -38,6 +38,8 @@ public:
 
 	int MapAddressToSource( int address );
 
+	const std::map< int, int >& GetAddressMap() const { return myAddressMap; }
+
 	void GetSourceCode( std::string& str );
 
 	// serialization stuff

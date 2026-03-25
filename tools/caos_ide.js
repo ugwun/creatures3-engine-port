@@ -87,6 +87,12 @@
     const helpDescEl = document.getElementById("ide-help-desc");
     const helpCloseEl = document.getElementById("ide-help-close");
 
+    // Breakpoint panel DOM refs
+    const bpPanel = document.getElementById("ide-bp-panel");
+    const bpListEl = document.getElementById("ide-bp-list");
+    const bpCountEl = document.getElementById("ide-bp-count");
+    const bpClearAllBtn = document.getElementById("ide-bp-clear-all");
+
     // ── State ─────────────────────────────────────────────────────────────
     let scriptoriumData = [];    // Array of { family, genus, species, event }
     let agentNames = {};         // Map of "F G S" → agent name from catalogue
@@ -107,6 +113,14 @@
 
     // Help state
     let helpVisible = false;
+
+    // Breakpoint state
+    let ideBreakpoints = new Set();     // Set of 0-based line indices with breakpoints
+    let addressMap = new Map();         // IP (int) → source char position (int)
+    let lineToIp = new Map();           // line index (0-based) → first bytecode IP
+    let bpAgentBindings = new Map();    // line index → Set of agent IDs bound
+    let bpSourceHash = "";             // Hash of source when address map was fetched
+    let bpAgentPollTimer = null;        // Timer for polling agent list
 
     // ── Scriptorium browser ───────────────────────────────────────────────
     async function refreshScriptorium() {
@@ -240,12 +254,18 @@
         const text = editorTextarea.value;
         const lines = text.split("\n");
 
-        // Line numbers — with error line highlighting
+        // Line numbers — with error line highlighting + breakpoint markers
         editorLineNums.innerHTML = "";
         for (let i = 1; i <= lines.length; i++) {
             const span = document.createElement("span");
             span.textContent = i;
-            if (i === errorLine) span.className = "ide-line-error";
+            const lineIdx = i - 1;
+            if (i === errorLine) span.classList.add("ide-line-error");
+            if (ideBreakpoints.has(lineIdx)) span.classList.add("ide-line-bp");
+
+            // Click to toggle breakpoint
+            span.addEventListener("click", () => toggleBreakpointAtLine(lineIdx));
+
             editorLineNums.appendChild(span);
             editorLineNums.appendChild(document.createTextNode("\n"));
         }
@@ -260,11 +280,15 @@
         editorHighlight.innerHTML = highlightHtml;
     }
 
-    // Sync on any input — also trigger debounced validation
+    // Sync on any input — also trigger debounced validation + clear breakpoints
     editorTextarea.addEventListener("input", () => {
         syncEditorDisplay();
         scheduleValidation();
         scheduleAutocomplete();
+        // Clear breakpoints when source changes (address map is invalidated)
+        if (ideBreakpoints.size > 0) {
+            clearAllBreakpoints();
+        }
     });
 
     // Sync scroll
@@ -940,6 +964,308 @@
         });
     }
 
+    // ── Breakpoints ──────────────────────────────────────────────────────
+
+    // Fetch the address map and build line-to-instruction mappings
+    // We use the compile-map to determine which lines have instructions,
+    // but breakpoints are set using SOURCE CHARACTER OFFSETS (matching the Debugger).
+    async function fetchAddressMap() {
+        const code = editorTextarea.value;
+        if (!code.trim()) return false;
+
+        const hash = simpleHash(code);
+        if (hash === bpSourceHash && addressMap.size > 0) return true; // cached
+
+        try {
+            const resp = await fetch("/api/compile-map", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caos: code })
+            });
+            const data = await resp.json();
+            if (!data.ok) return false;
+
+            // Build addressMap: bytecoded IP → source char position
+            addressMap = new Map();
+            for (const [ipStr, srcPos] of Object.entries(data.map)) {
+                addressMap.set(parseInt(ipStr, 10), srcPos);
+            }
+
+            // Compute line character offsets from the editor text
+            const lines = code.split("\n");
+            const lineCharOffsets = [];
+            let offset = 0;
+            for (const line of lines) {
+                lineCharOffsets.push(offset);
+                offset += line.length + 1;
+            }
+
+            // Build lineToIp: line index → { charOffset, bytecodeIp }
+            // For each address map entry, find which source line it maps to
+            lineToIp = new Map();
+            for (const [ip, srcPos] of addressMap) {
+                let lineIdx = 0;
+                for (let i = 0; i < lineCharOffsets.length; i++) {
+                    if (lineCharOffsets[i] <= srcPos) lineIdx = i;
+                    else break;
+                }
+
+                // Store the first (lowest) IP for each line, with the line's char offset
+                if (!lineToIp.has(lineIdx) || ip < (lineToIp.get(lineIdx).bytecodeIp || Infinity)) {
+                    lineToIp.set(lineIdx, {
+                        charOffset: lineCharOffsets[lineIdx],
+                        bytecodeIp: ip,
+                    });
+                }
+            }
+
+            bpSourceHash = hash;
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return String(hash);
+    }
+
+    // Toggle a breakpoint at the given line index (0-based)
+    async function toggleBreakpointAtLine(lineIdx) {
+        // Ensure we have the address map
+        const ok = await fetchAddressMap();
+        if (!ok) {
+            appendOutput("error", "Cannot set breakpoint \u2014 code has errors.");
+            return;
+        }
+
+        if (ideBreakpoints.has(lineIdx)) {
+            // Remove breakpoint
+            ideBreakpoints.delete(lineIdx);
+            // Clear from all bound agents
+            const boundAgents = bpAgentBindings.get(lineIdx);
+            if (boundAgents) {
+                const info = lineToIp.get(lineIdx);
+                if (info) {
+                    for (const agentId of boundAgents) {
+                        sendBreakpointToAgent(agentId, info.charOffset, "clear");
+                    }
+                }
+                bpAgentBindings.delete(lineIdx);
+            }
+        } else {
+            // Set breakpoint
+            if (!lineToIp.has(lineIdx)) {
+                // No bytecode instruction on this line
+                appendOutput("info", `No instruction on line ${lineIdx + 1} \u2014 breakpoint skipped.`);
+                return;
+            }
+            ideBreakpoints.add(lineIdx);
+            bpAgentBindings.set(lineIdx, new Set());
+        }
+
+        syncEditorDisplay();
+        await renderBreakpointPanel();
+    }
+
+    // Find all agents currently running a script matching the current classifier
+    async function discoverAgentsForClassifier() {
+        const f = parseInt(classifierInputs.family.value) || 0;
+        const g = parseInt(classifierInputs.genus.value) || 0;
+        const s = parseInt(classifierInputs.species.value) || 0;
+        const ev = parseInt(classifierInputs.event.value) || 0;
+
+        if (f === 0 && g === 0 && s === 0 && ev === 0) return [];
+
+        try {
+            const resp = await fetch("/api/scripts");
+            const scripts = await resp.json();
+
+            return scripts.filter(a =>
+                a.family === f && a.genus === g && a.species === s && a.event === ev
+            ).map(a => ({
+                id: a.agentId,
+                state: a.state,
+                gallery: a.gallery || ""
+            }));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Send a breakpoint set/clear to a specific agent
+    async function sendBreakpointToAgent(agentId, ip, action) {
+        try {
+            await fetch("/api/breakpoint", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agentId, ip, action })
+            });
+        } catch (_) {
+            // Silently fail — agent may have been destroyed
+        }
+    }
+
+    // Toggle a breakpoint binding for a specific agent
+    async function toggleAgentBinding(lineIdx, agentId) {
+        const info = lineToIp.get(lineIdx);
+        if (!info) return;
+
+        let bindings = bpAgentBindings.get(lineIdx);
+        if (!bindings) {
+            bindings = new Set();
+            bpAgentBindings.set(lineIdx, bindings);
+        }
+
+        if (bindings.has(agentId)) {
+            // Remove binding
+            bindings.delete(agentId);
+            await sendBreakpointToAgent(agentId, info.charOffset, "clear");
+        } else {
+            // Add binding
+            bindings.add(agentId);
+            await sendBreakpointToAgent(agentId, info.charOffset, "set");
+        }
+
+        await renderBreakpointPanel();
+    }
+
+    // Render the breakpoint panel
+    async function renderBreakpointPanel() {
+        if (!bpPanel || !bpListEl) return;
+
+        if (ideBreakpoints.size === 0) {
+            bpPanel.hidden = true;
+            stopBpAgentPoll();
+            return;
+        }
+
+        bpPanel.hidden = false;
+        startBpAgentPoll();
+
+        // Discover agents for current classifier
+        const agents = await discoverAgentsForClassifier();
+
+        if (bpCountEl) {
+            const agentCount = new Set();
+            for (const bindings of bpAgentBindings.values()) {
+                for (const id of bindings) agentCount.add(id);
+            }
+            const boundCount = agentCount.size;
+            bpCountEl.textContent = `${ideBreakpoints.size} bp` +
+                (agents.length > 0 ? ` · ${boundCount}/${agents.length} agents` : "");
+        }
+
+        // Build breakpoint list
+        bpListEl.innerHTML = "";
+        const sortedLines = [...ideBreakpoints].sort((a, b) => a - b);
+
+        for (const lineIdx of sortedLines) {
+            const info = lineToIp.get(lineIdx);
+            const bindings = bpAgentBindings.get(lineIdx) || new Set();
+
+            const row = document.createElement("div");
+            row.className = "ide-bp-item";
+
+            // Red dot
+            const dot = document.createElement("span");
+            dot.className = "ide-bp-dot";
+            row.appendChild(dot);
+
+            // Line number
+            const lineEl = document.createElement("span");
+            lineEl.className = "ide-bp-line";
+            lineEl.textContent = `Line ${lineIdx + 1}`;
+            row.appendChild(lineEl);
+
+            // IP
+            const ipEl = document.createElement("span");
+            ipEl.className = "ide-bp-ip";
+            ipEl.textContent = info ? `IP ${info.bytecodeIp}` : "\u2014";
+            row.appendChild(ipEl);
+
+            // Agent tags
+            const agentsEl = document.createElement("span");
+            agentsEl.className = "ide-bp-agents";
+
+            if (agents.length === 0) {
+                const noAgents = document.createElement("span");
+                noAgents.className = "ide-bp-no-agents";
+                noAgents.textContent = "no agents running";
+                agentsEl.appendChild(noAgents);
+            } else {
+                for (const agent of agents) {
+                    const tag = document.createElement("span");
+                    const isOn = bindings.has(agent.id);
+                    tag.className = `ide-bp-agent-tag ${isOn ? "ide-bp-agent-tag--on" : "ide-bp-agent-tag--off"}`;
+                    tag.textContent = `#${agent.id}`;
+                    tag.title = `${isOn ? "Remove from" : "Apply to"} agent #${agent.id}${agent.gallery ? " (" + agent.gallery + ")" : ""}`;
+                    tag.addEventListener("click", () => toggleAgentBinding(lineIdx, agent.id));
+                    agentsEl.appendChild(tag);
+                }
+            }
+            row.appendChild(agentsEl);
+
+            // Remove button
+            const removeBtn = document.createElement("button");
+            removeBtn.className = "ide-bp-remove";
+            removeBtn.textContent = "×";
+            removeBtn.title = "Remove breakpoint";
+            removeBtn.addEventListener("click", () => {
+                toggleBreakpointAtLine(lineIdx);
+            });
+            row.appendChild(removeBtn);
+
+            bpListEl.appendChild(row);
+        }
+    }
+
+    // Clear all breakpoints
+    async function clearAllBreakpoints() {
+        // Clear from all bound agents
+        for (const [lineIdx, bindings] of bpAgentBindings) {
+            const info = lineToIp.get(lineIdx);
+            if (info) {
+                for (const agentId of bindings) {
+                    sendBreakpointToAgent(agentId, info.charOffset, "clear");
+                }
+            }
+        }
+
+        ideBreakpoints.clear();
+        bpAgentBindings.clear();
+        syncEditorDisplay();
+        if (bpPanel) bpPanel.hidden = true;
+        stopBpAgentPoll();
+    }
+
+    // Poll agent list while breakpoints are active
+    function startBpAgentPoll() {
+        if (bpAgentPollTimer) return;
+        bpAgentPollTimer = setInterval(() => {
+            if (ideBreakpoints.size > 0 && isActive) {
+                renderBreakpointPanel();
+            }
+        }, 3000);
+    }
+
+    function stopBpAgentPoll() {
+        if (bpAgentPollTimer) {
+            clearInterval(bpAgentPollTimer);
+            bpAgentPollTimer = null;
+        }
+    }
+
+    // Clear All button handler
+    if (bpClearAllBtn) {
+        bpClearAllBtn.addEventListener("click", clearAllBreakpoints);
+    }
+
     // ── Tab lifecycle ─────────────────────────────────────────────────────
     DevToolsEvents.on("tab:activated", (tab) => {
         if (tab === "ide") {
@@ -954,6 +1280,7 @@
             isActive = false;
             hideAutocomplete();
             hideHelp();
+            stopBpAgentPoll();
         }
     });
 })();

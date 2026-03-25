@@ -721,6 +721,89 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── POST /api/compile-map ─────────────────────────────────────────
+	// Compile CAOS code and return the address→source position map.
+	// Used by the IDE to map source line numbers to bytecode IPs for breakpoints.
+	// Body: { "caos": "..." }
+	// Returns: { "ok": true, "map": { "0": 0, "5": 12, ... } } or error
+	myImpl->svr.Post("/api/compile-map", [this](const httplib::Request& req, httplib::Response& res) {
+		// Parse body — same JSON extraction as /api/validate
+		std::string caos = req.body;
+		if (!caos.empty() && caos[0] == '{') {
+			size_t start = caos.find("\"caos\"");
+			if (start != std::string::npos) {
+				start = caos.find('"', start + 6);
+				if (start != std::string::npos) {
+					start++;
+					std::string val;
+					for (size_t i = start; i < caos.size(); ++i) {
+						if (caos[i] == '\\' && i + 1 < caos.size()) {
+							char next = caos[i + 1];
+							if (next == '"') { val += '"'; ++i; }
+							else if (next == '\\') { val += '\\'; ++i; }
+							else if (next == 'n') { val += '\n'; ++i; }
+							else if (next == 'r') { val += '\r'; ++i; }
+							else if (next == 't') { val += '\t'; ++i; }
+							else { val += caos[i]; }
+						} else if (caos[i] == '"') {
+							break;
+						} else {
+							val += caos[i];
+						}
+					}
+					caos = val;
+				}
+			}
+		}
+
+		auto* item = new WorkItem();
+		item->work = [caos]() -> std::string {
+			try {
+				Orderiser o;
+				MacroScript* m = o.OrderFromCAOS(caos.c_str());
+				if (!m) {
+					return "{\"ok\":false,\"error\":\"" + JsonEscape(o.GetLastError()) + "\"}";
+				}
+
+				// Extract the address map from the compiled script's debug info
+				DebugInfo* di = m->GetDebugInfo();
+				std::ostringstream json;
+				json << "{\"ok\":true,\"map\":{";
+
+				if (di) {
+					const std::map<int, int>& addrMap = di->GetAddressMap();
+					bool first = true;
+					for (auto& pair : addrMap) {
+						if (!first) json << ",";
+						first = false;
+						json << "\"" << pair.first << "\":" << pair.second;
+					}
+				}
+
+				json << "}}";
+				delete m;
+				return json.str();
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			} catch (...) {
+				return "{\"ok\":false,\"error\":\"Unknown error during compilation\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
 	// ── GET /api/caos-commands ─────────────────────────────────────────
 	// Returns the full CAOS command dictionary for auto-complete.
 	// Built from CAOSDescription::MakeGrandTable(). Cached on first call.

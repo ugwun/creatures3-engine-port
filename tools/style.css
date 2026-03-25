@@ -2835,3 +2835,199 @@ body.compact .log-row {
   font-family: var(--font-ui);
   white-space: pre-wrap;
 }
+
+/* ── IDE Breakpoints ───────────────────────────────────────────────── */
+
+/* Make line numbers clickable for breakpoints */
+#ide-line-numbers span {
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding-right: 4px;
+  transition: color 0.1s;
+}
+
+#ide-line-numbers span:hover {
+  color: var(--orange);
+}
+
+/* Breakpoint marker: red dot before the line number */
+#ide-line-numbers span.ide-line-bp {
+  color: var(--cat-error) !important;
+  font-weight: 700;
+}
+
+#ide-line-numbers span.ide-line-bp::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  background: var(--cat-error);
+}
+
+/* Breakpoint panel */
+#ide-bp-panel {
+  background: var(--near-black);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0;
+  flex-shrink: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+#ide-bp-panel[hidden] {
+  display: none !important;
+}
+
+.ide-bp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ide-bp-title {
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+#ide-bp-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.ide-bp-clear {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.ide-bp-clear:hover {
+  border-color: var(--cat-error);
+  color: var(--cat-error);
+  background: rgba(221, 0, 0, 0.08);
+}
+
+/* Individual breakpoint row */
+.ide-bp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ide-bp-item:last-child {
+  border-bottom: none;
+}
+
+.ide-bp-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--cat-error);
+  flex-shrink: 0;
+}
+
+.ide-bp-line {
+  color: var(--white);
+  font-weight: 600;
+  min-width: 55px;
+}
+
+.ide-bp-ip {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  min-width: 45px;
+}
+
+.ide-bp-agents {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.ide-bp-agent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+}
+
+.ide-bp-agent-tag--off {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.ide-bp-agent-tag--on {
+  background: rgba(255, 95, 0, 0.12);
+  border: 1px solid rgba(255, 95, 0, 0.3);
+  color: var(--orange);
+}
+
+.ide-bp-agent-tag:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.ide-bp-no-agents {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+}
+
+.ide-bp-remove {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: auto;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.ide-bp-remove:hover {
+  border-color: var(--cat-error);
+  color: var(--cat-error);
+  background: rgba(221, 0, 0, 0.1);
+}
