@@ -454,18 +454,29 @@ void HandleEvent(const SDL_Event &event) {
                           InputEvent::mbRight};
 
   switch (event.type) {
-  case SDL_MOUSEMOTION:
-    theApp.GetInputManager().SysAddMouseMoveEvent(event.motion.x,
-                                                  event.motion.y);
+  case SDL_MOUSEMOTION: {
+    int gx, gy;
+    DisplayEngine::theRenderer().ScreenToGameCoords(
+        event.motion.x, event.motion.y, gx, gy);
+    theApp.GetInputManager().SysAddMouseMoveEvent(gx, gy);
     break;
-  case SDL_MOUSEBUTTONDOWN:
-    theApp.GetInputManager().SysAddMouseDownEvent(
-        event.button.x, event.button.y, btrans[event.button.button]);
+  }
+  case SDL_MOUSEBUTTONDOWN: {
+    int gx, gy;
+    DisplayEngine::theRenderer().ScreenToGameCoords(
+        event.button.x, event.button.y, gx, gy);
+    theApp.GetInputManager().SysAddMouseDownEvent(gx, gy,
+                                                  btrans[event.button.button]);
     break;
-  case SDL_MOUSEBUTTONUP:
-    theApp.GetInputManager().SysAddMouseUpEvent(event.button.x, event.button.y,
+  }
+  case SDL_MOUSEBUTTONUP: {
+    int gx, gy;
+    DisplayEngine::theRenderer().ScreenToGameCoords(
+        event.button.x, event.button.y, gx, gy);
+    theApp.GetInputManager().SysAddMouseUpEvent(gx, gy,
                                                 btrans[event.button.button]);
     break;
+  }
   case SDL_KEYDOWN: {
     // Translate SDL keysym to Windows Virtual Key code.
     // The engine's HandleInput() / CAOS KEYD compares against VK_* constants.

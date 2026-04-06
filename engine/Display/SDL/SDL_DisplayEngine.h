@@ -198,6 +198,11 @@ public:
 
   bool ToggleFullScreenMode();
 
+  // Convert screen-space mouse coordinates to 800×600 game coordinates.
+  // In windowed mode this is a no-op; in fullscreen it accounts for the
+  // aspect-ratio-preserving scale and letterbox offset.
+  void ScreenToGameCoords(int screenX, int screenY, int &gameX, int &gameY);
+
   void ResizeWindow();
 
   void MoveWindow();
@@ -436,6 +441,12 @@ private:
 
   // SDL2 window handle (owns the front buffer surface)
   SDL_Window *myWindow;
+
+  // Fullscreen scaling transform (set by DrawToFrontBuffer, used by
+  // ScreenToGameCoords to convert mouse coordinates)
+  float myFullScreenScale;   // back-buffer-to-screen scale factor
+  int   myFullScreenOffsetX; // letterbox X offset in screen pixels
+  int   myFullScreenOffsetY; // letterbox Y offset in screen pixels
 
   // the clipper is only needed in windowed mode
   // to tell DD which area should be drawn to

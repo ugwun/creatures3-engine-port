@@ -58,6 +58,9 @@ DisplayEngine::DisplayEngine() {
   myFrontBuffer = NULL;
   myBackBuffer = NULL;
   myWindow = NULL;
+  myFullScreenScale = 1.0f;
+  myFullScreenOffsetX = 0;
+  myFullScreenOffsetY = 0;
   myPixelFormat = RGB_UNKNOWN;
   myWaitingForMessageBoxFlag = 0;
   //	myProgressBitmap = NULL;
@@ -77,6 +80,9 @@ DisplayEngine::DisplayEngine(uint32 flags) {
   //	myHWBackBuffer = 0;
   myBackBuffer = NULL;
   myWindow = NULL;
+  myFullScreenScale = 1.0f;
+  myFullScreenOffsetX = 0;
+  myFullScreenOffsetY = 0;
   myPixelFormat = RGB_UNKNOWN;
   //	myClipper = 0;
   myWaitingForMessageBoxFlag = 0;
@@ -648,38 +654,70 @@ void DisplayEngine::Update(Background *background,
 //
 // ----------------------------------------------------------------------
 void DisplayEngine::DrawToFrontBuffer() {
-  if (!myEngineRunningFlag || !myFrontBuffer)
+  if (!myEngineRunningFlag || !myWindow)
     return;
 
-  POINT point = {0, 0};
-  //	RECT	rect;
+  // Re-acquire the window surface each frame.  SDL2 may invalidate the
+  // previous pointer after fullscreen toggles, window resizes, or macOS
+  // Space transitions.
+  myFrontBuffer = SDL_GetWindowSurface(myWindow);
+  if (!myFrontBuffer)
+    return;
 
-  // for full screen we are using three buffers for smoother flipping
   if (myFullScreenFlag) {
-#ifdef WORK_IN_PROGRESS
-    //	myHWBackBuffer->Blt(NULL,
-    //	myBackBuffer,NULL,DDBLT_WAIT,NULL);
+    // In fullscreen the window surface is the desktop resolution.
+    // Scale the 800×600 back buffer to fill the screen while preserving
+    // the 4:3 aspect ratio, centered with black letterbox bars.
+    int screenW = myFrontBuffer->w;
+    int screenH = myFrontBuffer->h;
 
-    myHWBackBuffer->BltFast(NULL, NULL, myBackBuffer, NULL,
-                            DDBLTFAST_NOCOLORKEY | DDBLTFAST_WAIT);
+    float scaleX = (float)screenW / myBackBuffer->w;
+    float scaleY = (float)screenH / myBackBuffer->h;
+    float scale = (scaleX < scaleY) ? scaleX : scaleY;
 
-    // now flip from the back buffer to the screen
-    if (myFrontBuffer->Flip(NULL, DDFLIP_WAIT) == DDERR_SURFACELOST) {
-      // if for any reason we have lost our surfaces just
-      // keep whatever was in the front buffer
-      myFrontBuffer->Restore();
-      myBackBuffer->Restore();
-      myHWBackBuffer->Restore();
-    }
-#endif // WORK_IN_PROGRESS
+    int destW = (int)(myBackBuffer->w * scale);
+    int destH = (int)(myBackBuffer->h * scale);
+    int destX = (screenW - destW) / 2;
+    int destY = (screenH - destH) / 2;
+
+    // Store the transform for ScreenToGameCoords (mouse coordinate mapping)
+    myFullScreenScale = scale;
+    myFullScreenOffsetX = destX;
+    myFullScreenOffsetY = destY;
+
+    // Clear the screen to black (for letterbox bars)
+    SDL_FillRect(myFrontBuffer, NULL, 0);
+
+    SDL_Rect destRect = {destX, destY, destW, destH};
+    SDL_BlitScaled(myBackBuffer, NULL, myFrontBuffer, &destRect);
   } else {
-    // copy backbuffer to frontbuffer
+    // Windowed mode: window is exactly 800×600, blit 1:1
     if (SDL_BlitSurface(myBackBuffer, NULL, myFrontBuffer, NULL) == -1)
       OutputDebugString("Blit failed\n");
-
-    // present the window surface (replaces SDL 1.2's SDL_UpdateRect)
-    SDL_UpdateWindowSurface(myWindow);
   }
+
+  // Present the window surface
+  SDL_UpdateWindowSurface(myWindow);
+}
+
+void DisplayEngine::ScreenToGameCoords(int screenX, int screenY,
+                                       int &gameX, int &gameY) {
+  if (!myFullScreenFlag || myFullScreenScale <= 0.0f) {
+    // Windowed mode — 1:1 mapping
+    gameX = screenX;
+    gameY = screenY;
+    return;
+  }
+
+  // Reverse the letterbox offset and scaling applied in DrawToFrontBuffer
+  gameX = (int)((screenX - myFullScreenOffsetX) / myFullScreenScale);
+  gameY = (int)((screenY - myFullScreenOffsetY) / myFullScreenScale);
+
+  // Clamp to the game area
+  if (gameX < 0) gameX = 0;
+  if (gameY < 0) gameY = 0;
+  if (gameX >= myBackBuffer->w) gameX = myBackBuffer->w - 1;
+  if (gameY >= myBackBuffer->h) gameY = myBackBuffer->h - 1;
 }
 
 void DisplayEngine::FadeScreen() {}
