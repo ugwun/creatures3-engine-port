@@ -384,6 +384,17 @@ The CAOS IDE allows you to set breakpoints on source lines, then **choose which 
 - **Breakpoints are not persistent** — breakpoints are cleared when the source text is edited, when a new script is loaded, or when the page is refreshed. They exist only in the browser session
 - **Blank-line breakpoints** — clicking a line with no CAOS instructions (blank line, comment-only line) shows an info message and does not set a breakpoint
 
+### Docs (Architecture Graph)
+
+The **Docs** tab displays an interactive, fully client-side architecture node graph of the primary C++ engine classes utilizing an SVG overlay system on a 2D DOM pane.
+
+**Features:**
+- **Drag & Drop:** You can click and drag class container nodes to dynamically restructure the spatial view at any time.
+- **Auto-routing connections:** Edges reroute instantaneously linking related system objects regardless of structure. Solid lines reflect strong inheritance / ownership properties while dashed represent loosely coupled spans / dependencies.
+- **Node Highlight:** You can hover edge paths, which will visually highlight the associated connecting classes in a bright orange tint. 
+- **Zoom / Pan Constraints:** Includes full spatial zooming with independent control bindings (`+`, `-`, and viewport Ctrl+Scroll wheel integrations). Reset easily back to 100% bounds using the toolbar reset module.
+- **Class Context:** Side panel reflects the class description, purpose and system alignment layer when any node is clicked globally.  
+
 ---
 
 ## API Reference

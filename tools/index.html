@@ -48,6 +48,7 @@
         <button class="tab-btn" data-tab="debugger">Debugger</button>
         <button class="tab-btn" data-tab="creatures">Creatures</button>
         <button class="tab-btn" data-tab="ide">CAOS IDE</button>
+        <button class="tab-btn" data-tab="docs">Docs</button>
       </nav>
     </div>
 
@@ -110,6 +111,12 @@
       <div class="toolbar-sep"></div>
       <button id="btn-ide-refresh" class="btn">⟳ Scripts</button>
       <button id="btn-ide-clear" class="btn">Clear Output</button>
+    </div>
+    <!-- Docs tab controls -->
+    <div id="docs-controls" class="tab-controls" hidden>
+      <button id="btn-docs-zoom-out" class="btn" title="Zoom Out">−</button>
+      <button id="btn-docs-zoom-in" class="btn" title="Zoom In">+</button>
+      <button id="btn-docs-reset" class="btn" title="Reset View">⟲ Reset</button>
     </div>
   </div>
 
@@ -409,7 +416,46 @@
           <div class="ide-output-header">Output</div>
           <div id="ide-output"></div>
         </div>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Docs ──────────────────────────────────────────────────── -->
+  <div id="tab-docs" class="tab-panel" hidden>
+    <div id="docs-container">
+      <div id="docs-viewport">
+        <!-- The actual zoomable container -->
+        <div id="docs-graph-wrap">
+          <svg id="docs-edges-svg"></svg>
+          <div id="docs-nodes-container"></div>
+        </div>
+        <!-- Legend -->
+        <div id="docs-legend">
+          <div class="docs-legend-title">Layers</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#000000"></span> Core</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#0055FF"></span> Logic</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#008000"></span> Entities</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#7700CC"></span> VM</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#FF5F00"></span> Simulation</div>
+          <div class="docs-legend-item"><span class="docs-legend-color" style="background:#555555"></span> Data</div>
+          
+          <div class="docs-legend-title" style="margin-top: 8px;">Connections</div>
+          <div class="docs-legend-item">
+            <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2"></line></svg> Strong / Inherits
+          </div>
+          <div class="docs-legend-item">
+            <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2" stroke-dasharray="2 2"></line></svg> Weak / Spawns
+          </div>
+        </div>
+      </div>
+      <!-- Detail panel (right) -->
+      <aside id="docs-detail-panel">
+        <div class="docs-detail-header">Class Inspector</div>
+        <div id="docs-detail-content">
+          <div class="docs-empty-hint">Click a class node to see its description</div>
+        </div>
+      </aside>
     </div>
   </div>
 
@@ -422,6 +468,7 @@
   <script src="creatures.js"></script>
   <script src="brain.js"></script>
   <script src="caos_ide.js"></script>
+  <script src="docs.js"></script>
 </body>
 
 </html>
