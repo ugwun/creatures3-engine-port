@@ -293,6 +293,10 @@ int main(int argc, char *argv[]) {
 
     DoStartup();
 
+    // SDL2 text input: enable the text input subsystem so that SDL_TEXTINPUT
+    // events fire for printable characters (replaces SDL1 keysym-to-char hack).
+    SDL_StartTextInput();
+
     SDL_Event event;
 
     while (!ourQuit) {
@@ -307,6 +311,13 @@ int main(int argc, char *argv[]) {
         if (!sEnginePaused.load()) {
           theApp.UpdateApp();
           theApp.GetInputManager().SysFlushEventBuffer();
+
+          // Check for deferred fullscreen toggle (CAOS WDOW command sets the
+          // flag; we consume it here, mirroring Window.cpp's WM_TICK handler).
+          if (theApp.myToggleFullScreenNextTick) {
+            theApp.ToggleFullScreenMode();
+            theApp.myToggleFullScreenNextTick = false;
+          }
         }
         if (enableTools || enableMCP) theDebugServer.Poll();
       }
@@ -358,16 +369,16 @@ int main(int argc, char *argv[]) {
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 // SdlSymToVK()
-// Translates an SDL1 keysym (SDLKey) to a Windows Virtual Key code.
+// Translates an SDL2 key code (SDL_Keycode) to a Windows Virtual Key code.
 // Printable ASCII (32-126) maps directly since SDL sym == ASCII == VK.
 // Special keys (arrows, F-keys, modifiers, nav cluster) are remapped via
 // a small lookup table.  Unknown keys are passed through unchanged.
 // -------------------------------------------------------------------------
-static int SdlSymToVK(SDLKey sym) {
+static int SdlSymToVK(SDL_Keycode sym) {
   // Special keys that don't map 1:1 with Windows VK codes.
   // SDL SDLK_* values vs VK_* values from engine/unix/KeyScan.h:
   struct {
-    SDLKey sdl;
+    SDL_Keycode sdl;
     int vk;
   } table[] = {
       // Navigation cluster
@@ -402,20 +413,20 @@ static int SdlSymToVK(SDLKey sym) {
       {SDLK_LALT, 0x12}, // VK_MENU
       {SDLK_RALT, 0x12},
       // Misc
-      {SDLK_PAUSE, 0x13},    // VK_PAUSE
-      {SDLK_CAPSLOCK, 0x14}, // VK_CAPITAL
-      {SDLK_NUMLOCK, 0x90},  // VK_NUMLOCK
-      // Numpad
-      {SDLK_KP0, 0x60},
-      {SDLK_KP1, 0x61},
-      {SDLK_KP2, 0x62},
-      {SDLK_KP3, 0x63},
-      {SDLK_KP4, 0x64},
-      {SDLK_KP5, 0x65},
-      {SDLK_KP6, 0x66},
-      {SDLK_KP7, 0x67},
-      {SDLK_KP8, 0x68},
-      {SDLK_KP9, 0x69},
+      {SDLK_PAUSE, 0x13},         // VK_PAUSE
+      {SDLK_CAPSLOCK, 0x14},      // VK_CAPITAL
+      {SDLK_NUMLOCKCLEAR, 0x90},  // VK_NUMLOCK (renamed in SDL2)
+      // Numpad (renamed in SDL2: SDLK_KP0 → SDLK_KP_0, etc.)
+      {SDLK_KP_0, 0x60},
+      {SDLK_KP_1, 0x61},
+      {SDLK_KP_2, 0x62},
+      {SDLK_KP_3, 0x63},
+      {SDLK_KP_4, 0x64},
+      {SDLK_KP_5, 0x65},
+      {SDLK_KP_6, 0x66},
+      {SDLK_KP_7, 0x67},
+      {SDLK_KP_8, 0x68},
+      {SDLK_KP_9, 0x69},
       {SDLK_KP_ENTER, 0x0D}, // VK_RETURN
   };
   static const int tableSize = sizeof(table) / sizeof(table[0]);
@@ -460,17 +471,13 @@ void HandleEvent(const SDL_Event &event) {
     // The engine's HandleInput() / CAOS KEYD compares against VK_* constants.
     int vk = SdlSymToVK(event.key.keysym.sym);
     theApp.GetInputManager().SysAddKeyDownEvent(vk);
-    // Also fire a translated-char event for printable characters, mirroring
-    // WM_CHAR on Windows. This is how text boxes (TranslatedCharTarget,
-    // e.g. world name entry) receive input. SDL1 has no SDL_TEXTINPUT so we
-    // use the keysym directly. sym is already Unicode for printable ASCII.
-    SDLKey sym = event.key.keysym.sym;
-    // Fire translated-char event for printable chars AND selected control chars
-    // (backspace=8, tab=9, return=13) that WM_CHAR also sends on Windows.
-    if ((sym >= 0x20 && sym <= 0x7E) || sym == SDLK_BACKSPACE || // VK_BACK = 8
-        sym == SDLK_RETURN ||   // VK_RETURN = 13
-        sym == SDLK_KP_ENTER || // also CR
-        sym == SDLK_TAB) {      // VK_TAB = 9
+    // Also fire backspace/return/tab as translated char events (control chars
+    // that SDL_TEXTINPUT does not produce, but WM_CHAR on Windows does).
+    SDL_Keycode sym = event.key.keysym.sym;
+    if (sym == SDLK_BACKSPACE || // VK_BACK = 8
+        sym == SDLK_RETURN ||    // VK_RETURN = 13
+        sym == SDLK_KP_ENTER ||  // also CR
+        sym == SDLK_TAB) {       // VK_TAB = 9
       theApp.GetInputManager().SysAddTranslatedCharEvent((int)sym);
     }
     break;
@@ -480,15 +487,21 @@ void HandleEvent(const SDL_Event &event) {
     theApp.GetInputManager().SysAddKeyUpEvent(vk);
     break;
   }
-  // SDL_KEYDOWN does not carry the final Unicode character (it carries keysym).
-  // SDL_KEYDOWN with sym in printable ASCII range is a good enough substitute
-  // for WM_CHAR for text-box input in DS (world name entry etc.).
-  // For proper UTF-8 we would use SDL_TEXTINPUT, but SDL1 does not have that.
-  // Instead we synthesise the translated char from the sym for printable keys.
-  // This is called just after SysAddKeyDownEvent above so both events fire.
-  // We re-examine the original event here since we are still in the same
-  // SDL_KEYDOWN case's handling scope via the SDL event loop outside.
-  case SDL_ACTIVEEVENT:
+  // SDL2 generates SDL_TEXTINPUT for printable characters (replaces the
+  // SDL1 keysym-to-char hack). This is equivalent to WM_CHAR on Windows.
+  case SDL_TEXTINPUT: {
+    // event.text.text is a UTF-8 string; for ASCII range, take the first byte.
+    const char *text = event.text.text;
+    for (int i = 0; text[i] != '\0'; ++i) {
+      unsigned char c = (unsigned char)text[i];
+      if (c >= 0x20 && c <= 0x7E) {
+        theApp.GetInputManager().SysAddTranslatedCharEvent((int)c);
+      }
+    }
+    break;
+  }
+  case SDL_WINDOWEVENT:
+    // SDL2 replacement for SDL_ACTIVEEVENT — could handle focus/minimize here
     break;
   case SDL_QUIT:
     ourQuit = true;

@@ -434,6 +434,9 @@ private:
   // everything gets drawn here first
   SDL_Surface *myBackBuffer;
 
+  // SDL2 window handle (owns the front buffer surface)
+  SDL_Window *myWindow;
+
   // the clipper is only needed in windowed mode
   // to tell DD which area should be drawn to
   //	IDirectDrawClipper*		myClipper;

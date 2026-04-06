@@ -12,15 +12,9 @@ add_definitions(-DC2E_SDL -DC2E_NO_INLINE_ASM -DC2E_OLD_CPP_LIB)
 # Find zlib
 find_package(ZLIB REQUIRED)
 
-# Find SDL 1.2
-find_package(SDL REQUIRED)
-
-# Find SDL2_mixer (only used in stub_Soundlib.cpp; not added globally to avoid SDL1/SDL2 conflicts)
-find_library(SDL2_MIXER_LIB SDL2_mixer REQUIRED)
-# Per-file include path for SDL2_mixer — only the stub .cpp needs it
-set_source_files_properties(engine/Sound/stub/stub_Soundlib.cpp PROPERTIES
-  COMPILE_FLAGS "-I/opt/homebrew/opt/sdl2_mixer/include/SDL2 -I/opt/homebrew/opt/sdl2/include/SDL2"
-)
+# Find SDL2 (replaces SDL 1.2 — unified for display + sound)
+find_package(SDL2 REQUIRED)
+find_package(SDL2_mixer REQUIRED)
 
 # Source files for the lc2e executable.
 # Add new .cpp files here when extending the engine.
@@ -207,14 +201,14 @@ add_executable(lc2e ${SRC_FILES})
 # Include directories
 target_include_directories(lc2e PRIVATE
     ${CMAKE_SOURCE_DIR}
-    ${SDL_INCLUDE_DIR}
+    ${SDL2_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
 )
 
 # Link libraries
 target_link_libraries(lc2e PRIVATE
-    ${SDL_LIBRARY}
-    ${SDL2_MIXER_LIB}
+    SDL2::SDL2
+    SDL2_mixer::SDL2_mixer
     ZLIB::ZLIB
     pthread
 )

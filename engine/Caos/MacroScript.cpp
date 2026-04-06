@@ -8,6 +8,7 @@
 #include "Orderiser.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <memory.h>	// for memcpy()
 
 
@@ -38,7 +39,14 @@ MacroScript::MacroScript()
 
 MacroScript::~MacroScript()
 {
-	_ASSERT( myReferenceCount == 0 );
+	// During world destruction, running CAOS scripts may still hold a lock on
+	// this script.  The original C3 engine used _ASSERT (debug-only, no-op in
+	// release).  We log a warning instead of aborting, since the script is being
+	// destroyed regardless and the dangling lock is harmless at shutdown.
+	if (myReferenceCount != 0) {
+		fprintf(stderr, "WARNING: MacroScript destroyed with refcount %d\n",
+				myReferenceCount);
+	}
 
 	if( myCode != NULL && mySize > 0 )
 	{

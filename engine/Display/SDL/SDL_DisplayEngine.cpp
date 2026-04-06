@@ -57,6 +57,7 @@ DisplayEngine::DisplayEngine() {
   myCurrentOffScreenBufferPtr = 0;
   myFrontBuffer = NULL;
   myBackBuffer = NULL;
+  myWindow = NULL;
   myPixelFormat = RGB_UNKNOWN;
   myWaitingForMessageBoxFlag = 0;
   //	myProgressBitmap = NULL;
@@ -75,6 +76,7 @@ DisplayEngine::DisplayEngine(uint32 flags) {
   myFrontBuffer = 0;
   //	myHWBackBuffer = 0;
   myBackBuffer = NULL;
+  myWindow = NULL;
   myPixelFormat = RGB_UNKNOWN;
   //	myClipper = 0;
   myWaitingForMessageBoxFlag = 0;
@@ -122,33 +124,39 @@ void DisplayEngine::ClearBuffers(void) {
 bool DisplayEngine::Start(bool fullScreen /*= false*/) {
   myFullScreenFlag = fullScreen;
 
-  //	myWindow=window;
+  ourSurfaceArea.left = 0;
+  ourSurfaceArea.top = 0;
+  ourSurfaceArea.right = 800;
+  ourSurfaceArea.bottom = 600;
 
-  // should query available screenmodes here.
-
-  // handle full screen
+  // Create the SDL2 window
+  Uint32 windowFlags = 0;
   if (myFullScreenFlag) {
+    windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+  }
+
+  myWindow = SDL_CreateWindow("Creatures Docking Station",
+      SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+      800, 600, windowFlags);
+  if (!myWindow) {
     return false;
-  } else {
-    // NEEDS LOTS OF WORK.
-    ourSurfaceArea.left = 0;
-    ourSurfaceArea.top = 0;
-    ourSurfaceArea.right = 800;
-    ourSurfaceArea.bottom = 600;
+  }
 
-    myFrontBuffer = SDL_SetVideoMode(800, 600, 16, 0);
-    if (!myFrontBuffer) {
-      return false;
-    }
+  // The front buffer is the window's own surface (owned by SDL — do not free)
+  myFrontBuffer = SDL_GetWindowSurface(myWindow);
+  if (!myFrontBuffer) {
+    SDL_DestroyWindow(myWindow);
+    myWindow = NULL;
+    return false;
+  }
 
-    // 565 only for now...
-    myBackBuffer = SDL_AllocSurface(SDL_SWSURFACE, 800, 600, 16, 0xF800, 0x07E0,
-                                    0x001F, 0);
-    if (!myBackBuffer) {
-      return false;
-    }
-
-    myFullScreenFlag = false;
+  // 565 software back buffer — all rendering goes here first
+  myBackBuffer = SDL_CreateRGBSurface(0, 800, 600, 16,
+                                      0xF800, 0x07E0, 0x001F, 0);
+  if (!myBackBuffer) {
+    SDL_DestroyWindow(myWindow);
+    myWindow = NULL;
+    return false;
   }
 
   ClearBuffers();
@@ -523,6 +531,19 @@ void DisplayEngine::Stop(void) {
 
   if (myTransitionGallery)
     delete myTransitionGallery;
+
+  // myFrontBuffer is owned by SDL_Window — do not free it directly.
+  myFrontBuffer = NULL;
+
+  if (myBackBuffer) {
+    SDL_FreeSurface(myBackBuffer);
+    myBackBuffer = NULL;
+  }
+
+  if (myWindow) {
+    SDL_DestroyWindow(myWindow);
+    myWindow = NULL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -656,8 +677,8 @@ void DisplayEngine::DrawToFrontBuffer() {
     if (SDL_BlitSurface(myBackBuffer, NULL, myFrontBuffer, NULL) == -1)
       OutputDebugString("Blit failed\n");
 
-    // display frontbuffer
-    SDL_UpdateRect(myFrontBuffer, 0, 0, 0, 0);
+    // present the window surface (replaces SDL 1.2's SDL_UpdateRect)
+    SDL_UpdateWindowSurface(myWindow);
   }
 }
 
@@ -1695,20 +1716,22 @@ bool DisplayEngine::ChangeDisplayMode(uint32 width, uint32 height,
 //
 // ----------------------------------------------------------------------
 bool DisplayEngine::ToggleFullScreenMode() {
-#ifdef WORK_IN_PROGRESS
-  if (!myEngineRunningFlag)
+  if (!myEngineRunningFlag || !myWindow)
     return false;
 
-  // suspend the engine
-  ChangeSuspend(false); // startup = false
+  myFullScreenFlag = !myFullScreenFlag;
 
-  bool ok = DoChangeScreenMode(myFullScreenFlag);
+  Uint32 flags = myFullScreenFlag ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
+  if (SDL_SetWindowFullscreen(myWindow, flags) != 0) {
+    // Failed — revert the flag
+    myFullScreenFlag = !myFullScreenFlag;
+    return false;
+  }
 
-  ChangeSuspend(true); // startup = true
+  // Re-acquire the window surface (it changes when toggling fullscreen)
+  myFrontBuffer = SDL_GetWindowSurface(myWindow);
 
-  return ok;
-#endif
-  return false;
+  return true;
 }
 
 #ifdef WORK_IN_PROGRESS

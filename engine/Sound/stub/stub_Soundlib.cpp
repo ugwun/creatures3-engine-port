@@ -11,7 +11,8 @@
 #include "../MidiModule.h"
 #include "../MNGFormat.h"
 
-// SDL2_mixer — included only in this .cpp to avoid SDL1/SDL2 header conflicts
+// SDL2 + SDL2_mixer — now safe to include directly (no more SDL1/SDL2 conflicts)
+#include <SDL.h>
 #include <SDL_mixer.h>
 
 #include <cmath>
@@ -186,9 +187,8 @@ void *SoundManager::LoadWavForID(DWORD wave) {
       return NULL;
     }
 
-    // Reconstruct a valid WAV and write to a temp file.
-    // (We use a temp file because the engine links both SDL 1.2 and SDL 2.0,
-    // and the RWops interop adapter crashes with Mix_LoadWAV_RW.)
+    // Reconstruct a valid WAV in memory and load directly via SDL2 RWops.
+    // (Previously used a temp file because SDL1/SDL2 RWops were incompatible.)
     int wavSize = 0;
     unsigned char *wavData = new unsigned char[entry.size + 16];
     if (!MNGReconstructWAV(rawData, entry.size, wavData, wavSize)) {
@@ -198,20 +198,10 @@ void *SoundManager::LoadWavForID(DWORD wave) {
     }
     delete[] rawData;
 
-    char tmpPath[256];
-    snprintf(tmpPath, sizeof(tmpPath), "/tmp/lc2e_mng_%08x.wav", wave);
-    FILE *tmpFp = fopen(tmpPath, "wb");
-    if (!tmpFp) {
-      delete[] wavData;
-      return NULL;
-    }
-    fwrite(wavData, 1, wavSize, tmpFp);
-    fclose(tmpFp);
+    // Load directly from memory — no temp file needed with pure SDL2
+    SDL_RWops *rw = SDL_RWFromMem(wavData, wavSize);
+    Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1); // 1 = auto-free RWops after load
     delete[] wavData;
-
-    // Load the reconstructed WAV via file path (avoids SDL1/SDL2 interop)
-    Mix_Chunk *chunk = Mix_LoadWAV(tmpPath);
-    unlink(tmpPath); // Clean up temp file
 
     if (!chunk) {
       return NULL;
