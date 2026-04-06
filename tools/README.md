@@ -98,6 +98,23 @@ hello world
 - **No blocking commands** — commands like `wait`, `over`, `anim ... over` will throw `sidBlockingDisallowed` because the console script runs to completion in a single call (`UpdateVM(-1)`). Use `inst` mode for enumeration loops.
 - **Single execution** — each command runs in a fresh VM instance. Variables (`va00`–`va99`) do not persist between commands.
 
+#### Advanced: C++ Stack Tracer (`CSTK`)
+
+The engine includes a custom CAOS command `cstk` (a `StringRV`) designed for deep debugging and engine reverse-engineering. When evaluated, it returns a demangled string containing the current native C++ call stack of the CAOS Virtual Machine. 
+
+This provides instant visibility into which C++ functions and handlers actually execute your CAOS scripts. It handles nested VM creation (e.g., inline `caos` string evaluation) flawlessly.
+
+**Usage:**
+```caos
+> outs cstk
+0 GeneralHandlers::StringRV_CSTK(...)
+1 GeneralHandlers::Command_OUTS(...)
+2 CAOSMachine::UpdateVM(int)
+...
+```
+
+*Note: `cstk` is a `StringRV`, meaning it evaluates to a string and must be consumed by a command like `outs` or stored in a variable (`sets`). Executing it as a standalone command will cause a syntax error.*
+
 ### Scripts
 
 ![Developer Tools — Scripts Tab](developer_tools_scripts.png)

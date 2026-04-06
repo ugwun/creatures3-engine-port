@@ -1627,6 +1627,10 @@ OpSpec ourStringRVTable[] = {
            categoryVariables,
            "DS: Returns the uppercase version of the given string. (Stub: "
            "returns input unchanged.)"),
+    OpSpec("CSTK", GeneralHandlers::StringRV_CSTK, "", "",
+           categoryVariables,
+           "Returns a formatted string containing the C++ stack trace from where "
+           "the CAOS command was evaluated, for debugging purposes."),
     OpSpec("GALL", AgentHandlers::StringRV_GALL, "", "", categoryAgents,
            "Returns the name of the gallery (sprite file) currently used by "
            "the target agent/part."),

@@ -14,6 +14,12 @@
 #pragma warning(disable : 4786 4503)
 #endif
 
+#include <string>
+#include <vector>
+
+#include <execinfo.h> // backtrace(), backtrace_symbols()
+#include <cxxabi.h>   // abi::__cxa_demangle()
+
 #include <fstream>
 #include <string>
 
@@ -1097,6 +1103,56 @@ void GeneralHandlers::StringRV_LOWA(CAOSMachine &vm, std::string &str) {
   vm.FetchStringRV(str);
   for (std::string::iterator it = str.begin(); it != str.end(); ++it)
     *it = (char)tolower((unsigned char)*it);
+}
+
+// C++ stack trace for debugging purposes
+void GeneralHandlers::StringRV_CSTK(CAOSMachine &vm, std::string &str) {
+  void *frames[64];
+  int frameCount = backtrace(frames, 64);
+  char **symbols = backtrace_symbols(frames, frameCount);
+  
+  if (!symbols) {
+    str = "Failed to get backtrace symbols";
+    return;
+  }
+  
+  std::string result = "";
+  char mangledBuf[512];
+  
+  for (int i = 0; i < frameCount; ++i) {
+    const char *p = symbols[i];
+    while (*p == ' ') ++p;
+    while (*p && *p != ' ') ++p;
+    while (*p == ' ') ++p;
+    while (*p && *p != ' ') ++p;
+    while (*p == ' ') ++p;
+    while (*p && *p != ' ') ++p;
+    while (*p == ' ') ++p;
+    
+    const char *start = p;
+    while (*p && *p != ' ' && *p != '+') ++p;
+    size_t len = (size_t)(p - start);
+    
+    bool demangled = false;
+    if (len > 0 && len < sizeof(mangledBuf)) {
+      memcpy(mangledBuf, start, len);
+      mangledBuf[len] = '\0';
+      int status = 0;
+      char *demangledStr = abi::__cxa_demangle(mangledBuf, nullptr, nullptr, &status);
+      if (status == 0 && demangledStr) {
+        result += std::to_string(i) + " " + std::string(demangledStr) + "\n";
+        free(demangledStr);
+        demangled = true;
+      }
+    }
+    
+    if (!demangled) {
+      result += std::string(symbols[i]) + "\n";
+    }
+  }
+  
+  free(symbols);
+  str = result;
 }
 
 void GeneralHandlers::StringRV_CAOS(CAOSMachine &vm, std::string &str) {

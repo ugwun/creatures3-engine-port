@@ -178,6 +178,8 @@ public:
                 std::string &str); // DS: network meta-msg (stub->"")
   static void StringRV_LOWA(CAOSMachine &vm,
                             std::string &str); // DS: lowercase string
+  static void StringRV_CSTK(CAOSMachine &vm,
+                            std::string &str); // C++ stack trace strings
 
   // Variables
   static CAOSVar &Variable_GAME(CAOSMachine &vm);
