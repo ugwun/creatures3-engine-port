@@ -251,8 +251,9 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
 
 - All lobes (typically 15 in a C3/DS brain: `noun`, `verb`, `visn`, `comb`, `decn`, `driv`, `attn`, `stim`, `move`, `detl`, `situ`, `resp`, `forf`, `mood`, `smel`) are positioned according to their genome coordinates (`x`, `y`, `width`, `height`)
 - Each neuron within a lobe is a coloured cell:
-  - **Dark/transparent** = inactive (activity ≈ 0)
-  - **Bright orange** = highly active (activity ≈ 1)
+  - **Dark/transparent** = inactive (activity ≈ 0). Inactive cells feature a faint inner boundary to maintain a visible cellular grid even when the entire lobe is completely dormant.
+  - **Bright orange** = highly active (activity ≈ 1).
+  - *Note on Noise:* To prevent low-activation Winner-Takes-All lobes from rendering completely invisible, the baseline visual noise floor of `0.07` is applied selectively (only to SV-Rule noisy lobes like `noun` and `verb`), preserving tiny fluctuations in other anatomical locations.
 - The **winning neuron** (highest activation) in Winner-Takes-All (WTA) lobes (e.g., `decn`, `attn`, `comb`) is highlighted with an orange border and glow
 - Lobe names are displayed above each lobe rectangle in a colour derived from the genome colour (darkened for readability)
 - The background uses a subtle dot grid to help gauge distances
@@ -263,7 +264,8 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
   - Lobe name and neuron ID
   - Semantic label (if known): drive names for `driv`, action names for `verb`/`decn`, category names for `noun`/`attn`/`stim`/`visn`
   - Activity level (state 0) and all non-zero SVRule state variables (S1–S7)
-- **Click** a neuron to highlight it and see all its incoming/outgoing dendrite connections drawn as magenta lines to connected neurons in other lobes. A magenta circle marks the selected neuron. Click again to dismiss
+- **Click** a neuron to highlight it and see all its incoming/outgoing dendrite connections drawn as magenta lines to connected neurons in other lobes. A magenta circle marks the selected neuron. Click again to dismiss.
+  - **Dormant connections:** By default, zero-weight (unlearned) dendrites are hidden across the brain map to prevent visual clutter. However, when a specific neuron is clicked, its dormant, zero-weight anatomical pathways are drawn as **faint, dashed white lines**. This allows for the inspection of innate "blank slate" wiring potential before biological reinforcement learning applies a functional weight.
 
 **Tract Connection Lines:**
 

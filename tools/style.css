@@ -2019,6 +2019,7 @@ body.compact .log-row {
   box-sizing: border-box;
   cursor: crosshair;
   transition: background 0.3s;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .crt-brain-neuron:hover {

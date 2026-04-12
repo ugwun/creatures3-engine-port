@@ -42,14 +42,18 @@
   const infoContent = document.getElementById('crt-brain-info-content');
 
   // ── Colour mapping ─────────────────────────────────────────────────────
-  function neuronColour(val) {
-    // Apply a visual noise floor (threshold) of 0.07. 
+  function neuronColour(val, lobeName) {
+    // Apply a visual noise floor (threshold).
     // This normalizes lobes like 'noun' and 'verb' that sit at a 
     // ~0.01 - 0.06 background resting state due to engine SV-Rule hacks.
-    if (val < 0.07) return 'rgba(0,0,0,0.15)';
+    const isNoisyLobe = (lobeName === 'noun' || lobeName === 'verb');
+    const noiseFloor = isNoisyLobe ? 0.07 : 0.001;
+
+    if (val < noiseFloor) return 'rgba(0,0,0,0.15)';
     
-    // Remap the valid activation (0.07 to 1.0) into a clean 0 to 1 range
-    const v = Math.max(0, Math.min(1, (val - 0.07) / 0.93));
+    // Remap the valid activation into a clean 0 to 1 range
+    const range = 1.0 - noiseFloor;
+    const v = Math.max(0, Math.min(1, (val - noiseFloor) / range));
     const lightness = 15 + v * 45;
     const saturation = 40 + v * 60;
     return 'hsl(24,' + Math.round(saturation) + '%,' + Math.round(lightness) + '%)';
@@ -260,7 +264,7 @@
             'left:' + (gx * cs) + 'px;' +
             'top:' + (gy * cs) + 'px;' +
             'width:' + nw + 'px;height:' + nw + 'px;' +
-            'background:' + neuronColour(activity) + ';"' +
+            'background:' + neuronColour(activity, lobe.name) + ';"' +
             ' title="' + tip.replace(/"/g, '&quot;') + '"' +
             ' data-lobe="' + lobe.index + '" data-neuron="' + neuron.id + '">' +
             '</div>';
@@ -488,15 +492,18 @@
       const srcPos = neuronPixelPos(d.srcLobeIdx, d.src);
       const dstPos = neuronPixelPos(d.dstLobeIdx, d.dst);
       if (!srcPos || !dstPos) continue;
-      if (d.weight < 0.001) continue;
 
-      const colour = dendriteColour(d.weight);
+      const isDormant = d.weight <= 0.001;
+      const colour = isDormant ? 'rgba(0,0,0,0.15)' : dendriteColour(d.weight);
+      const strokeWidth = isDormant ? '0.5' : '1';
+      const dash = isDormant ? ' stroke-dasharray="2 3"' : '';
 
       svgContent += '<line x1="' + srcPos.x + '" y1="' + srcPos.y +
         '" x2="' + dstPos.x + '" y2="' + dstPos.y + '"' +
         ' stroke="' + colour + '"' +
-        ' stroke-width="1"' +
-        '><title>' + d.tractName + ': S' + d.src + ' → D' + d.dst + ': ' + d.weight.toFixed(3) + '</title></line>';
+        ' stroke-width="' + strokeWidth + '"' + dash +
+        '><title>' + d.tractName + ': S' + d.src + ' → D' + d.dst + ': ' + d.weight.toFixed(3) + 
+        (isDormant ? ' (Dormant / Unlearned)' : '') + '</title></line>';
     }
 
     // Also highlight the selected neuron with a circle
