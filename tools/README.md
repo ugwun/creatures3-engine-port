@@ -253,7 +253,7 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
 - Each neuron within a lobe is a coloured cell:
   - **Dark/transparent** = inactive (activity ≈ 0)
   - **Bright orange** = highly active (activity ≈ 1)
-- The **winning neuron** (highest activation) in each lobe is highlighted with an orange border and glow
+- The **winning neuron** (highest activation) in Winner-Takes-All (WTA) lobes (e.g., `decn`, `attn`, `comb`) is highlighted with an orange border and glow
 - Lobe names are displayed above each lobe rectangle in a colour derived from the genome colour (darkened for readability)
 - The background uses a subtle dot grid to help gauge distances
 

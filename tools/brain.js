@@ -203,12 +203,13 @@
         lobeHeaderColour(lobe.colour) + ';font-size:' + labelSize + 'px">' + lobe.name + '</div>';
 
       const neurons = lobeNeurons[lobe.index];
+      const isWTALobe = ['decn', 'attn', 'comb'].includes(lobe.name);
       if (neurons && neurons.neurons) {
         const labels = lobe.labels || [];
         for (let n = 0; n < neurons.neurons.length; n++) {
           const neuron = neurons.neurons[n];
           const activity = neuron.states[0];
-          const isWinner = neuron.id === lobe.winner && activity > 0.001;
+          const isWinner = isWTALobe && neuron.id === lobe.winner && activity > 0.001;
           const label = (n < labels.length && labels[n]) ? labels[n] : '';
 
           const gx = n % lobe.width;
@@ -538,13 +539,14 @@
     html += '<div class="crt-brain-info-section">';
     html += '<div class="crt-brain-info-title">Lobes</div>';
     for (const lobe of brainData.lobes) {
+      const isWTALobe = ['decn', 'attn', 'comb'].includes(lobe.name);
       const winnerLabel = lobe.labels && lobe.winner >= 0 && lobe.winner < lobe.labels.length
         ? lobe.labels[lobe.winner] : '';
       html += '<div class="crt-brain-info-lobe">';
       html += '<span class="crt-brain-info-lobe-name" style="color:' +
         lobeHeaderColour(lobe.colour) + '">' + lobe.name + '</span>';
       html += '<span class="crt-brain-info-lobe-detail">' + lobe.neuronCount + 'n';
-      if (lobe.winner >= 0) {
+      if (isWTALobe && lobe.winner >= 0) {
         html += ' · ★' + lobe.winner;
         if (winnerLabel) html += ' ' + winnerLabel;
       }
