@@ -325,7 +325,8 @@ bool CompoundAgent::Visibility(int scope) {
 EntityImage *CompoundAgent::GetPrimaryEntity() {
   _ASSERT(!myGarbaged);
 
-  ASSERT(myParts.size() >= 1); // must have part 0
+  if (myParts.empty() || myParts[0] == NULL)
+    return NULL;
   return myParts[0]->GetEntity();
 }
 
@@ -600,6 +601,9 @@ bool CompoundAgent::Read(CreaturesArchive &archive) {
     archive >> myNormalBasePlaneForPartZero;
 
     _ASSERT(myParts.size() > 0);
+    
+    // Now that parts are loaded, reconcile pickup points for any gallery changes
+    ResizePickupPoints();
   } else {
     _ASSERT(false);
     return false;
@@ -634,6 +638,10 @@ void CompoundAgent::SetGallery(FilePath const &galleryName, int baseimage,
         entityImage->Unlink();
         entityImage->SetGallery(galleryName, baseimage);
         entityImage->Link();
+        // If part 0 changed, the primary entity's pose count may differ.
+        // Resize pickup point vectors to match.
+        if (part == 0)
+          ResizePickupPoints();
       }
     }
     DoSetCameraShyStatus();

@@ -204,6 +204,20 @@ void Agent::InitialisePickupPointsAndHandles() {
   }
 }
 
+// Resize pickup point vectors to match the current entity's pose count.
+// Called after gallery changes (GALL) and during deserialization when the
+// serialized vector size doesn't match the loaded entity's frame count.
+// New entries are filled with INVALID_POSITION (= use default pick-up point).
+void Agent::ResizePickupPoints() {
+  if (!GetPrimaryEntity())
+    return;
+  size_t poseMax = (size_t)GetPrimaryEntity()->GetAbsolutePoseMax();
+  if (myPointsWhereIamPickedUp.size() != poseMax)
+    myPointsWhereIamPickedUp.resize(poseMax, INVALID_POSITION);
+  if (myPointsIUseToPickUpAgents.size() != poseMax)
+    myPointsIUseToPickUpAgents.resize(poseMax, INVALID_POSITION);
+}
+
 // Basic initialisation used by constructors
 void Agent::Init() {
   int i;
@@ -876,10 +890,8 @@ Agent::GetMapCoordOfWhereIPickUpAgentsFrom(int pose /*= -1*/,
     if (imageIndex == -1)
       imageIndex = GetPrimaryEntity()->GetAbsolutePose();
 
-    ASSERT(myPointsIUseToPickUpAgents.size() ==
-           GetPrimaryEntity()->GetAbsolutePoseMax());
-    if (imageIndex >= 0 && imageIndex < myPointsIUseToPickUpAgents.size()) {
-      // the first point is
+    if (imageIndex >= 0 &&
+               imageIndex < (int)myPointsIUseToPickUpAgents.size()) {
       Vector2D currentpos = myPointsIUseToPickUpAgents[imageIndex];
       if (currentpos != INVALID_POSITION) {
         pos.x += currentpos.x;
@@ -902,9 +914,8 @@ Vector2D Agent::GetMyOffsetOfWhereIAmPickedUpFrom(int pose /*= -1*/) {
     if (imageIndex == -1)
       imageIndex = GetPrimaryEntity()->GetAbsolutePose();
 
-    ASSERT(myPointsWhereIamPickedUp.size() ==
-           GetPrimaryEntity()->GetAbsolutePoseMax());
-    if (imageIndex >= 0 && imageIndex < myPointsWhereIamPickedUp.size()) {
+    if (imageIndex >= 0 &&
+               imageIndex < (int)myPointsWhereIamPickedUp.size()) {
       Vector2D currentpos = myPointsWhereIamPickedUp[imageIndex];
       if (currentpos != INVALID_POSITION)
         return currentpos;
@@ -2305,6 +2316,10 @@ bool Agent::Read(CreaturesArchive &ar) {
     return false;
   }
 
+  // Reconcile pickup point vectors with the deserialized entity's frame count.
+  // Save files from games where GALL changed the gallery may have stale sizes.
+  ResizePickupPoints();
+
   // success!
 
   if (myMovementStatus == FLOATING) {
@@ -2530,6 +2545,9 @@ void Agent::SetGallery(FilePath const &galleryName, int baseimage, int part) {
       myEntityImage->SetGallery(galleryName, baseimage);
       myEntityImage->Link();
       DoSetCameraShyStatus();
+      // The new gallery may have a different number of frames.
+      // Resize pickup point vectors to match.
+      ResizePickupPoints();
     }
   }
 }

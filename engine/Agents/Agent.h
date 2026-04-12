@@ -682,6 +682,7 @@ public:
   bool IsMirrored() { return myDrawMirroredFlag; }
 
   void InitialisePickupPointsAndHandles();
+  void ResizePickupPoints();
 
   Port *IsPointOverPort(Vector2D &p, bool &inputnotoutput);
 
