@@ -43,8 +43,13 @@
 
   // ── Colour mapping ─────────────────────────────────────────────────────
   function neuronColour(val) {
-    const v = Math.max(0, Math.min(1, val));
-    if (v < 0.001) return 'rgba(0,0,0,0.15)';
+    // Apply a visual noise floor (threshold) of 0.07. 
+    // This normalizes lobes like 'noun' and 'verb' that sit at a 
+    // ~0.01 - 0.06 background resting state due to engine SV-Rule hacks.
+    if (val < 0.07) return 'rgba(0,0,0,0.15)';
+    
+    // Remap the valid activation (0.07 to 1.0) into a clean 0 to 1 range
+    const v = Math.max(0, Math.min(1, (val - 0.07) / 0.93));
     const lightness = 15 + v * 45;
     const saturation = 40 + v * 60;
     return 'hsl(24,' + Math.round(saturation) + '%,' + Math.round(lightness) + '%)';
@@ -107,6 +112,29 @@
       const data = await resp.json();
       if (data.error) { brainData = null; return; }
       brainData = data;
+
+      // UI OVERRIDE: Mathematically align the 'noun', 'visn', and 'stim' lobes 
+      // perfectly flush with the 'comb' lobe on the X-axis so columns map cleanly,
+      // and stack them vertically above comb to group semantic sensory inputs.
+      const combLobe = brainData.lobes.find(l => l.name === 'comb');
+      if (combLobe) {
+        brainData.lobes.forEach(l => {
+          if (l.name === 'noun') {
+            l.x = combLobe.x;
+            l.y = combLobe.y - 12; // Top of the stack
+          } else if (l.name === 'visn') {
+            l.x = combLobe.x;
+            l.y = combLobe.y - 8;
+          } else if (l.name === 'stim') {
+            l.x = combLobe.x;
+            l.y = combLobe.y - 4; // Right above comb
+          } else if (l.name === 'move') {
+            // Push move lobe under comb to prevent collision with the new stack
+            l.x = combLobe.x;
+            l.y = combLobe.y + combLobe.height + 4; 
+          }
+        });
+      }
 
       // Fetch all lobe neuron data in parallel
       const fetches = brainData.lobes.map(lobe =>
