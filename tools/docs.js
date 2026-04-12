@@ -24,7 +24,9 @@ const NODES = [
     { id: "Orderiser", layer: "vm", label: "Orderiser", x: 950, y: 500, desc: "The CAOS compiler. Translates CAOS source code into bytecoded execution blocks for the CAOSMachine." },
 
     { id: "Skeleton", layer: "sim", label: "Skeleton", x: 50, y: 650, desc: "Manages limbs, joints, and sprite rendering for Creatures. Calculates poses and animations." },
-    { id: "Brain", layer: "sim", label: "Brain", x: 250, y: 650, desc: "Neural network simulation for Creatures. Maps inputs (lobes) to outputs using weights/dendrites via SV rules." },
+    { id: "Brain", layer: "sim", label: "Brain", x: 250, y: 650, desc: "Neural network simulation for Creatures. The brain evaluates inputs and decides outputs through a network of Lobes and Tracts driven by SV (State Variable) Rules." },
+    { id: "Lobe", layer: "sim", label: "Lobe", x: 200, y: 800, desc: "A collection of state-storing Neurons ('gray matter'). Some Lobes use Winner-Takes-All (WTA) rules (decn, attn, comb) to pick a single winning neuron, while sensory Lobes (driv, visn, move, stim) process states in parallel. Interestingly, the 'detl' and 'situ' Lobes are vestigial: the engine updates their states endlessly, but they have no outgoing connections!" },
+    { id: "Tract", layer: "sim", label: "Tract", x: 100, y: 800, desc: "A bundle of Dendrites carrying Synaptic Weights between a source and destination Lobe ('white matter'). Tracts define the neural wiring pattern. For example, the stim->comb Tract uses column-based mapping, meaning missing noun categories in the environment natively result in completely inactive columns in the Concepts memory." },
     { id: "Biochemistry", layer: "sim", label: "Biochemistry", x: 450, y: 650, desc: "Simulates the concentrations of up to 256 chemicals reacting over time, representing drives and toxins." },
     { id: "Genome", layer: "sim", label: "Genome", x: 350, y: 800, desc: "Holds encoded genetic instructions to construct the Brain, Biochemistry, and initial traits." },
 
@@ -56,6 +58,10 @@ const EDGES = [
     { src: "Creature", dst: "Brain" },
     { src: "Creature", dst: "Biochemistry" },
     
+    { src: "Brain", dst: "Lobe" },
+    { src: "Brain", dst: "Tract" },
+    { src: "Tract", dst: "Lobe", dashed: true },
+
     { src: "Genome", dst: "Brain", dashed: true },
     { src: "Genome", dst: "Biochemistry", dashed: true },
 
