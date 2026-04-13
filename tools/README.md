@@ -892,6 +892,21 @@ The tools UI follows the **"Bright-Fi"** design language — a Utopian Graphic-C
 - **Geometry:** All borders are hard 1–2px solid black. No rounded corners. Square dots, not circles
 - **Category badges:** solid-fill coloured blocks with white text (e.g. `ERR` on red, `NET` on blue)
 
+### Contextual Tooltips
+
+A global tooltip system (`tooltips.js`) provides contextual help for every interactive element across all tabs. Tooltips are opt-in via the **💡 Tips** toggle in the header-right area; the preference is persisted in `localStorage`.
+
+**Features:**
+
+- **122 tooltips** covering every tab: header controls, navigation tabs, log category filters, console, scripts table headers, debugger inspector keys (OWNR/TARG/FROM/IT/IP), creature sub-tabs, organ/brain panels, CAOS IDE editor/classifier/breakpoint controls, and docs graph
+- **500ms hover delay** with 120ms fade-in/out animations to avoid visual noise
+- **Smart positioning** — the tooltip auto-flips vertically and clamps horizontally to stay within the viewport
+- **Native `title` suppression** — when a custom tooltip is active, the system temporarily strips `title` attributes from the hovered element and its ancestors to prevent "double tooltip" conflicts (the browser's native tooltip appearing alongside the custom one). Attributes are restored on mouse-out
+- **CSS-selector registry** — tips are defined as `{ selector, text }` entries in the `TIPS` array. The system uses a `mouseover` listener on the document root and walks up the DOM tree to find the first matching tip, supporting both static and dynamically generated elements (e.g. organ cards, brain neurons, scriptorium groups)
+- **Styling** — follows the Bright-Fi aesthetic: dark semi-transparent background (`rgba(0,0,0,0.92)`), orange left border accent, Inter font, max-width 320px
+
+To add tooltips for new UI elements, append entries to the `TIPS` array in `tooltips.js`.
+
 ---
 
 ## Crash Reporter
