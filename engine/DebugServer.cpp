@@ -1627,6 +1627,239 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── GET /api/creature/:id/brain/lobe/:lobeIdx/neuron/:neuronIdx ──
+	// Returns deep detail about a specific neuron: all state variables,
+	// SVRule definitions (decompiled to pseudo-code), and connected dendrites.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/brain/lobe/(\d+)/neuron/(\d+))", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+		int lobeIdx = std::stoi(req.matches[2]);
+		int neuronIdx = std::stoi(req.matches[3]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId, lobeIdx, neuronIdx]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Brain* brain = creature.GetBrain();
+				if (!brain) return "{\"error\":\"No brain\"}";
+
+				Lobe* lobe = brain->GetLobe(lobeIdx);
+				if (!lobe) return "{\"error\":\"Lobe not found\"}";
+
+				int nCount = lobe->GetNoOfNeurons();
+				if (neuronIdx < 0 || neuronIdx >= nCount) {
+					return "{\"error\":\"Neuron index out of range\"}";
+				}
+
+				Neuron* neuron = lobe->GetNeuron(neuronIdx);
+				if (!neuron) return "{\"error\":\"Neuron not found\"}";
+
+				// ── Neuron state variable names ──
+				static const char* STATE_NAMES[] = {
+					"state", "input", "output", "var3", "var4", "var5", "var6", "ngf"
+				};
+				static const char* DENDRITE_WEIGHT_NAMES[] = {
+					"stw", "ltw", "var2", "var3", "var4", "var5", "var6", "strength"
+				};
+
+				// ── SVRule decompiler helper lambdas ──
+				static const char* OPCODE_NAMES[] = {
+					"stop", "blank", "store", "load",
+					"if==", "if!=", "if>", "if<", "if>=", "if<=",
+					"if0", "if!0", "if>0", "if<0", "if>=0", "if<=0",
+					"add", "sub", "subFrom", "mul", "div", "divInto", "min", "max",
+					"setRate", "tend", "neg", "abs", "dist", "flip",
+					"nop", "setSpr", "bound01", "bound±1", "addStore", "tendStore",
+					"threshold", "leak", "rest", "gain", "persist", "noise", "wta", "setSTLT",
+					"setLTST", "storeAbs",
+					"if0Stop", "if!0Stop", "if0Goto", "if!0Goto",
+					"divAddNI", "mulAddNI", "goto",
+					"if<Stop", "if>Stop", "if<=Stop", "if>=Stop",
+					"setRwdThr", "setRwdRate", "setRwdChem", "setPunThr", "setPunRate", "setPunChem",
+					"preserve", "restore", "preserveSpr", "restoreSpr",
+					"if<0Goto", "if>0Goto"
+				};
+				static const char* OPERAND_NAMES[] = {
+					"acc", "input", "dend", "neuron", "spare",
+					"random",
+					"chem[src+]", "chem", "chem[dst+]",
+					"0", "1",
+					"val", "-val", "val*10", "val/10", "valInt"
+				};
+
+				auto decompileSVRule = [](const SVRule& rule) -> std::string {
+					std::ostringstream out;
+					out << "[";
+					int ruleLen = SVRule::GetLength();
+					bool first = true;
+					for (int i = 0; i < ruleLen; ++i) {
+						const SVRuleEntry& e = rule.GetEntry(i);
+						// Stop on stopImmediately with no prior content
+						if (e.opCode == 0 && i == 0) break;
+
+						if (!first) out << ",";
+						first = false;
+
+						// Build human-readable line
+						std::string opName = (e.opCode >= 0 && e.opCode < SVRule::noOfOpCodes)
+							? OPCODE_NAMES[e.opCode] : "???";
+						std::string operandName = (e.operandVariable >= 0 && e.operandVariable < SVRule::noOfOperands)
+							? OPERAND_NAMES[e.operandVariable] : "???";
+
+						out << "{\"op\":\"" << JsonEscape(opName)
+							<< "\",\"operand\":\"" << JsonEscape(operandName)
+							<< "\",\"idx\":" << e.arrayIndex
+							<< ",\"val\":" << e.floatValue
+							<< ",\"opCode\":" << e.opCode
+							<< ",\"operandCode\":" << e.operandVariable
+							<< "}";
+
+						// Stop after a stopImmediately opcode
+						if (e.opCode == 0) break;
+					}
+					out << "]";
+					return out.str();
+				};
+
+				std::ostringstream json;
+				std::string lobeName(lobe->GetName());
+
+				json << "{\"lobeIndex\":" << lobeIdx
+					<< ",\"lobeName\":\"" << JsonEscape(lobeName) << "\""
+					<< ",\"neuronId\":" << neuron->idInList
+					<< ",\"neuronCount\":" << nCount
+					<< ",\"winner\":" << lobe->GetWhichNeuronWon()
+					<< ",\"isWinner\":" << (neuron->idInList == lobe->GetWhichNeuronWon() ? "true" : "false")
+					<< ",\"tissueId\":" << lobe->GetTissueId();
+
+				// ── State variables with names ──
+				json << ",\"states\":[";
+				for (int s = 0; s < NUM_SVRULE_VARIABLES; ++s) {
+					if (s > 0) json << ",";
+					json << "{\"name\":\"" << STATE_NAMES[s]
+						<< "\",\"value\":" << neuron->states[s] << "}";
+				}
+				json << "]";
+
+				// ── SVRules (lobe-level — apply to all neurons in this lobe) ──
+				json << ",\"initRule\":" << decompileSVRule(lobe->GetInitRule());
+				json << ",\"updateRule\":" << decompileSVRule(lobe->GetUpdateRule());
+
+				// ── Dendrite connections to/from this neuron ──
+				json << ",\"connections\":[";
+				bool firstConn = true;
+				int tractCount = brain->GetTractCount();
+				for (int t = 0; t < tractCount; ++t) {
+					Tract* tract = brain->GetTract(t);
+					if (!tract) continue;
+
+					Lobe* srcLobe = tract->GetSrcLobe();
+					Lobe* dstLobe = tract->GetDstLobe();
+					if (!srcLobe || !dstLobe) continue;
+
+					// Check if this lobe is involved in this tract
+					int srcLobeIdx = -1, dstLobeIdx = -1;
+					for (int li = 0; li < brain->GetLobeCount(); ++li) {
+						if (brain->GetLobe(li) == srcLobe) srcLobeIdx = li;
+						if (brain->GetLobe(li) == dstLobe) dstLobeIdx = li;
+					}
+
+					bool isSrc = (srcLobe == lobe);
+					bool isDst = (dstLobe == lobe);
+					if (!isSrc && !isDst) continue;
+
+					int dCount = tract->GetDendriteCount();
+					for (int d = 0; d < dCount; ++d) {
+						Dendrite* dendrite = tract->GetDendrite(d);
+						if (!dendrite) continue;
+
+						int srcId = dendrite->srcNeuron ? dendrite->srcNeuron->idInList : -1;
+						int dstId = dendrite->dstNeuron ? dendrite->dstNeuron->idInList : -1;
+
+						// Filter: only dendrites connected to our neuron
+						if (isSrc && srcId != neuronIdx && !(isDst && dstId == neuronIdx)) continue;
+						if (!isSrc && isDst && dstId != neuronIdx) continue;
+
+						if (!firstConn) json << ",";
+						firstConn = false;
+
+						std::string direction;
+						if (isSrc && srcId == neuronIdx && isDst && dstId == neuronIdx)
+							direction = "self";
+						else if ((isSrc && srcId == neuronIdx))
+							direction = "outgoing";
+						else
+							direction = "incoming";
+
+						json << "{\"tractIndex\":" << t
+							<< ",\"tractName\":\"" << JsonEscape(std::string(tract->GetName())) << "\""
+							<< ",\"direction\":\"" << direction << "\""
+							<< ",\"srcLobeIdx\":" << srcLobeIdx
+							<< ",\"srcLobe\":\"" << JsonEscape(std::string(srcLobe->GetName())) << "\""
+							<< ",\"dstLobeIdx\":" << dstLobeIdx
+							<< ",\"dstLobe\":\"" << JsonEscape(std::string(dstLobe->GetName())) << "\""
+							<< ",\"srcNeuron\":" << srcId
+							<< ",\"dstNeuron\":" << dstId
+							<< ",\"weights\":[";
+						for (int w = 0; w < NUM_SVRULE_VARIABLES; ++w) {
+							if (w > 0) json << ",";
+							json << "{\"name\":\"" << DENDRITE_WEIGHT_NAMES[w]
+								<< "\",\"value\":" << dendrite->weights[w] << "}";
+						}
+						json << "]}";
+					}
+				}
+				json << "]";
+
+				// ── Tract SVRules for each connected tract (init + update) ──
+				json << ",\"tractRules\":[";
+				bool firstTract = true;
+				std::set<int> seenTracts;
+				for (int t = 0; t < tractCount; ++t) {
+					Tract* tract = brain->GetTract(t);
+					if (!tract) continue;
+					Lobe* srcLobe = tract->GetSrcLobe();
+					Lobe* dstLobe = tract->GetDstLobe();
+					if (srcLobe != lobe && dstLobe != lobe) continue;
+					if (seenTracts.count(t)) continue;
+					seenTracts.insert(t);
+
+					if (!firstTract) json << ",";
+					firstTract = false;
+
+					json << "{\"tractIndex\":" << t
+						<< ",\"tractName\":\"" << JsonEscape(std::string(tract->GetName())) << "\""
+						<< ",\"initRule\":" << decompileSVRule(tract->GetInitRule())
+						<< ",\"updateRule\":" << decompileSVRule(tract->GetUpdateRule())
+						<< "}";
+				}
+				json << "]";
+
+				json << "}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read neuron detail\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
 	// ── GET /api/creature/:id/brain/tract/:tractIdx ─────────────────
 	// Returns dendrite connection and weight data for a specific tract.
 	// Capped at 1000 dendrites per response.

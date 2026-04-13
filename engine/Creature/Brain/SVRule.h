@@ -169,6 +169,11 @@ public:
 	int DumpSize();
 
 	bool SetFloat(int entryNo, float value);
+
+	// Public accessor for rule entries (used by DebugServer SVRule decompiler)
+	const SVRuleEntry& GetEntry(int i) const { return myRule[i >= 0 && i < length ? i : length]; }
+	static int GetLength() { return length; }
+
 	inline void RegisterBiochemistry(float* chemicals) {
 		myPointerToChemicals = chemicals;
 	}

@@ -40,6 +40,10 @@ public:
 
 	inline bool SupportsReinforcement() {	return mySupportReinforcementFlag;}
 
+	// Public accessors for SVRules (used by DebugServer neuron detail API)
+	const SVRule& GetInitRule() const { return myInitRule; }
+	const SVRule& GetUpdateRule() const { return myUpdateRule; }
+
 protected:
 	int myIdInList;
 

@@ -17,6 +17,7 @@
   let selectedTractIdx = null;
   let selectedNeuronKey = null; // "lobeIdx:neuronIdx" or null
   let tractDetail = null;       // fetched dendrite data for selected tract
+  let neuronDetail = null;      // fetched deep neuron detail from /api/.../neuron/:id
 
   // Zoom state
   let zoomLevel = 1.0;
@@ -46,8 +47,9 @@
     // Apply a visual noise floor (threshold).
     // This normalizes lobes like 'noun' and 'verb' that sit at a 
     // ~0.01 - 0.06 background resting state due to engine SV-Rule hacks.
-    const isNoisyLobe = (lobeName === 'noun' || lobeName === 'verb');
-    const noiseFloor = isNoisyLobe ? 0.07 : 0.001;
+    let noiseFloor = 0.001;
+    if (lobeName === 'noun' || lobeName === 'verb') noiseFloor = 0.07;
+    else if (lobeName === 'decn') noiseFloor = 0.008;
 
     if (val < noiseFloor) return 'rgba(0,0,0,0.15)';
     
@@ -380,6 +382,7 @@
       selectedNeuronKey = null;
       selectedTractIdx = null;
       tractDetail = null;
+      neuronDetail = null;
       dendriteSvg.innerHTML = '';
       renderTractLines();
       renderInfoPanel();
@@ -387,44 +390,49 @@
     }
 
     selectedNeuronKey = key;
+    neuronDetail = null; // clear while loading
 
     // Find all tracts that connect to/from this lobe
     if (!brainData) return;
     const lobe = brainData.lobes.find(l => l.index === lobeIdx);
     if (!lobe) return;
 
-    // Find tracts where this lobe is src or dst
-    const relevantTracts = brainData.tracts.filter(
-      t => t.srcLobe === lobe.name || t.dstLobe === lobe.name
-    );
-
-    if (relevantTracts.length === 0) {
-      dendriteSvg.innerHTML = '';
-      renderInfoPanel();
-      return;
-    }
-
-    // Fetch all relevant tracts and combine dendrites
     const creatureId = getSelectedCreatureId();
     if (creatureId === null) return;
 
     selectedTractIdx = null; // clear tract selection, we're doing neuron mode
 
-    Promise.all(relevantTracts.map(t =>
+    // Fetch both the deep neuron detail and tract dendrites in parallel
+    const neuronFetch = fetch('/api/creature/' + creatureId + '/brain/lobe/' + lobeIdx + '/neuron/' + neuronId)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null);
+
+    // Find tracts where this lobe is src or dst
+    const relevantTracts = brainData.tracts.filter(
+      t => t.srcLobe === lobe.name || t.dstLobe === lobe.name
+    );
+
+    const tractFetches = relevantTracts.map(t =>
       fetch('/api/creature/' + creatureId + '/brain/tract/' + t.index)
         .then(r => r.ok ? r.json() : null)
         .catch(() => null)
-    )).then(results => {
-      // Filter dendrites connected to this neuron
+    );
+
+    Promise.all([neuronFetch, Promise.all(tractFetches)]).then(([nDetail, tractResults]) => {
+      // Store neuron detail
+      if (nDetail && !nDetail.error) {
+        neuronDetail = nDetail;
+      }
+
+      // Filter dendrites connected to this neuron (for canvas lines)
       let allDendrites = [];
-      for (let i = 0; i < results.length; i++) {
-        if (!results[i] || results[i].error) continue;
+      for (let i = 0; i < tractResults.length; i++) {
+        if (!tractResults[i] || tractResults[i].error) continue;
         const tract = relevantTracts[i];
         const srcLobeIdx = lobeIndexByName(tract.srcLobe);
         const dstLobeIdx = lobeIndexByName(tract.dstLobe);
 
-        for (const d of results[i].dendrites) {
-          // Check if this dendrite connects to our neuron
+        for (const d of tractResults[i].dendrites) {
           if ((srcLobeIdx === lobeIdx && d.src === neuronId) ||
               (dstLobeIdx === lobeIdx && d.dst === neuronId)) {
             allDendrites.push({
@@ -516,6 +524,45 @@
     dendriteSvg.innerHTML = svgContent;
   }
 
+  // ── SVRule formatting helper ─────────────────────────────────────────
+  function formatSVRule(entries, title) {
+    if (!entries || entries.length === 0) {
+      return '<div class="crt-nd-svrule-empty">empty (no-op)</div>';
+    }
+    let html = '<div class="crt-nd-svrule">';
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      // Build formatted line
+      let line = '<span class="crt-nd-sv-op">' + escapeHtml(e.op) + '</span>';
+
+      // Determine if operand is meaningful for this opcode
+      const noOperandOps = ['stop', 'nop', 'setSpr', 'wta'];
+      if (!noOperandOps.includes(e.op)) {
+        line += ' <span class="crt-nd-sv-operand">' + escapeHtml(e.operand);
+        // Show array index for variable operands
+        if (['input', 'dend', 'neuron', 'spare'].includes(e.operand)) {
+          line += '[' + e.idx + ']';
+        } else if (e.operand === 'chem' || e.operand === 'chem[src+]' || e.operand === 'chem[dst+]') {
+          line += '[' + e.idx + ']';
+        } else if (e.operand === 'val' || e.operand === '-val' || e.operand === 'val*10' || e.operand === 'val/10') {
+          line += '(' + e.val.toFixed(3) + ')';
+        }
+        line += '</span>';
+      }
+
+      html += '<div class="crt-nd-sv-line">' +
+        '<span class="crt-nd-sv-num">' + String(i + 1).padStart(2, '0') + '</span> ' +
+        line + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // Simple HTML escape
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   // ── Info panel ─────────────────────────────────────────────────────────
   function renderInfoPanel() {
     if (!brainData) {
@@ -525,7 +572,99 @@
 
     let html = '';
 
-    // Dendrite detail section (if a tract or neuron is selected)
+    // ── Deep neuron detail panel (replaces simple "Selected Neuron" when data is loaded) ──
+    if (selectedNeuronKey !== null && neuronDetail) {
+      const nd = neuronDetail;
+      const [li, ni] = selectedNeuronKey.split(':').map(Number);
+      const lobe = brainData.lobes.find(l => l.index === li);
+      const label = lobe && lobe.labels && ni < lobe.labels.length ? lobe.labels[ni] : '';
+
+      html += '<div class="crt-brain-info-section crt-brain-info-section--active crt-nd">';
+
+      // ── Identity ──
+      html += '<div class="crt-nd-header">';
+      html += '<span class="crt-nd-lobe" style="color:' +
+        (lobe ? lobeHeaderColour(lobe.colour) : 'var(--magenta)') + '">' + nd.lobeName + '</span>';
+      html += '<span class="crt-nd-id">#' + nd.neuronId + '</span>';
+      if (nd.isWinner) html += '<span class="crt-nd-winner">★ winner</span>';
+      html += '</div>';
+      if (label) {
+        html += '<div class="crt-nd-label">' + escapeHtml(label) + '</div>';
+      }
+
+      // ── State variables as bars ──
+      html += '<div class="crt-nd-section-title">State Variables</div>';
+      html += '<div class="crt-nd-states">';
+      for (const sv of nd.states) {
+        const absVal = Math.min(1, Math.abs(sv.value));
+        const isNeg = sv.value < 0;
+        const barColour = isNeg ? 'var(--magenta)' : 'var(--orange)';
+        html += '<div class="crt-nd-state-row">' +
+          '<span class="crt-nd-state-name">' + sv.name + '</span>' +
+          '<div class="crt-nd-state-bar-bg">' +
+          '<div class="crt-nd-state-bar" style="width:' + (absVal * 100) + '%;background:' + barColour + '"></div>' +
+          '</div>' +
+          '<span class="crt-nd-state-val">' + sv.value.toFixed(3) + '</span>' +
+          '</div>';
+      }
+      html += '</div>';
+
+      // ── Lobe SVRules ──
+      html += '<div class="crt-nd-section-title">Lobe Update Rule</div>';
+      html += formatSVRule(nd.updateRule, 'Update');
+
+      html += '<div class="crt-nd-section-title">Lobe Init Rule</div>';
+      html += formatSVRule(nd.initRule, 'Init');
+
+      // ── Tract SVRules ──
+      if (nd.tractRules && nd.tractRules.length > 0) {
+        for (const tr of nd.tractRules) {
+          html += '<div class="crt-nd-section-title">Tract: ' + escapeHtml(tr.tractName) + '</div>';
+          html += '<div class="crt-nd-subsection">Update Rule</div>';
+          html += formatSVRule(tr.updateRule, 'Tract Update');
+          html += '<div class="crt-nd-subsection">Init Rule</div>';
+          html += formatSVRule(tr.initRule, 'Tract Init');
+        }
+      }
+
+      // ── Connections ──
+      if (nd.connections && nd.connections.length > 0) {
+        const incoming = nd.connections.filter(c => c.direction === 'incoming');
+        const outgoing = nd.connections.filter(c => c.direction === 'outgoing' || c.direction === 'self');
+
+        if (incoming.length > 0) {
+          html += '<div class="crt-nd-section-title">Incoming (' + incoming.length + ')</div>';
+          html += renderConnectionTable(incoming, 'incoming');
+        }
+        if (outgoing.length > 0) {
+          html += '<div class="crt-nd-section-title">Outgoing (' + outgoing.length + ')</div>';
+          html += renderConnectionTable(outgoing, 'outgoing');
+        }
+      } else {
+        html += '<div class="crt-nd-section-title">Connections</div>';
+        html += '<div class="crt-nd-svrule-empty">No dendrites connected</div>';
+      }
+
+      html += '<div class="crt-nd-dismiss">Click neuron again to dismiss</div>';
+      html += '</div>';
+
+    } else if (selectedNeuronKey !== null) {
+      // Loading state while neuronDetail hasn't arrived yet
+      const [li, ni] = selectedNeuronKey.split(':').map(Number);
+      const lobe = brainData.lobes.find(l => l.index === li);
+      const label = lobe && lobe.labels && ni < lobe.labels.length ? lobe.labels[ni] : '';
+      html += '<div class="crt-brain-info-section crt-brain-info-section--active">';
+      html += '<div class="crt-brain-info-title">⚡ Loading Neuron…</div>';
+      html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-name" style="color:var(--magenta)">' +
+        (lobe ? lobe.name : '?') + ' #' + ni + '</span></div>';
+      if (label) {
+        html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-detail">' +
+          label + '</span></div>';
+      }
+      html += '</div>';
+    }
+
+    // Dendrite detail section (if a tract is selected)
     if (selectedTractIdx !== null && tractDetail) {
       html += '<div class="crt-brain-info-section crt-brain-info-section--active">';
       html += '<div class="crt-brain-info-title">⚡ Selected Tract</div>';
@@ -539,7 +678,6 @@
           ? ' (showing ' + tractDetail.dendritesReturned + ')'
           : '') +
         '</span></div>';
-      // Show non-zero weight stats
       if (tractDetail.dendrites) {
         let nonZero = 0, maxW = 0;
         for (const d of tractDetail.dendrites) {
@@ -550,23 +688,6 @@
       }
       html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-detail" style="color:rgba(0,0,0,0.35)">' +
         'Click tract again to dismiss</span></div>';
-      html += '</div>';
-    }
-
-    if (selectedNeuronKey !== null) {
-      const [li, ni] = selectedNeuronKey.split(':').map(Number);
-      const lobe = brainData.lobes.find(l => l.index === li);
-      const label = lobe && lobe.labels && ni < lobe.labels.length ? lobe.labels[ni] : '';
-      html += '<div class="crt-brain-info-section crt-brain-info-section--active">';
-      html += '<div class="crt-brain-info-title">⚡ Selected Neuron</div>';
-      html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-name" style="color:var(--magenta)">' +
-        (lobe ? lobe.name : '?') + ' #' + ni + '</span></div>';
-      if (label) {
-        html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-detail">' +
-          label + '</span></div>';
-      }
-      html += '<div class="crt-brain-info-lobe"><span class="crt-brain-info-lobe-detail" style="color:rgba(0,0,0,0.35)">' +
-        'Click neuron again to dismiss</span></div>';
       html += '</div>';
     }
 
@@ -614,6 +735,47 @@
     });
   }
 
+  // ── Render connection table for neuron detail ──────────────────────────
+  function renderConnectionTable(connections, direction) {
+    let html = '<div class="crt-nd-conn-table">';
+    for (const c of connections) {
+      const stw = c.weights[0] ? c.weights[0].value : 0;
+      const ltw = c.weights[1] ? c.weights[1].value : 0;
+      const str = c.weights[7] ? c.weights[7].value : 0;
+      const isDormant = Math.abs(stw) < 0.001 && Math.abs(ltw) < 0.001;
+
+      const peerLobe = direction === 'incoming' ? c.srcLobe : c.dstLobe;
+      const peerId = direction === 'incoming' ? c.srcNeuron : c.dstNeuron;
+
+      // Get label for the peer neuron
+      const peerLobeIdx = direction === 'incoming' ? c.srcLobeIdx : c.dstLobeIdx;
+      const peerLobeData = brainData.lobes.find(l => l.index === peerLobeIdx);
+      const peerLabel = peerLobeData && peerLobeData.labels && peerId < peerLobeData.labels.length
+        ? peerLobeData.labels[peerId] : '';
+
+      const barW = Math.min(1, Math.abs(stw));
+      const barCol = isDormant ? 'rgba(0,0,0,0.1)' : 'var(--magenta)';
+
+      html += '<div class="crt-nd-conn-row' + (isDormant ? ' crt-nd-conn-dormant' : '') + '">' +
+        '<div class="crt-nd-conn-peer">' +
+          '<span class="crt-nd-conn-lobe">' + escapeHtml(peerLobe) + '</span>' +
+          '<span class="crt-nd-conn-id">#' + peerId + '</span>' +
+          (peerLabel ? '<span class="crt-nd-conn-label">' + escapeHtml(peerLabel) + '</span>' : '') +
+        '</div>' +
+        '<div class="crt-nd-conn-weights">' +
+          '<div class="crt-nd-conn-bar-bg">' +
+            '<div class="crt-nd-conn-bar" style="width:' + (barW * 100) + '%;background:' + barCol + '"></div>' +
+          '</div>' +
+          '<span class="crt-nd-conn-val" title="STW: ' + stw.toFixed(3) + ' / LTW: ' + ltw.toFixed(3) + ' / STR: ' + str.toFixed(3) + '">' +
+            stw.toFixed(3) +
+          '</span>' +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   // ── Clear ──────────────────────────────────────────────────────────────
   function clearBrain() {
     brainData = null;
@@ -623,6 +785,7 @@
     selectedTractIdx = null;
     selectedNeuronKey = null;
     tractDetail = null;
+    neuronDetail = null;
     brainCanvas.innerHTML = '<div class="crt-empty-hint">Select a creature and click Brain</div>';
     brainSvg.innerHTML = '';
     dendriteSvg.innerHTML = '';
@@ -637,6 +800,7 @@
         selectedTractIdx = null;
         selectedNeuronKey = null;
         tractDetail = null;
+        neuronDetail = null;
         dendriteSvg.innerHTML = '';
         renderTractLines();
         renderInfoPanel();

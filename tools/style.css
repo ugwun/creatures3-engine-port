@@ -2087,7 +2087,7 @@ body.compact .log-row {
 
 /* ── Brain info sidebar ────────────────────────────────────────────── */
 #crt-brain-info {
-  width: 180px;
+  width: 240px;
   flex-shrink: 0;
   border-left: 2px solid var(--black);
   display: flex;
@@ -2184,6 +2184,238 @@ body.compact .log-row {
 .crt-brain-info-section--active {
   background: rgba(255, 0, 255, 0.04);
   border-bottom: 2px solid var(--magenta);
+}
+
+/* ── Neuron Detail Panel (crt-nd-*) ─────────────────────────────────── */
+.crt-nd {
+  padding-bottom: 12px;
+}
+
+.crt-nd-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px 2px;
+}
+
+.crt-nd-lobe {
+  font-weight: 800;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.crt-nd-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.crt-nd-winner {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 0.5px;
+}
+
+.crt-nd-label {
+  padding: 0 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.3px;
+}
+
+.crt-nd-section-title {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 8px 10px 3px;
+  color: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  margin-top: 2px;
+}
+
+.crt-nd-subsection {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px 2px;
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* State variable bars */
+.crt-nd-states {
+  padding: 0 10px;
+}
+
+.crt-nd-state-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 0;
+}
+
+.crt-nd-state-name {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  min-width: 32px;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+}
+
+.crt-nd-state-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-nd-state-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.crt-nd-state-val {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.5);
+  min-width: 42px;
+  text-align: right;
+}
+
+/* SVRule listing */
+.crt-nd-svrule {
+  padding: 2px 10px 4px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin: 0 6px;
+}
+
+.crt-nd-svrule-empty {
+  padding: 2px 10px;
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.3);
+  font-style: italic;
+}
+
+.crt-nd-sv-line {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crt-nd-sv-num {
+  color: rgba(0, 0, 0, 0.25);
+  font-size: 8px;
+  user-select: none;
+}
+
+.crt-nd-sv-op {
+  font-weight: 700;
+  color: var(--near-black);
+}
+
+.crt-nd-sv-operand {
+  color: var(--orange);
+  font-weight: 600;
+}
+
+/* Connection table */
+.crt-nd-conn-table {
+  padding: 0 6px;
+}
+
+.crt-nd-conn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.crt-nd-conn-row:last-child {
+  border-bottom: none;
+}
+
+.crt-nd-conn-dormant {
+  opacity: 0.45;
+}
+
+.crt-nd-conn-peer {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.crt-nd-conn-lobe {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.crt-nd-conn-id {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.crt-nd-conn-label {
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crt-nd-conn-weights {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.crt-nd-conn-bar-bg {
+  flex: 1;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-nd-conn-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.crt-nd-conn-val {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.45);
+  min-width: 36px;
+  text-align: right;
+  cursor: help;
+}
+
+.crt-nd-dismiss {
+  padding: 6px 10px 0;
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.25);
+  text-align: center;
 }
 
 /* ── CAOS IDE Tab ────────────────────────────────────────────────────── */

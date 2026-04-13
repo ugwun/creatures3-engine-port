@@ -264,8 +264,13 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
   - Lobe name and neuron ID
   - Semantic label (if known): drive names for `driv`, action names for `verb`/`decn`, category names for `noun`/`attn`/`stim`/`visn`
   - Activity level (state 0) and all non-zero SVRule state variables (S1–S7)
-- **Click** a neuron to highlight it and see all its incoming/outgoing dendrite connections drawn as magenta lines to connected neurons in other lobes. A magenta circle marks the selected neuron. Click again to dismiss.
-  - **Dormant connections:** By default, zero-weight (unlearned) dendrites are hidden across the brain map to prevent visual clutter. However, when a specific neuron is clicked, its dormant, zero-weight anatomical pathways are drawn as **faint, dashed white lines**. This allows for the inspection of innate "blank slate" wiring potential before biological reinforcement learning applies a functional weight.
+- **Click** a neuron to highlight it and open the **Deep Neuron Detail** panel in the sidebar, replacing the lobes list. Click again to dismiss. The detail panel includes:
+  - **Identificiation**: Lobe name, neuron ID, and semantic string label
+  - **State Variables**: All 8 SVRules states rendered as visual bars (orange for positive, magenta for negative)
+  - **Lobe Rules**: The neuron's Lobe Initialization and Update SVRules decompiled from bytecode into human-readable CAOS pseudo-code (e.g. `load neuron[state]`)
+  - **Tract Rules**: The Tract Initialization and Update SVRules for all tracts connected to this neuron
+  - **Dendrite Connections**: A tabular breakdown of all incoming and outgoing connections mapped to specific peer neurons, complete with weight bars, labels, and dormant markers.
+  - **Dormant anatomical pathways lines**: When clicked, dormant zero-weight anatomical pathways are also drawn across the brain map as **faint, dashed white lines**, allowing inspection of innate "blank slate" wiring before biological reinforcement.
 
 **Tract Connection Lines:**
 
@@ -801,6 +806,51 @@ Get dendrite connections and weights for a specific tract. Capped at 1000 dendri
   "dendriteCount": 160, "dendritesReturned": 160,
   "dendrites": [
     {"id": 0, "src": 3, "dst": 7, "weights": [0.8, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
+  ]
+}
+```
+
+### `GET /api/creature/:id/brain/lobe/:lobeIdx/neuron/:neuronIdx`
+
+Get deep inspection details for a single specific neuron, including state variables, localized SVRules, and specific dendrite connections pointing to or from this neuron.
+
+**Response:**
+```json
+{
+  "lobeIndex": 1,
+  "lobeName": "decn",
+  "neuronId": 11,
+  "neuronCount": 13,
+  "isWinner": false,
+  "states": [
+    { "name": "state", "value": 0.0016 },
+    { "name": "input", "value": 0.0 }
+  ],
+  "initRule": [],
+  "updateRule": [
+    {"op": "load", "operand": "neuron", "idx": 1, "val": 0.004}
+  ],
+  "tractRules": [
+    {
+      "tractIndex": 4,
+      "tractName": "comb->decn",
+      "initRule": [],
+      "updateRule": [{"op": "load", "operand": "input", "idx": 2, "val": 0.008}]
+    }
+  ],
+  "connections": [
+    {
+      "tractIndex": 10,
+      "tractName": "verb->decn",
+      "direction": "incoming",
+      "srcLobeIdx": 8, "srcLobe": "verb",
+      "dstLobeIdx": 1, "dstLobe": "decn",
+      "srcNeuron": 11, "dstNeuron": 11,
+      "weights": [
+        {"name": "stw", "value": 0},
+        {"name": "ltw", "value": 0}
+      ]
+    }
   ]
 }
 ```
