@@ -310,6 +310,9 @@ function syncEngineState() {
 // Fetch on page load (after SSE connects)
 setTimeout(syncEngineState, 500);
 
+// Fire tab:activated for the default tab so modules (e.g. creatures.js) start their timers
+setTimeout(() => DevToolsEvents.emit('tab:activated', activeTab), 100);
+
 // ── Nav Sidebar Toggle ──────────────────────────────────────────────────
 const btnNavToggle = document.getElementById('btn-nav-toggle');
 if (btnNavToggle) {
