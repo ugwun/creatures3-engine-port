@@ -309,6 +309,7 @@
           <nav id="crt-sub-tabs">
             <button class="crt-sub-btn crt-sub-btn--active" data-subtab="drives">Drives</button>
             <button class="crt-sub-btn" data-subtab="chemistry">Chemistry</button>
+            <button class="crt-sub-btn" data-subtab="organs">Organs</button>
             <button class="crt-sub-btn" data-subtab="brain">Brain</button>
           </nav>
         </div>
@@ -326,6 +327,12 @@
             </div>
             <div id="crt-chem-bars">
               <div class="crt-empty-hint">Select a creature to view chemistry</div>
+            </div>
+          </div>
+          <!-- Organs sub-view -->
+          <div id="crt-organs" class="crt-subview" hidden>
+            <div id="crt-organs-content">
+              <div class="crt-empty-hint">Select a creature to view organs</div>
             </div>
           </div>
           <!-- Brain sub-view -->
@@ -469,6 +476,7 @@
   <script src="debugger_view.js"></script>
   <script src="creatures.js"></script>
   <script src="brain.js"></script>
+  <script src="organs.js"></script>
   <script src="caos_ide.js"></script>
   <script src="docs.js"></script>
 </body>

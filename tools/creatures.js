@@ -311,21 +311,7 @@
 
     html += '</table>';
 
-    // Organ status  (if chemistry data loaded)
-    if (chemData && chemData.organs && chemData.organs.length > 0) {
-      html += '<div class="crt-summary-section-title">Organs</div>';
-      html += '<div class="crt-organ-list">';
-      for (const organ of chemData.organs) {
-        const status = organ.failed ? 'failed' : (organ.functioning ? 'ok' : 'impaired');
-        const statusCls = organ.failed ? 'crt-organ--failed' : (organ.functioning ? 'crt-organ--ok' : 'crt-organ--impaired');
-        html += '<div class="crt-organ-item ' + statusCls + '">' +
-          '<span class="crt-organ-idx">Organ ' + organ.index + '</span>' +
-          '<span class="crt-organ-status">' + status + '</span>' +
-          '<span class="crt-organ-lf">LF: ' + (organ.longTermLifeForce ? organ.longTermLifeForce.toFixed(2) : '?') + '</span>' +
-        '</div>';
-      }
-      html += '</div>';
-    }
+
 
     html += '</div>';
     summaryContent.innerHTML = html;

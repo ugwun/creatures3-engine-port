@@ -1437,6 +1437,131 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
+	// ── GET /api/creature/:id/organs ─────────────────────────────────
+	// Returns detailed organ data: receptors, emitters, reactions per organ.
+	myImpl->svr.Get(R"(/api/creature/(\d+)/organs)", [this](const httplib::Request& req, httplib::Response& res) {
+		int agentId = std::stoi(req.matches[1]);
+
+		auto* item = new WorkItem();
+		item->work = [agentId]() -> std::string {
+			AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+			if (handle.IsInvalid() || !handle.IsCreature()) {
+				return "{\"error\":\"Creature not found\"}";
+			}
+
+			try {
+				Creature& creature = handle.GetCreatureReference();
+				Biochemistry* biochem = creature.GetBiochemistry();
+				if (!biochem) {
+					return "{\"error\":\"No biochemistry\"}";
+				}
+
+				std::ostringstream json;
+				int organCount = biochem->GetOrganCount();
+				json << "{\"organCount\":" << organCount;
+				json << ",\"organs\":[";
+				for (int i = 0; i < organCount; ++i) {
+					Organ* organ = biochem->GetOrgan(i);
+					if (!organ) continue;
+					if (i > 0) json << ",";
+
+					json << "{\"index\":" << i
+						<< ",\"clockRate\":" << organ->LocusClockRate()
+						<< ",\"lifeForce\":" << organ->LocusLifeForce()
+						<< ",\"shortTermLifeForce\":" << organ->ShortTermLifeForce()
+						<< ",\"longTermLifeForce\":" << organ->LongTermLifeForce()
+						<< ",\"initialLifeForce\":" << organ->InitialLifeForce()
+						<< ",\"longTermRateOfRepair\":" << organ->LongTermRateOfRepair()
+						<< ",\"energyCost\":" << organ->EnergyCost()
+						<< ",\"damageDueToZeroEnergy\":" << organ->DamageDueToZeroEnergy()
+						<< ",\"functioning\":" << (organ->Functioning() ? "true" : "false")
+						<< ",\"failed\":" << (organ->Failed() ? "true" : "false")
+						<< ",\"receptorCount\":" << organ->ReceptorCount()
+						<< ",\"emitterCount\":" << organ->EmitterCount()
+						<< ",\"reactionCount\":" << organ->ReactionCount();
+
+					// Receptors (per receptor group, then per receptor in each group)
+					json << ",\"receptors\":[";
+					int groupCount = organ->ReceptorGroupCount();
+					bool firstR = true;
+					for (int g = 0; g < groupCount; ++g) {
+						const Receptors& rGroup = organ->GetReceptorGroup(g);
+						for (int j = 0; j < (int)rGroup.size(); ++j) {
+							const Receptor* r = rGroup[j];
+							if (!r) continue;
+							if (!firstR) json << ",";
+							firstR = false;
+							json << "{\"organ\":" << r->IDOrgan
+								<< ",\"tissue\":" << r->IDTissue
+								<< ",\"locus\":" << r->IDLocus
+								<< ",\"chemical\":" << r->Chem
+								<< ",\"threshold\":" << r->Threshold
+								<< ",\"nominal\":" << r->Nominal
+								<< ",\"gain\":" << r->Gain
+								<< ",\"effect\":" << r->Effect
+								<< "}";
+						}
+					}
+					json << "]";
+
+					// Emitters
+					json << ",\"emitters\":[";
+					for (int e = 0; e < organ->EmitterCount(); ++e) {
+						const Emitter& em = organ->GetEmitter(e);
+						if (e > 0) json << ",";
+						json << "{\"organ\":" << em.IDOrgan
+							<< ",\"tissue\":" << em.IDTissue
+							<< ",\"locus\":" << em.IDLocus
+							<< ",\"chemical\":" << em.Chem
+							<< ",\"threshold\":" << em.Threshold
+							<< ",\"gain\":" << em.Gain
+							<< ",\"effect\":" << em.Effect
+							<< ",\"bioTickRate\":" << em.bioTickRate
+							<< "}";
+					}
+					json << "]";
+
+					// Reactions
+					json << ",\"reactions\":[";
+					for (int r = 0; r < organ->ReactionCount(); ++r) {
+						const Reaction& rn = organ->GetReaction(r);
+						if (r > 0) json << ",";
+						json << "{\"r1\":" << rn.R1
+							<< ",\"propR1\":" << rn.propR1
+							<< ",\"r2\":" << rn.R2
+							<< ",\"propR2\":" << rn.propR2
+							<< ",\"p1\":" << rn.P1
+							<< ",\"propP1\":" << rn.propP1
+							<< ",\"p2\":" << rn.P2
+							<< ",\"propP2\":" << rn.propP2
+							<< ",\"rate\":" << rn.Rate
+							<< "}";
+					}
+					json << "]";
+
+					json << "}";
+				}
+				json << "]}";
+				return json.str();
+			} catch (...) {
+				return "{\"error\":\"Failed to read organs\"}";
+			}
+		};
+
+		auto future = item->promise.get_future();
+		{
+			std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+			myImpl->workQueue.push(item);
+		}
+
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
 	// ── GET /api/creature/:id/brain ──────────────────────────────────
 	// Returns brain overview: lobe summaries (with labels) and tract summaries.
 	myImpl->svr.Get(R"(/api/creature/(\d+)/brain)", [this](const httplib::Request& req, httplib::Response& res) {

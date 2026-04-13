@@ -227,6 +227,18 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - ~50 well-known chemicals labelled by name (Glycogen, ATP, ADP, antigens, drives, etc.)
 - Colour-coded by category: purple (drives), red (antigens), orange (antibodies), green (smells), blue (general)
 
+**Organs Sub-Tab:**
+
+![Developer Tools — Organs View](developer_tools_creature_organs.png)
+
+- Lists all of the creature's organs as expandable cards
+- At-a-glance health bar, status badge (OK / IMPAIRED / FAILED), and component count badges (Receptors, Emitters, Reactions) for each organ
+- **Click an organ card to expand it** to view internal biochemistry machinery:
+  - **Stats Grid:** details such as Clock Rate, Energy Cost, Life Force, and Rate of Repair
+  - **Reactions:** displays chemical formulas with proportions and visual reaction-rate bars (e.g., `Glucogen + 4 ASH2Dehydrogenase → Starch`)
+  - **Receptors:** lists target locus, binding chemical, threshold, gain, and effect flags
+  - **Emitters:** lists target locus, emitted chemical, threshold, gain, and tick rate
+
 **Summary Card:**
 
 - Species icon and genus label
@@ -234,8 +246,6 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - Moniker, sex, age stage, life state, health percentage
 - Position in world, agent ID
 - Highest active drive
-- Organ status list (functioning / impaired / failed) with life force values
-
 **Toolbar Controls:**
 
 - **Refresh** — manually fetch latest data

@@ -54,9 +54,11 @@ public:
 
 	inline const Emitter& GetEmitter(int iIndex) const	 {	return myEmitters[iIndex];}
 	inline const Reaction& GetReaction(int iIndex) const{	return myReactions[iIndex];}
-	inline int ReceptorCount() const{					return myNoOfReceptors;}
-	inline int EmitterCount() const	{					return myNoOfEmitters;}
-	inline int ReactionCount() const{					return myNoOfReactions;}
+	inline int ReceptorCount() const{						return myNoOfReceptors;}
+	inline int EmitterCount() const	{						return myNoOfEmitters;}
+	inline int ReactionCount() const{						return myNoOfReactions;}
+	inline int ReceptorGroupCount() const{					return myNoOfReceptorGroups;}
+	inline const Receptors& GetReceptorGroup(int iIndex) const{	return myReceptorGroups[iIndex];}
 
 	inline float LocusClockRate() const { return loc_ClockRate;}
 	inline float LocusLifeForce() const { return loc_LifeForce;}
