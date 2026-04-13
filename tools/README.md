@@ -31,7 +31,7 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ## Tabs
 
-The developer tools UI is organized into six tabs, accessible from the header navigation bar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
+The developer tools UI is organized into seven tabs, accessible from the collapsible left navigation sidebar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
 
 **Engine Pause/Play:** The header includes **▶** (play) and **❚❚** (pause) buttons on the right side. These control the global engine simulation — pausing freezes all game ticks (creature AI, physics, timer scripts, agent updates) while keeping the developer tools UI and debug server fully responsive. Useful for inspecting creatures and agents in a frozen state.
 

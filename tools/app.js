@@ -241,7 +241,7 @@ optCompact.addEventListener("change", () => {
 connect();
 
 // ── Tab switching ────────────────────────────────────────────────────────
-let activeTab = 'log'; // track current active tab
+let activeTab = 'creatures'; // track current active tab
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -309,5 +309,13 @@ function syncEngineState() {
 }
 // Fetch on page load (after SSE connects)
 setTimeout(syncEngineState, 500);
+
+// ── Nav Sidebar Toggle ──────────────────────────────────────────────────
+const btnNavToggle = document.getElementById('btn-nav-toggle');
+if (btnNavToggle) {
+    btnNavToggle.addEventListener('click', () => {
+        document.body.classList.toggle('nav-collapsed');
+    });
+}
 
 })();

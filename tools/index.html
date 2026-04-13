@@ -18,6 +18,7 @@
   <!-- ── Header ────────────────────────────────────────────────────────────── -->
   <header id="header">
     <div id="header-left">
+      <button id="btn-nav-toggle" class="engine-ctrl" title="Toggle Menu" style="margin-right: 16px;">☰</button>
       <div id="logo">
         <!-- Marathon-style geometric mark: bold orange square with a cross slit -->
         <div id="logo-mark">
@@ -40,16 +41,6 @@
     </div>
 
     <div id="header-center">
-      <!-- Tab navigation -->
-      <nav id="tab-nav">
-        <button class="tab-btn tab-btn--active" data-tab="log">Log</button>
-        <button class="tab-btn" data-tab="console">Console</button>
-        <button class="tab-btn" data-tab="scripts">Scripts</button>
-        <button class="tab-btn" data-tab="debugger">Debugger</button>
-        <button class="tab-btn" data-tab="creatures">Creatures</button>
-        <button class="tab-btn" data-tab="ide">CAOS IDE</button>
-        <button class="tab-btn" data-tab="docs">Docs</button>
-      </nav>
     </div>
 
     <div id="header-right">
@@ -58,10 +49,21 @@
     </div>
   </header>
 
+  <!-- ── Left Navigation ───────────────────────────────────────────────────── -->
+  <nav id="left-nav">
+    <button class="tab-btn tab-btn--active" data-tab="creatures">Creatures</button>
+    <button class="tab-btn" data-tab="log">Log</button>
+    <button class="tab-btn" data-tab="console">Console</button>
+    <button class="tab-btn" data-tab="scripts">Scripts</button>
+    <button class="tab-btn" data-tab="debugger">Debugger</button>
+    <button class="tab-btn" data-tab="ide">CAOS IDE</button>
+    <button class="tab-btn" data-tab="docs">Docs</button>
+  </nav>
+
   <!-- ── Toolbar: contextual controls per tab ──────────────────────────────── -->
   <div id="toolbar">
     <!-- Log tab controls -->
-    <div id="log-controls" class="tab-controls">
+    <div id="log-controls" class="tab-controls" hidden>
       <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
       <div class="toolbar-sep"></div>
       <button id="btn-pause" class="btn">Pause</button>
@@ -93,7 +95,7 @@
       <button id="btn-dbg-stepover" class="btn" disabled>Step Over</button>
     </div>
     <!-- Creatures tab controls -->
-    <div id="creatures-controls" class="tab-controls" hidden>
+    <div id="creatures-controls" class="tab-controls">
       <button id="btn-creatures-refresh" class="btn">Refresh</button>
       <label class="opt-toggle toolbar-toggle">
         <input type="checkbox" id="opt-creatures-auto" checked /> Auto (2s)
@@ -122,7 +124,7 @@
 
 
   <!-- ── Tab: Log ──────────────────────────────────────────────────────────── -->
-  <div id="tab-log" class="tab-panel tab-panel--active">
+  <div id="tab-log" class="tab-panel" hidden>
     <!-- Category sidebar -->
     <aside id="sidebar">
       <div class="sidebar-section">
@@ -292,7 +294,7 @@
   </div>
 
   <!-- ── Tab: Creatures ──────────────────────────────────────────────────── -->
-  <div id="tab-creatures" class="tab-panel" hidden>
+  <div id="tab-creatures" class="tab-panel tab-panel--active">
     <div id="crt-container">
       <!-- Creature list panel (left sidebar) -->
       <aside id="crt-list-panel">
