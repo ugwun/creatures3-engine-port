@@ -132,6 +132,18 @@ const TIPS = [
     { selector: '.org-section-title', text: 'Section within the organ detail — Reactions, Receptors, or Emitters' },
     { selector: '.org-rxn-rate', text: 'Reaction rate — 0% is fastest (instant), 100% is slowest (never reacts)' },
 
+    // Creatures — Genome sub-view
+    { selector: '.crt-sub-btn[data-subtab="genome"]', text: 'Genome Inspector — structural view of all genes inside this creature\'s DNA with details on biology and brain setup' },
+    { selector: '#crt-genome-search', text: 'Filter genes by searching for text (e.g. "Hunger", "Chem 213")' },
+    { selector: '#crt-genome-age', text: 'Filter genes by their switch-on age (Baby, Child, Adult, etc.)' },
+    { selector: '.crt-gene-badge-mut', text: 'Gene mutation flags (M=Mutable, D=Duplicatable, C=Cuttable)' },
+    { selector: '.crt-gene-badge-sex', text: 'Sex requirement flag (gene only active in males or females)' },
+    { selector: '.crt-gene-badge-dormant', text: 'Dormant flag — this gene will not be expressed during the creature\'s life' },
+    { selector: '.crt-gene-badge-gen', text: 'Generation level of this gene' },
+    { selector: '.crt-gene-badge-age', text: 'Age stage when this gene becomes active' },
+    { selector: '.crt-svrule-container', text: 'CAOS SVRule pseudo-code for neuron initialization or updating' },
+    { selector: '#crt-genome-controls .opt-toggle', text: 'Filter genes by primary type (Brain, Biochemistry, Creature physiology, Organ properties)' },
+
     // ── CAOS IDE Tab ─────────────────────────────────────────────────────
     { selector: '#btn-ide-run', text: 'Execute the editor contents as immediate CAOS code (Ctrl/Cmd+Enter). Like typing in the console' },
     { selector: '#btn-ide-inject', text: 'Install the code as a permanent script in the scriptorium using the classifier above' },

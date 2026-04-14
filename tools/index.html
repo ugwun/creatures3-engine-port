@@ -311,6 +311,7 @@
             <button class="crt-sub-btn" data-subtab="chemistry">Chemistry</button>
             <button class="crt-sub-btn" data-subtab="organs">Organs</button>
             <button class="crt-sub-btn" data-subtab="brain">Brain</button>
+            <button class="crt-sub-btn" data-subtab="genome">Genome</button>
           </nav>
         </div>
         <div id="crt-detail-content">
@@ -353,6 +354,31 @@
                   <div class="crt-empty-hint">Select a creature</div>
                 </div>
               </div>
+            </div>
+          </div>
+          <!-- Genome sub-view -->
+          <div id="crt-genome" class="crt-subview" hidden>
+            <div id="crt-genome-controls">
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="all" checked /> All</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="brain" /> Brain</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="biochemistry" /> Biochemistry</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="creature" /> Creature</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="organ" /> Organ</label>
+              <div class="toolbar-sep"></div>
+              <input id="crt-genome-search" type="text" placeholder="Filter genes…" autocomplete="off" />
+              <select id="crt-genome-age" class="opt-select">
+                <option value="all">All Ages</option>
+                <option value="0">Baby</option>
+                <option value="1">Child</option>
+                <option value="2">Adolescent</option>
+                <option value="3">Youth</option>
+                <option value="4">Adult</option>
+                <option value="5">Old</option>
+                <option value="6">Senile</option>
+              </select>
+            </div>
+            <div id="crt-genome-content">
+              <div class="crt-empty-hint">Select a creature to view genome</div>
             </div>
           </div>
         </div>
@@ -476,8 +502,10 @@
   <script src="scripts.js"></script>
   <script src="debugger_view.js"></script>
   <script src="creatures.js"></script>
+  <script src="svrule.js"></script>
   <script src="brain.js"></script>
   <script src="organs.js"></script>
+  <script src="genome.js"></script>
   <script src="caos_ide.js"></script>
   <script src="docs.js"></script>
 </body>

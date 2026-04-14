@@ -239,6 +239,19 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
   - **Receptors:** lists target locus, binding chemical, threshold, gain, and effect flags
   - **Emitters:** lists target locus, emitted chemical, threshold, gain, and tick rate
 
+**Genome Sub-Tab:**
+
+![Developer Tools — Genome Inspector](developer_tools_genome_inspector.png)
+
+The Genome sub-tab is a fully immersive, real-time binary parser for inspecting the root genetics data loaded into any creature running in the engine. It maps exactly to the C++ binary structure of the `.gen` files and visually renders all 19 unique subsets across the 4 major genetic blocks.
+
+- **Filtering Capabilities:** Quickly filter genes using the top category radio toggles (Brain, Biochemistry, Creature, Organ).
+- **Text & Property Search:** Perform sub-string text searches against parameters to rapidly find elements (e.g., "Hunger" or "Chem 213").
+- **Age Filter:** Isolate genes by their specific "switch-on" time (Baby, Child, Adult, Senile).
+- **Intelligent Badges:** Individual gene cards present structural parameters like mutable/cuttable/duplicatable flags, gender targeting (Male/Female Only), and dormancy explicitly.
+- **Biochemistry Resolution:** Automatically maps raw numeric chemical IDs into localized human-readable biological names for emitters, receptors, and reactions.
+- **SVRule Translation:** Decompiles complex binary SVRule neuron setup structures out into formatted, human-readable CAOS pseudo-code for Brain Lobes and Neural Tracts.
+
 **Summary Card:**
 
 - Species icon and genus label

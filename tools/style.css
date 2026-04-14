@@ -3751,3 +3751,125 @@ body.nav-collapsed #left-nav {
   display: inline-block;
   border: 1px solid rgba(0, 0, 0, 0.2);
 }
+
+/* ── Genome Sub-tab Styles ────────────────────────────────────────────── */
+#crt-genome-controls {
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  background: var(--off-white);
+  border-bottom: 2px solid var(--black);
+}
+
+#crt-genome-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#crt-genome-search {
+  padding: 4px 8px;
+  border: 1px solid rgba(0,0,0,0.2);
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+
+.crt-gene-card {
+  background: var(--off-white);
+  border: 1px solid rgba(0,0,0,0.1);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crt-gene-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crt-gene-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.crt-gene-id {
+  color: rgba(0,0,0,0.3);
+  margin-left: 6px;
+}
+
+.crt-gene-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.crt-gene-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  background: rgba(0,0,0,0.05);
+  text-transform: uppercase;
+}
+
+.crt-gene-badge-mut {
+  background: rgba(255,165,0,0.2);
+  color: #cc6600;
+}
+
+.crt-gene-badge-sex {
+  background: rgba(0,150,255,0.15);
+  color: #0055aa;
+}
+
+.crt-gene-badge-dormant {
+  background: rgba(0,0,0,0.8);
+  color: white;
+}
+
+.crt-gene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+}
+
+.crt-gene-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.crt-gene-label {
+  font-weight: 600;
+  color: rgba(0,0,0,0.5);
+  min-width: 60px;
+}
+
+.crt-svrule-container {
+  margin-top: 8px;
+  background: rgba(0,0,0,0.02);
+  padding: 8px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.crt-svrule-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.chem-placeholder {
+  color: rgba(0,0,0,0.3);
+}

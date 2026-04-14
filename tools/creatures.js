@@ -99,6 +99,7 @@
       if (target) {
         target.hidden = false;
         target.classList.add('crt-subview--active');
+        DevToolsEvents.emit('tab:subview:' + tab);
       }
     });
   });

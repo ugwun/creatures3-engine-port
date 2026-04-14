@@ -40,6 +40,7 @@
 #include "Caos/CAOSTables.h"
 #include "Classifier.h"
 #include "Creature/Creature.h"
+#include "Creature/GenomeStore.h"
 #include "Creature/Biochemistry/Biochemistry.h"
 #include "Creature/Biochemistry/Organ.h"
 #include "Creature/Brain/Brain.h"
@@ -1368,7 +1369,383 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 		}
 	});
 
-	// ── GET /api/creature/:id/chemistry ──────────────────────────────
+static const char* OPCODE_NAMES[] = {
+	"stop", "nop", "store", "load", "if=0", "if!=0", "add", "sub", "mul", "div",
+	"absDiff", "thresh_add", "thresh_set", "rnd", "min", "max",
+	"if<0", "if>0", "if<=0", "if>=0",
+	"setRate", "tend", "neg", "abs", "dist", "flip",
+	"nop", "setSpr", "bound01", "bound±1", "addStore", "tendStore",
+	"threshold", "leak", "rest", "gain", "persist", "noise", "wta", "setSTLT",
+	"setLTST", "storeAbs",
+	"if0Stop", "if!0Stop", "if0Goto", "if!0Goto",
+	"divAddNI", "mulAddNI", "goto",
+	"if<Stop", "if>Stop", "if<=Stop", "if>=Stop",
+	"setRwdThr", "setRwdRate", "setRwdChem", "setPunThr", "setPunRate", "setPunChem",
+	"preserve", "restore", "preserveSpr", "restoreSpr",
+	"if<0Goto", "if>0Goto"
+};
+static const char* OPERAND_NAMES[] = {
+	"acc", "input", "dend", "neuron", "spare",
+	"random",
+	"chem[src+]", "chem", "chem[dst+]",
+	"0", "1",
+	"val", "-val", "val*10", "val/10", "valInt"
+};
+
+auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
+	std::ostringstream out;
+	out << "[";
+	bool first = true;
+	for (int i = 0; i < 48; i += 3) {
+		uint8_t opCode = data[i];
+		uint8_t operandVariable = data[i+1];
+		uint8_t valByte = data[i+2];
+
+		// Stop on stopImmediately with no prior content
+		if (opCode == 0 && i == 0) break;
+
+		if (!first) out << ",";
+		first = false;
+
+		std::string opName = (opCode < 69) ? OPCODE_NAMES[opCode] : "???";
+		std::string operandName = (operandVariable < 16) ? OPERAND_NAMES[operandVariable] : "???";
+
+		// convert float approximation (logic from Genome::GetFloat/SVRuleEntry)
+		float floatValue = 0.0f;
+		if (operandVariable >= 11 && operandVariable <= 15) {
+			floatValue = (float)valByte / 255.0f;
+			if (operandVariable == 12) floatValue = -floatValue;
+			else if (operandVariable == 13) floatValue *= 10.0f;
+			else if (operandVariable == 14) floatValue /= 10.0f;
+			else if (operandVariable == 15) floatValue = floatValue * 255.0f;
+		}
+
+		out << "{\"op\":\"" << JsonEscape(opName)
+			<< "\",\"operand\":\"" << JsonEscape(operandName)
+			<< "\",\"idx\":" << (int)valByte
+			<< ",\"val\":" << floatValue
+			<< ",\"opCode\":" << (int)opCode
+			<< ",\"operandCode\":" << (int)operandVariable
+			<< "}";
+
+		if (opCode == 0) break;
+	}
+	out << "]";
+	return out.str();
+};
+
+myImpl->svr.Get(R"(/api/creature/(\d+)/genome)", [this, decompileSVRuleByBytes](const httplib::Request& req, httplib::Response& res) {
+	int agentId = std::stoi(req.matches[1]);
+
+	auto* item = new WorkItem();
+	item->work = [agentId, decompileSVRuleByBytes]() -> std::string {
+		AgentHandle handle = theAgentManager.GetAgentFromID(agentId);
+		if (handle.IsInvalid() || !handle.IsCreature()) {
+			return "{\"error\":\"Creature not found\"}";
+		}
+
+		try {
+			Creature& creature = handle.GetCreatureReference();
+			std::string moniker = creature.GetMoniker();
+			std::string genPath = GenomeStore::Filename(moniker);
+			if (genPath.empty() || !File::FileExists(genPath)) {
+				return "{\"error\":\"Genetics file not found\"}";
+			}
+
+			std::ifstream file(genPath, std::ios::binary);
+			if (!file.is_open()) {
+				return "{\"error\":\"Could not open genetics file\"}";
+			}
+
+			auto readU8 = [&file]() -> uint8_t {
+				uint8_t c; file.read((char*)&c, 1); return c;
+			};
+			auto readU16BE = [&readU8]() -> uint16_t {
+				uint8_t hi = readU8();
+				uint8_t lo = readU8();
+				return (hi << 8) | lo;
+			};
+			auto readFloat8 = [&readU8]() -> float {
+				return ((int)readU8() - 128) / 128.0f;
+			};
+
+			char magic[4];
+			file.read(magic, 4);
+			if (strncmp(magic, "dna3", 4) != 0) {
+				return "{\"error\":\"Invalid genetics file\"}";
+			}
+
+			static const char* TYPE_NAMES[] = {"Brain", "Biochemistry", "Creature", "Organ"};
+			static const char* SUBTYPE_NAMES[][10] = {
+				{"Lobe", "BrainOrgan", "Tract"},
+				{"Receptor", "Emitter", "Reaction", "HalfLives", "InitConc", "Neuroemitter"},
+				{"Stimulus", "Genus", "Appearance", "Pose", "Gait", "Instinct", "Pigment", "PigmentBleed", "Expression"},
+				{"Organ"}
+			};
+
+			auto ageLabel = [](int a) -> std::string {
+				switch (a) {
+					case 0: return "Baby"; case 1: return "Child"; case 2: return "Adolescent";
+					case 3: return "Youth"; case 4: return "Adult"; case 5: return "Old"; case 6: return "Senile";
+					default: return std::to_string(a);
+				}
+			};
+
+			std::ostringstream json;
+			json << "{\"moniker\":\"" << JsonEscape(moniker) << "\"";
+			json << ",\"sex\":0";
+			json << ",\"genus\":0";
+			json << ",\"genes\":[";
+
+			bool firstGene = true;
+			int geneCount = 0;
+
+			while (file.good() && !file.eof()) {
+				// skip unknown bytes until 'gene' or 'gend'
+				char token[4];
+				bool found = false;
+				while (file.good()) {
+					int pos = file.tellg();
+					file.read(token, 4);
+					if (file.gcount() == 4 && (strncmp(token, "gene", 4) == 0 || strncmp(token, "gend", 4) == 0)) {
+						found = true;
+						break;
+					}
+					file.seekg(pos + 1);
+				}
+				if (!found || strncmp(token, "gend", 4) == 0) break;
+
+				if (!firstGene) json << ",";
+				firstGene = false;
+
+				uint8_t type = readU8();
+				uint8_t subtype = readU8();
+				uint8_t id = readU8();
+				uint8_t gen = readU8();
+				uint8_t switchOn = readU8();
+				uint8_t flags = readU8();
+				uint8_t mut = readU8();
+				uint8_t var = readU8();
+
+				std::string tName = (type < 4) ? TYPE_NAMES[type] : "Unknown";
+				std::string stName = "Unknown";
+				if (type == 0 && subtype < 3) stName = SUBTYPE_NAMES[0][subtype];
+				else if (type == 1 && subtype < 6) stName = SUBTYPE_NAMES[1][subtype];
+				else if (type == 2 && subtype < 9) stName = SUBTYPE_NAMES[2][subtype];
+				else if (type == 3 && subtype < 1) stName = SUBTYPE_NAMES[3][subtype];
+
+				json << "{\"index\":" << geneCount++
+					<< ",\"type\":" << (int)type << ",\"typeName\":\"" << tName << "\""
+					<< ",\"subtype\":" << (int)subtype << ",\"subtypeName\":\"" << stName << "\""
+					<< ",\"id\":" << (int)id
+					<< ",\"generation\":" << (int)gen
+					<< ",\"switchOnTime\":" << (int)switchOn
+					<< ",\"switchOnLabel\":\"" << ageLabel(switchOn) << "\""
+					<< ",\"flags\":{"
+					<< "\"mutable\":" << ((flags & 1) ? "true" : "false")
+					<< ",\"dupable\":" << ((flags & 2) ? "true" : "false")
+					<< ",\"cutable\":" << ((flags & 4) ? "true" : "false")
+					<< ",\"maleOnly\":" << ((flags & 8) ? "true" : "false")
+					<< ",\"femaleOnly\":" << ((flags & 16) ? "true" : "false")
+					<< ",\"dormant\":" << ((flags & 128) ? "true" : "false")
+					<< "}"
+					<< ",\"mutability\":" << (int)mut
+					<< ",\"variant\":" << (int)var
+					<< ",\"data\":{";
+
+				if (type == 0 && subtype == 0) { // Brain Lobe
+					char lobeName[5] = {0}; file.read(lobeName, 4);
+					uint16_t upd = readU16BE();
+					uint16_t x = readU16BE();
+					uint16_t y = readU16BE();
+					uint8_t w = readU8(), h = readU8(), r = readU8(), g = readU8(), b = readU8();
+					uint8_t wta = readU8(), tissue = readU8(), initAlways = readU8();
+					
+					char padding[7]; file.read(padding, 7);
+					uint8_t initRule[48]; file.read((char*)initRule, 48);
+					uint8_t updateRule[48]; file.read((char*)updateRule, 48);
+
+					json << "\"lobeName\":\"" << JsonEscape(lobeName) << "\""
+						<< ",\"updateTime\":" << upd << ",\"x\":" << x << ",\"y\":" << y
+						<< ",\"width\":" << (int)w << ",\"height\":" << (int)h
+						<< ",\"red\":" << (int)r << ",\"green\":" << (int)g << ",\"blue\":" << (int)b
+						<< ",\"wta\":" << (int)wta << ",\"tissue\":" << (int)tissue
+						<< ",\"initRule\":" << decompileSVRuleByBytes(initRule)
+						<< ",\"updateRule\":" << decompileSVRuleByBytes(updateRule);
+
+				} else if (type == 0 && subtype == 1) { // Brain Organ
+					uint8_t clock = readU8(), damage = readU8(), life = readU8(), biotick = readU8(), atp = readU8();
+					json << "\"clockRate\":" << (int)clock << ",\"damageRate\":" << (int)damage
+						<< ",\"lifeForce\":" << (int)life << ",\"biotickStart\":" << (int)biotick
+						<< ",\"atpDamageCoef\":" << (int)atp;
+
+				} else if (type == 0 && subtype == 2) { // Brain Tract
+					uint16_t upd = readU16BE();
+					char srcLobe[5] = {0}; file.read(srcLobe, 4);
+					uint16_t sLower = readU16BE(), sUpper = readU16BE(), sNum = readU16BE();
+					char dstLobe[5] = {0}; file.read(dstLobe, 4);
+					uint16_t dLower = readU16BE(), dUpper = readU16BE(), dNum = readU16BE();
+					uint8_t mig = readU8(), ran = readU8(), sVar = readU8(), dVar = readU8(), initAlways = readU8();
+					
+					char padding[5]; file.read(padding, 5);
+					uint8_t initRule[48]; file.read((char*)initRule, 48);
+					uint8_t updateRule[48]; file.read((char*)updateRule, 48);
+
+					json << "\"updateTime\":" << upd << ",\"srcLobe\":\"" << JsonEscape(srcLobe) << "\""
+						<< ",\"dstLobe\":\"" << JsonEscape(dstLobe) << "\""
+						<< ",\"migrates\":" << (int)mig << ",\"srcVar\":" << (int)sVar << ",\"dstVar\":" << (int)dVar
+						<< ",\"initRule\":" << decompileSVRuleByBytes(initRule)
+						<< ",\"updateRule\":" << decompileSVRuleByBytes(updateRule);
+
+				} else if (type == 1 && subtype == 0) { // Receptor
+					uint8_t organ = readU8(), tissue = readU8(), locus = readU8(), chem = readU8();
+					uint8_t thr = readU8(), nom = readU8(), gain = readU8(), flags2 = readU8();
+					json << "\"organ\":" << (int)organ << ",\"tissue\":" << (int)tissue
+						<< ",\"locus\":" << (int)locus << ",\"chemical\":" << (int)chem
+						<< ",\"threshold\":" << (int)thr << ",\"nominal\":" << (int)nom
+						<< ",\"gain\":" << (int)gain << ",\"flags\":" << (int)flags2;
+
+				} else if (type == 1 && subtype == 1) { // Emitter
+					uint8_t organ = readU8(), tissue = readU8(), locus = readU8(), chem = readU8();
+					uint8_t thr = readU8(), rate = readU8(), gain = readU8(), flags2 = readU8();
+					json << "\"organ\":" << (int)organ << ",\"tissue\":" << (int)tissue
+						<< ",\"locus\":" << (int)locus << ",\"chemical\":" << (int)chem
+						<< ",\"threshold\":" << (int)thr << ",\"rate\":" << (int)rate
+						<< ",\"gain\":" << (int)gain << ",\"flags\":" << (int)flags2;
+
+				} else if (type == 1 && subtype == 2) { // Reaction
+					uint8_t r1a = readU8(), r1c = readU8(), r2a = readU8(), r2c = readU8();
+					uint8_t p1a = readU8(), p1c = readU8(), p2a = readU8(), p2c = readU8(), rate = readU8();
+					json << "\"r1Amount\":" << (int)r1a << ",\"r1Chem\":" << (int)r1c
+						<< ",\"r2Amount\":" << (int)r2a << ",\"r2Chem\":" << (int)r2c
+						<< ",\"p1Amount\":" << (int)p1a << ",\"p1Chem\":" << (int)p1c
+						<< ",\"p2Amount\":" << (int)p2a << ",\"p2Chem\":" << (int)p2c
+						<< ",\"rate\":" << (int)rate;
+
+				} else if (type == 1 && subtype == 3) { // HalfLives
+					json << "\"halfLives\":[";
+					for (int i=0; i<256; i++) {
+						if (i>0) json << ",";
+						json << (int)readU8();
+					}
+					json << "]";
+
+				} else if (type == 1 && subtype == 4) { // InitConc
+					json << "\"chemical\":" << (int)readU8() << ",\"amount\":" << (int)readU8();
+
+				} else if (type == 1 && subtype == 5) { // Neuroemitter
+					uint8_t l0 = readU8(), n0 = readU8(), l1 = readU8(), n1 = readU8(), l2 = readU8(), n2 = readU8();
+					uint8_t rate = readU8();
+					uint8_t c0 = readU8(), a0 = readU8(), c1 = readU8(), a1 = readU8(), c2 = readU8(), a2 = readU8(), c3 = readU8(), a3 = readU8();
+					json << "\"lobe0\":" << (int)l0 << ",\"neuron0\":" << (int)n0
+						<< ",\"lobe1\":" << (int)l1 << ",\"neuron1\":" << (int)n1
+						<< ",\"lobe2\":" << (int)l2 << ",\"neuron2\":" << (int)n2
+						<< ",\"rate\":" << (int)rate
+						<< ",\"chem0\":" << (int)c0 << ",\"amount0\":" << (int)a0
+						<< ",\"chem1\":" << (int)c1 << ",\"amount1\":" << (int)a1
+						<< ",\"chem2\":" << (int)c2 << ",\"amount2\":" << (int)a2
+						<< ",\"chem3\":" << (int)c3 << ",\"amount3\":" << (int)a3;
+
+				} else if (type == 2 && subtype == 0) { // Stimulus
+					uint8_t stim = readU8(), sig = readU8(), input = readU8(), intens = readU8(), feat = readU8();
+					uint8_t c0 = readU8(); float a0 = readFloat8();
+					uint8_t c1 = readU8(); float a1 = readFloat8();
+					uint8_t c2 = readU8(); float a2 = readFloat8();
+					uint8_t c3 = readU8(); float a3 = readFloat8();
+					json << "\"stimulus\":" << (int)stim << ",\"significance\":" << (int)sig
+						<< ",\"input\":" << (int)input << ",\"intensity\":" << (int)intens << ",\"features\":" << (int)feat
+						<< ",\"chem0\":" << (int)c0 << ",\"amount0\":" << a0
+						<< ",\"chem1\":" << (int)c1 << ",\"amount1\":" << a1
+						<< ",\"chem2\":" << (int)c2 << ",\"amount2\":" << a2
+						<< ",\"chem3\":" << (int)c3 << ",\"amount3\":" << a3;
+
+				} else if (type == 2 && subtype == 1) { // Genus
+					uint8_t genus = readU8();
+					char mom[33] = {0}; file.read(mom, 32);
+					char dad[33] = {0}; file.read(dad, 32);
+					json << "\"genus\":" << (int)genus
+						<< ",\"motherMoniker\":\"" << JsonEscape(mom) << "\""
+						<< ",\"fatherMoniker\":\"" << JsonEscape(dad) << "\"";
+
+				} else if (type == 2 && subtype == 2) { // Appearance
+					json << "\"part\":" << (int)readU8() << ",\"variant\":" << (int)readU8() << ",\"species\":" << (int)readU8();
+
+				} else if (type == 2 && subtype == 3) { // Pose
+					uint8_t pNum = readU8();
+					char pStr[17] = {0}; file.read(pStr, 16);
+					json << "\"poseNumber\":" << (int)pNum << ",\"poseString\":\"" << JsonEscape(pStr) << "\"";
+
+				} else if (type == 2 && subtype == 4) { // Gait
+					json << "\"gait\":" << (int)readU8() << ",\"poses\":[";
+					for (int i=0; i<8; i++) {
+						if (i>0) json << ",";
+						json << (int)readU8();
+					}
+					json << "]";
+
+				} else if (type == 2 && subtype == 5) { // Instinct
+					uint8_t l0 = readU8(), c0 = readU8(), l1 = readU8(), c1 = readU8(), l2 = readU8(), c2 = readU8();
+					uint8_t act = readU8(), rChem = readU8(), rAmt = readU8();
+					json << "\"lobe0\":" << (int)l0 << ",\"cell0\":" << (int)c0
+						<< ",\"lobe1\":" << (int)l1 << ",\"cell1\":" << (int)c1
+						<< ",\"lobe2\":" << (int)l2 << ",\"cell2\":" << (int)c2
+						<< ",\"action\":" << (int)act
+						<< ",\"reinforcementChemical\":" << (int)rChem << ",\"reinforcementAmount\":" << (int)rAmt;
+
+				} else if (type == 2 && subtype == 6) { // Pigment
+					json << "\"pigment\":" << (int)readU8() << ",\"amount\":" << (int)readU8();
+
+				} else if (type == 2 && subtype == 7) { // PigmentBleed
+					json << "\"rotation\":" << (int)readU8() << ",\"swap\":" << (int)readU8();
+
+				} else if (type == 2 && subtype == 8) { // Expression
+					uint8_t expr = readU8(), pad = readU8(), w = readU8();
+					uint8_t d0 = readU8(), a0 = readU8(), d1 = readU8(), a1 = readU8();
+					uint8_t d2 = readU8(), a2 = readU8(), d3 = readU8(), a3 = readU8();
+					json << "\"expression\":" << (int)expr << ",\"weight\":" << (int)w
+						<< ",\"drive0\":" << (int)d0 << ",\"amount0\":" << (int)a0
+						<< ",\"drive1\":" << (int)d1 << ",\"amount1\":" << (int)a1
+						<< ",\"drive2\":" << (int)d2 << ",\"amount2\":" << (int)a2
+						<< ",\"drive3\":" << (int)d3 << ",\"amount3\":" << (int)a3;
+
+				} else if (type == 3 && subtype == 0) { // Organ
+					uint8_t clock = readU8(), damage = readU8(), life = readU8(), biotick = readU8(), atp = readU8();
+					json << "\"clockRate\":" << (int)clock << ",\"damageRate\":" << (int)damage
+						<< ",\"lifeForce\":" << (int)life << ",\"biotickStart\":" << (int)biotick
+						<< ",\"atpDamageCoef\":" << (int)atp;
+				}
+
+				json << "}"; // end data
+				json << "}"; // end gene
+			} // end while
+
+			json << "]"; // end genes array
+			json << ",\"geneCount\":" << geneCount;
+			json << "}";
+			return json.str();
+
+		} catch (std::exception& e) {
+			return "{\"error\":\"" + JsonEscape(e.what()) + "\"}";
+		} catch (...) {
+			return "{\"error\":\"Failed to parse genetics file\"}";
+		}
+	};
+
+	auto future = item->promise.get_future();
+	{
+		std::lock_guard<std::mutex> lock(myImpl->queueMutex);
+		myImpl->workQueue.push(item);
+	}
+
+	if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+		res.set_content(future.get(), "application/json");
+	} else {
+		res.status = 504;
+		res.set_content("{\"error\":\"Timeout\"}", "application/json");
+	}
+});
+
+		// ── GET /api/creature/:id/chemistry ──────────────────────────────
 	// Returns all 256 chemical concentrations and organ status.
 	myImpl->svr.Get(R"(/api/creature/(\d+)/chemistry)", [this](const httplib::Request& req, httplib::Response& res) {
 		int agentId = std::stoi(req.matches[1]);
