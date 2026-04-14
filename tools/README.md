@@ -224,7 +224,7 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - All 256 biochemical concentrations displayed as colour-coded bars
 - Sorted by value (highest first) for quick identification
 - "Non-zero only" toggle to filter out inactive chemicals
-- ~50 well-known chemicals labelled by name (Glycogen, ATP, ADP, antigens, drives, etc.)
+- Full repository of all 256 biochemicals mapped out. This list is sourced directly from the engine's internal structure and the historical [GameWare Chemical List](https://web.archive.org/web/20110807073010/http://www.gamewaredevelopment.co.uk/cdn/C3chemicalList.php).
 - Colour-coded by category: purple (drives), red (antigens), orange (antibodies), green (smells), blue (general)
 
 **Organs Sub-Tab:**
