@@ -1095,9 +1095,9 @@ bool Camera::MiddleMouseDragMouseWheel() {
       myMiddleDragMY = ev->MouseButtonData.my;
     }
 
-    if ((ev->EventCode == InputEvent::eventMouseWheel) &&
-        ((theApp.myScrollingMask & 8) == 8)) {
-      pany -= ev->MouseWheelData.delta;
+    if (ev->EventCode == InputEvent::eventMouseWheel) {
+      panx -= ev->MouseWheelData.deltaX;
+      pany -= ev->MouseWheelData.deltaY;
     }
   }
   if (panx != 0 || pany != 0) {

@@ -511,6 +511,32 @@ void HandleEvent(const SDL_Event &event) {
     }
     break;
   }
+  case SDL_MOUSEWHEEL: {
+    int mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    int gx, gy;
+    DisplayEngine::theRenderer().ScreenToGameCoords(mouseX, mouseY, gx, gy);
+
+    float dx = 0.0f, dy = 0.0f;
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    dx = event.wheel.preciseX;
+    dy = event.wheel.preciseY;
+#else
+    dx = (float)event.wheel.x;
+    dy = (float)event.wheel.y;
+#endif
+
+    // Do not invert if FLIPPED. SDL already provides the MacOS-configured scrolling direction natively.
+    // If the user has "Natural Scrolling" checked, SDL's event.wheel.y already matches it.
+
+    // Map SDL scroll units to pixels (1 unit ~= 1 wheel click ~= 30 pixels pan)
+    // Horizontal panning must be inverted natively to match Windows/Docking Station physical panning semantics
+    int deltaX = (int)(-dx * 30.0f);
+    int deltaY = (int)(dy * 30.0f);
+
+    theApp.GetInputManager().SysAddMouseWheelEvent(gx, gy, deltaX, deltaY);
+    break;
+  }
   case SDL_WINDOWEVENT:
     // SDL2 replacement for SDL_ACTIVEEVENT — could handle focus/minimize here
     break;

@@ -71,7 +71,7 @@ public:
 	void SysAddMouseMoveEvent( int mx, int my );
 	void SysAddMouseDownEvent( int mx, int my, int button );
 	void SysAddMouseUpEvent( int mx, int my, int button );
-	void SysAddMouseWheelEvent( int mx, int my, int delta );
+	void SysAddMouseWheelEvent( int mx, int my, int deltaX, int deltaY );
 
 	TranslatedCharTarget *GetTranslatedCharTarget() const;
 	void SetTranslatedCharTarget( TranslatedCharTarget *target, bool tellLoser = true );

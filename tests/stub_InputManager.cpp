@@ -99,10 +99,11 @@ void InputManager::SysAddMouseUpEvent(int mx, int my, int button) {
   myEventPendingMask |= InputEvent::eventMouseUp;
 }
 
-void InputManager::SysAddMouseWheelEvent(int mx, int my, int delta) {
+void InputManager::SysAddMouseWheelEvent(int mx, int my, int deltaX, int deltaY) {
   InputEvent ev;
   ev.EventCode = InputEvent::eventMouseWheel;
-  ev.MouseWheelData.delta = delta;
+  ev.MouseWheelData.deltaX = deltaX;
+  ev.MouseWheelData.deltaY = deltaY;
   ev.MouseWheelData.mx = mx;
   ev.MouseWheelData.my = my;
   myEventBuffer.push_back(ev);

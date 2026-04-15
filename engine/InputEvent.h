@@ -48,7 +48,7 @@ struct InputEvent
 	{
 		struct { int mx; int my; } MouseMoveData;
 		struct { int mx; int my; int button;  } MouseButtonData;	// which mouse button
-		struct { int mx; int my; int delta; } MouseWheelData;		// amount moved
+		struct { int mx; int my; int deltaX; int deltaY; } MouseWheelData;		// amount moved
 		struct { int keycode; } KeyData;							// which key
 	};
 

@@ -1499,9 +1499,7 @@ void Agent::HandleInputEvents() {
         param1 = ev->MouseButtonData.button;
         break;
       case InputEvent::eventMouseWheel:
-        scriptnum = SCRIPTRAWMOUSEWHEEL;
-        param1 = ev->MouseWheelData.delta;
-        break;
+        continue;
       default:
         ASSERT(false); // unknown event type!
         break;

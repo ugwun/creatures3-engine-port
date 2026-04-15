@@ -143,10 +143,11 @@ void InputManager::SysAddMouseMoveEvent(int mx, int my) {
   myEventPendingMask |= InputEvent::eventMouseMove;
 }
 
-void InputManager::SysAddMouseWheelEvent(int mx, int my, int delta) {
+void InputManager::SysAddMouseWheelEvent(int mx, int my, int deltaX, int deltaY) {
   InputEvent ev;
   ev.EventCode = InputEvent::eventMouseWheel;
-  ev.MouseWheelData.delta = delta;
+  ev.MouseWheelData.deltaX = deltaX;
+  ev.MouseWheelData.deltaY = deltaY;
   ev.MouseWheelData.mx = mx;
   ev.MouseWheelData.my = my;
   myEventBuffer.push_back(ev);
