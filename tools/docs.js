@@ -307,7 +307,12 @@ viewport.addEventListener("mousedown", (e) => {
     viewport.style.cursor = "grabbing";
 });
 
+let isDocsActive = false;
+DevToolsEvents.on('tab:activated', (tab) => { if (tab === 'docs') isDocsActive = true; });
+DevToolsEvents.on('tab:deactivated', (tab) => { if (tab === 'docs') isDocsActive = false; });
+
 window.addEventListener("mousemove", (e) => {
+    if (!isDocsActive) return;
     if (draggingNodeId) {
         const dx = (e.clientX - nodeStartX) / zoomLevel;
         const dy = (e.clientY - nodeStartY) / zoomLevel;
@@ -332,6 +337,7 @@ window.addEventListener("mousemove", (e) => {
 });
 
 window.addEventListener("mouseup", () => {
+    if (!isDocsActive) return;
     if (draggingNodeId) {
         const el = nodeEls[draggingNodeId];
         if (el) el.style.zIndex = "";
