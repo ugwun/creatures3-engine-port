@@ -11,6 +11,47 @@ function escHtml(s) {
         .replace(/"/g, "&quot;");
 }
 
+// ── DOM Helper ────────────────────────────────────────────────────────────
+// Lightweight utility for building DOM elements to replace string-concatenation
+window.el = function(tag, props, children) {
+    const element = document.createElement(tag);
+    if (props) {
+        for (const [key, value] of Object.entries(props)) {
+            if (key === 'className' || key === 'class') {
+                element.className = value;
+            } else if (key === 'dataset') {
+                for (const [dKey, dVal] of Object.entries(value)) {
+                    element.dataset[dKey] = dVal;
+                }
+            } else if (key === 'style') {
+                if (typeof value === 'string') {
+                    element.style.cssText = value;
+                } else {
+                    Object.assign(element.style, value);
+                }
+            } else if (key === 'events') {
+                for (const [evt, handler] of Object.entries(value)) {
+                    element.addEventListener(evt, handler);
+                }
+            } else {
+                element[key] = value; // innerHTML, textContent, id, etc.
+            }
+        }
+    }
+    if (children) {
+        if (!Array.isArray(children)) children = [children];
+        for (const child of children) {
+            if (child == null || child === false) continue;
+            if (typeof child === 'string' || typeof child === 'number') {
+                element.appendChild(document.createTextNode(child));
+            } else if (child instanceof Node) {
+                element.appendChild(child);
+            }
+        }
+    }
+    return element;
+};
+
 // ── Event Bus ─────────────────────────────────────────────────────────────
 // Simple pub/sub for decoupled communication between tab modules.
 //

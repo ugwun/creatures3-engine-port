@@ -149,9 +149,10 @@
                 groupEl.className = "dbg-group";
                 groupEl.dataset.key = key;
 
-                const header = document.createElement("div");
-                header.className = "dbg-group-header";
-                header.innerHTML = `<span class="dbg-group-classifier">${key}</span><span class="dbg-group-count"></span>`;
+                const header = el("div", { className: "dbg-group-header" }, [
+                    el("span", { className: "dbg-group-classifier", textContent: key }),
+                    el("span", { className: "dbg-group-count" })
+                ]);
                 groupEl.appendChild(header);
 
                 // Insert in sorted order
@@ -237,25 +238,26 @@
     }
 
     function createAgentItem(info) {
-        const el = document.createElement("div");
-        el.className = "dbg-agent-item";
-        el.dataset.agentId = info.id;
-
         const galleryLabel = info.gallery ? ` ${info.gallery}` : "";
-        el.innerHTML = `<span class="dbg-state-dot"></span><span class="dbg-agent-id">#${info.id}</span><span class="dbg-agent-gallery">${galleryLabel}</span><span class="dbg-agent-event">evt ${info.event}</span>`;
+        const itemEl = el("div", { className: "dbg-agent-item", dataset: { agentId: info.id } }, [
+            el("span", { className: "dbg-state-dot" }),
+            el("span", { className: "dbg-agent-id", textContent: `#${info.id}` }),
+            el("span", { className: "dbg-agent-gallery", textContent: galleryLabel }),
+            el("span", { className: "dbg-agent-event", textContent: `evt ${info.event}` })
+        ]);
 
-        el.addEventListener("click", () => {
+        itemEl.addEventListener("click", () => {
             currentAgentId = info.id;
             // Update selection visual
             agentListEl.querySelectorAll(".dbg-agent-item--selected").forEach(
                 s => s.classList.remove("dbg-agent-item--selected")
             );
-            el.classList.add("dbg-agent-item--selected");
+            itemEl.classList.add("dbg-agent-item--selected");
             fetchAgentState();
         });
 
-        updateAgentItem(el, info);
-        return el;
+        updateAgentItem(itemEl, info);
+        return itemEl;
     }
 
     function updateAgentItem(el, info) {
@@ -521,9 +523,11 @@
         }
 
         for (const bp of currentBreakpoints) {
-            const item = document.createElement("div");
-            item.className = "dbg-bp-item";
-            item.innerHTML = `<span class="dbg-bp-dot"></span> IP ${bp} <button class="dbg-bp-remove" data-ip="${bp}">×</button>`;
+            const item = el("div", { className: "dbg-bp-item" }, [
+                el("span", { className: "dbg-bp-dot" }),
+                ` IP ${bp} `,
+                el("button", { className: "dbg-bp-remove", dataset: { ip: bp }, textContent: "×" })
+            ]);
             bpList.appendChild(item);
         }
 

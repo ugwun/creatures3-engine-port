@@ -130,9 +130,15 @@
             groupEl.className = "ide-group";
 
             const name = agentNames[key] || "";
-            const header = document.createElement("div");
-            header.className = "ide-group-header";
-            header.innerHTML = `<span class="ide-group-label"><span class="ide-group-classifier">${key}</span>${name ? `<span class="ide-group-name">${escHtml(name)}</span>` : ""}</span><span class="ide-group-count">${entries.length}</span>`;
+            const labelSpanChildren = [el("span", { className: "ide-group-classifier", textContent: key })];
+            if (name) {
+                labelSpanChildren.push(el("span", { className: "ide-group-name", textContent: name }));
+            }
+            
+            const header = el("div", { className: "ide-group-header" }, [
+                el("span", { className: "ide-group-label" }, labelSpanChildren),
+                el("span", { className: "ide-group-count", textContent: entries.length })
+            ]);
             header.addEventListener("click", () => {
                 groupEl.classList.toggle("ide-group--collapsed");
             });
@@ -146,17 +152,24 @@
                 const searchText = `${entry.family} ${entry.genus} ${entry.species} ${entry.event} ${evtName} ${agentName}`.toLowerCase();
                 const matchesSearch = !searchTerm || searchTerm.split(/\s+/).every(t => searchText.includes(t));
 
-                const item = document.createElement("div");
-                item.className = "ide-script-item";
-                if (!matchesSearch) item.hidden = true;
+                let hidden = false;
+                if (!matchesSearch) hidden = true;
                 else visibleInGroup++;
 
-                item.innerHTML = `<span class="ide-event-num">${entry.event}</span><span class="ide-event-name">${evtName}</span>`;
-                item.title = `scrp ${entry.family} ${entry.genus} ${entry.species} ${entry.event}`;
-                item.dataset.family = entry.family;
-                item.dataset.genus = entry.genus;
-                item.dataset.species = entry.species;
-                item.dataset.event = entry.event;
+                const item = el("div", {
+                    className: "ide-script-item",
+                    hidden: hidden,
+                    title: `scrp ${entry.family} ${entry.genus} ${entry.species} ${entry.event}`,
+                    dataset: {
+                        family: entry.family,
+                        genus: entry.genus,
+                        species: entry.species,
+                        event: entry.event
+                    }
+                }, [
+                    el("span", { className: "ide-event-num", textContent: entry.event }),
+                    el("span", { className: "ide-event-name", textContent: evtName })
+                ]);
 
                 item.addEventListener("click", () => {
                     // Highlight selected

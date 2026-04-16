@@ -43,12 +43,10 @@
         emptyDiv.hidden = true;
 
         for (const s of scripts) {
-            const tr = document.createElement("tr");
-            tr.className = "script-row";
-
             const evtName = window.CAOS_EVENT_NAMES && window.CAOS_EVENT_NAMES[s.event] 
                 ? ` (${window.CAOS_EVENT_NAMES[s.event]})` : "";
             const classifier = `${s.family} ${s.genus} ${s.species} ${s.event}${evtName}`;
+            
             let stateClass = "state-running";
             if (s.state === "blocking") stateClass = "state-blocking";
             else if (s.state === "paused") stateClass = "state-paused";
@@ -57,12 +55,13 @@
             const sourceFormatted = (typeof formatCAOS === "function" && sourceRaw !== "—")
                 ? formatCAOS(sourceRaw) : sourceRaw;
 
-            tr.innerHTML =
-                `<td class="col-id">${s.agentId}</td>` +
-                `<td class="col-classifier"><code>${escHtml(classifier)}</code></td>` +
-                `<td class="col-state"><span class="state-badge ${stateClass}">${s.state}</span></td>` +
-                `<td class="col-ip">${s.ip}</td>` +
-                `<td class="col-source"><pre class="caos-source">${escHtml(sourceFormatted)}</pre></td>`;
+            const tr = el("tr", { className: "script-row" }, [
+                el("td", { className: "col-id", textContent: s.agentId }),
+                el("td", { className: "col-classifier" }, el("code", { textContent: classifier })),
+                el("td", { className: "col-state" }, el("span", { className: `state-badge ${stateClass}`, textContent: s.state })),
+                el("td", { className: "col-ip", textContent: s.ip }),
+                el("td", { className: "col-source" }, el("pre", { className: "caos-source", textContent: sourceFormatted }))
+            ]);
 
             tbody.appendChild(tr);
         }
