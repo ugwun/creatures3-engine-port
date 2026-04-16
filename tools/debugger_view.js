@@ -279,7 +279,9 @@
 
         // Event label
         const evtEl = el.querySelector(".dbg-agent-event");
-        evtEl.textContent = `evt ${info.event}`;
+        const evtName = window.CAOS_EVENT_NAMES && window.CAOS_EVENT_NAMES[info.event] 
+            ? ` (${window.CAOS_EVENT_NAMES[info.event]})` : "";
+        evtEl.textContent = `evt ${info.event}${evtName}`;
 
         // State tag for blocking/paused
         let tagEl = el.querySelector(".dbg-agent-state-tag");
@@ -325,7 +327,9 @@
     function renderAgentState(data) {
         // Script info
         if (data.scriptFamily !== undefined) {
-            scriptInfo.textContent = `Script ${data.scriptFamily} ${data.scriptGenus} ${data.scriptSpecies} ${data.scriptEvent} — Agent #${data.id}`;
+            const evtName = window.CAOS_EVENT_NAMES && window.CAOS_EVENT_NAMES[data.scriptEvent] 
+                ? ` (${window.CAOS_EVENT_NAMES[data.scriptEvent]})` : "";
+            scriptInfo.textContent = `Script ${data.scriptFamily} ${data.scriptGenus} ${data.scriptSpecies} ${data.scriptEvent}${evtName} — Agent #${data.id}`;
         } else {
             scriptInfo.textContent = `Agent #${data.id} — no script`;
         }

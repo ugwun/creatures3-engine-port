@@ -30,45 +30,7 @@
     if (!editorTextarea || !sidebarList) return;
 
     // ── CAOS Event Name Map ───────────────────────────────────────────────
-    // Standard event numbers used in Creatures 3 / Docking Station.
-    const EVENT_NAMES = {
-        0: "Deactivate",
-        1: "Push",
-        2: "Pull",
-        3: "Hit",
-        4: "Pickup",
-        5: "Drop",
-        6: "Collision",
-        7: "Bump",
-        8: "Impact",
-        9: "Timer",
-        10: "Constructor",
-        11: "Destructor",
-        12: "Eat",
-        13: "Hold Hands",
-        14: "Stop Holding",
-        16: "UI Mouse Down",
-        17: "UI Mouse Up",
-        72: "Agent Exception",
-        92: "Selected Creature Changed",
-        99: "Pointer Activate (1)",
-        100: "Pointer Activate (2)",
-        101: "Pointer Deactivate",
-        102: "Pointer Pickup",
-        103: "Pointer Drop",
-        116: "Creature Speaks Word",
-        120: "Life Event",
-        121: "Key Down",
-        122: "Key Up",
-        123: "Mouse Moved",
-        124: "Mouse Scroll",
-        125: "New Creature Arrival",
-        126: "Creature Departure",
-        127: "Agent Import",
-        128: "Agent Export",
-        135: "Connection Made",
-        150: "VM Stopped",
-    };
+    const EVENT_NAMES = window.CAOS_EVENT_NAMES || {};
 
     function eventLabel(num) {
         const name = EVENT_NAMES[num];

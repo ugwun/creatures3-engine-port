@@ -126,7 +126,7 @@ The **Scripts** tab shows a live table of all currently running CAOS scripts acr
 | Column | Description |
 |---|---|
 | Agent ID | The agent's unique ID (`GetUniqueID()`) |
-| Classifier | Family, Genus, Species, Event (e.g. `2 13 100 9`) |
+| Classifier | Family, Genus, Species, Event with human-readable name (e.g. `2 13 100 9 (Timer)`) |
 | State | `running`, `blocking` (waiting on `wait`, `over`, etc.), or `paused` (at a breakpoint) |
 | IP | Current instruction pointer in the bytecode |
 | Current Source | The CAOS source at the current IP, auto-formatted with line breaks and 4-space indentation |
@@ -151,6 +151,7 @@ The **Debugger** tab is an interactive CAOS source-level debugger. A persistent 
 - **Classifier grouping** — agents are grouped by their script's Family/Genus/Species (e.g. all `2 13 9` scripts together)
 - **Stable sorting** — agents within each group are sorted by ID and stay in fixed positions. Incremental DOM updates prevent flickering
 - **Gallery names** — each agent shows its sprite base name (e.g. `balloonbug`, `lift`, `norn`) for quick identification
+- **Event labels** — agent badges and script headers display the human-readable CAOS event name alongside the number (e.g. `evt 9 (Timer)`)
 - **State dots** — colour-coded indicators: green (running), orange (blocking/waiting), orange outlined (paused at breakpoint), grey outlined (finished)
 - **Stale agents** — agents whose scripts have finished are greyed out for 5 seconds before being removed
 - **Search** — filter agents by ID, gallery name, or classifier using the search box
@@ -336,7 +337,7 @@ The sidebar lists all scripts currently installed in the engine's scriptorium �
 
 - **Classifier grouping** — scripts are grouped by Family/Genus/Species (e.g. `2 18 16`)
 - **Agent names** — each group header shows the human-readable agent name from the catalogue (e.g. "Tuba seed" for `2 3 16`, "Teleporter" for `1 1 152`). Classifiers without catalogue entries show just the number
-- **Event labels** — each script entry shows both the event number and a human-readable name: `1` Push, `2` Pull, `9` Timer, `10` Constructor, `12` Eat, etc. (~30 standard events are labelled; unknown events show just the number)
+- **Event labels** — each script entry shows both the event number and a human-readable name: `1` Push, `2` Pull, `9` Timer, `10` Constructor, `12` Eat, etc. (~40 standard engine events are labelled using a global dictionary; unknown events show just the number)
 - **Click to load** — clicking a script entry fetches its source from the engine and loads it into the editor with syntax highlighting
 - **Collapsible groups** — click a group header to collapse/expand its event list
 - **Search** — filter scripts by classifier number, event number, event name, or agent name (e.g. type `teleporter` to find all Teleporter scripts, or `carrot` to find the carrot agent). Multi-word queries match all terms. Groups auto-expand when filtering

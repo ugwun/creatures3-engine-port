@@ -46,7 +46,9 @@
             const tr = document.createElement("tr");
             tr.className = "script-row";
 
-            const classifier = `${s.family} ${s.genus} ${s.species} ${s.event}`;
+            const evtName = window.CAOS_EVENT_NAMES && window.CAOS_EVENT_NAMES[s.event] 
+                ? ` (${window.CAOS_EVENT_NAMES[s.event]})` : "";
+            const classifier = `${s.family} ${s.genus} ${s.species} ${s.event}${evtName}`;
             let stateClass = "state-running";
             if (s.state === "blocking") stateClass = "state-blocking";
             else if (s.state === "paused") stateClass = "state-paused";
