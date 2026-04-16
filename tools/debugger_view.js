@@ -422,92 +422,7 @@
         }
     });
 
-    // ── CAOS Syntax Highlighting ───────────────────────────────────────────
-    const CAOS_FLOW = new Set([
-        "doif", "elif", "else", "endi", "loop", "untl", "ever", "next",
-        "repe", "reps", "enum", "esee", "etch", "epas", "econ",
-        "subr", "gsub", "retn", "inst", "slow", "lock", "unlk", "stop",
-        "call"
-    ]);
 
-    const CAOS_COMMANDS = new Set([
-        "setv", "addv", "subv", "mulv", "divv", "modv", "negv", "andv", "orrv",
-        "sets", "adds",
-        "seta", "targ", "ownr", "from", "null", "norn", "pntr",
-        "new:", "simp", "comp", "vhcl", "crea",
-        "mvto", "mvsf", "mesg", "writ", "stim",
-        "pose", "anim", "over", "base", "part",
-        "wait", "tick", "sndc", "plne",
-        "attr", "bhvr", "perm", "accg", "aero", "elas", "fric", "rest",
-        "velo", "velx", "vely",
-        "obst", "posx", "posy", "posl", "posr", "post", "posb",
-        "cmra", "cmrp", "cmrt", "meta", "trck",
-        "kill", "dead", "rtar", "star", "totl",
-        "gnam", "unid", "fmly", "gnus", "spcs", "type",
-        "rand", "rean",
-        "outv", "outs", "outx",
-        "gmap", "rtyp", "room", "grid", "emit",
-        "carr", "fall", "rnge",
-        "dde:", "putb", "putv", "puts", "dbg:",
-        "gene", "load", "chem", "driv",
-        "hand", "touc",
-        "agnt", "pray",
-    ]);
-
-    // escHtml + htmlEscape are provided by utils.js as escHtml()
-
-    function highlightCAOS(line) {
-        // Tokenize: strings, numbers, comments, words
-        const re = /(\"[^\"]*\")|(\*[^\n]*)|(\b\d+\b)|([a-zA-Z_:][a-zA-Z0-9_:]*)|(\S)/g;
-        let result = "";
-        let lastIndex = 0;
-        let match;
-
-        while ((match = re.exec(line)) !== null) {
-            // Append any whitespace between last match and this one
-            if (match.index > lastIndex) {
-                result += escHtml(line.substring(lastIndex, match.index));
-            }
-            lastIndex = re.lastIndex;
-
-            const token = match[0];
-
-            if (match[1]) {
-                // String literal
-                result += `<span class="hl-string">${escHtml(token)}</span>`;
-            } else if (match[2]) {
-                // Comment
-                result += `<span class="hl-comment">${escHtml(token)}</span>`;
-            } else if (match[3]) {
-                // Number
-                result += `<span class="hl-number">${escHtml(token)}</span>`;
-            } else if (match[4]) {
-                // Word — check if keyword
-                const lower = token.toLowerCase();
-                if (CAOS_FLOW.has(lower)) {
-                    result += `<span class="hl-flow">${escHtml(token)}</span>`;
-                } else if (CAOS_COMMANDS.has(lower)) {
-                    result += `<span class="hl-command">${escHtml(token)}</span>`;
-                } else if (lower.startsWith("ov") && /^ov\d{2}$/.test(lower)) {
-                    result += `<span class="hl-var">${escHtml(token)}</span>`;
-                } else if (lower.startsWith("va") && /^va\d{2}$/.test(lower)) {
-                    result += `<span class="hl-var">${escHtml(token)}</span>`;
-                } else {
-                    result += escHtml(token);
-                }
-            } else {
-                // Other single chars (operators etc.)
-                result += escHtml(token);
-            }
-        }
-
-        // Append remaining
-        if (lastIndex < line.length) {
-            result += escHtml(line.substring(lastIndex));
-        }
-
-        return result || " ";
-    }
 
     // ── Source view rendering ─────────────────────────────────────────────
     function buildSourceView(src) {
@@ -534,7 +449,8 @@
 
             const code = document.createElement("span");
             code.className = "dbg-code";
-            code.innerHTML = highlightCAOS(line);
+            code.innerHTML = (typeof window.highlightCAOS === "function") 
+                ? window.highlightCAOS(line) : escHtml(line);
 
             row.appendChild(bp);
             row.appendChild(gutter);
