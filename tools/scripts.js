@@ -52,15 +52,12 @@
             else if (s.state === "paused") stateClass = "state-paused";
 
             const sourceRaw = s.source || "—";
-            const sourceFormatted = (typeof formatCAOS === "function" && sourceRaw !== "—")
-                ? formatCAOS(sourceRaw) : sourceRaw;
-
             const tr = el("tr", { className: "script-row" }, [
                 el("td", { className: "col-id", textContent: s.agentId }),
                 el("td", { className: "col-classifier" }, el("code", { textContent: classifier })),
                 el("td", { className: "col-state" }, el("span", { className: `state-badge ${stateClass}`, textContent: s.state })),
                 el("td", { className: "col-ip", textContent: s.ip }),
-                el("td", { className: "col-source" }, el("pre", { className: "caos-source", textContent: sourceFormatted }))
+                el("td", { className: "col-source" }, el("pre", { className: "caos-source", innerHTML: typeof formatCAOS === "function" && sourceRaw !== "—" ? formatCAOS(sourceRaw) : escHtml(sourceRaw) }))
             ]);
 
             tbody.appendChild(tr);

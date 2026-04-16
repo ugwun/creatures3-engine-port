@@ -2477,10 +2477,18 @@ myImpl->svr.Get(R"(/api/creature/(\d+)/genome)", [this, decompileSVRuleByBytes](
 						});
 
 					// Send any newly arrived lines
+					bool wroteAnything = false;
 					while (startIdx < myImpl->logBuffer.size()) {
 						std::string event = "data: " + myImpl->logBuffer[startIdx] + "\n\n";
 						sink.write(event.c_str(), event.size());
 						startIdx++;
+						wroteAnything = true;
+					}
+
+					// Send heartbeat if idle to detect disconnected clients and free the C++ thread
+					if (!wroteAnything && myImpl->running) {
+						std::string ping = ": keepalive\n\n";
+						sink.write(ping.c_str(), ping.size());
 					}
 				}
 

@@ -299,14 +299,30 @@
   // ── Fetch organs ───────────────────────────────────────────────────
   async function fetchOrgans(agentId) {
     if (!agentId) return;
+    
+    // Show a loading text indicator so the user knows duck-typing is underway
+    contentEl.innerHTML = '<div class="crt-empty-hint">Loading biological systems...<br><small style="color:rgba(255,255,255,0.4);display:block;margin-top:8px;">Running Biochemical Heuristics</small></div>';
+    
     try {
       const resp = await fetch('/api/creature/' + agentId + '/organs');
-      if (!resp.ok) return;
+      if (!resp.ok) {
+        contentEl.innerHTML = '<div class="crt-empty-hint">Failed to load from engine</div>';
+        return;
+      }
       organsData = await resp.json();
-      if (organsData.error) { organsData = null; return; }
-      renderOrgans();
+      if (organsData.error) { 
+        organsData = null; 
+        contentEl.innerHTML = '<div class="crt-empty-hint">Organ data unavailable</div>';
+        return; 
+      }
+      
+      // Delay render by 1 frame to allow the "Loading" UI to actually paint to the screen
+      requestAnimationFrame(() => {
+         renderOrgans();
+      });
     } catch (e) {
       console.warn('DevTools: organs fetch failed', e);
+      contentEl.innerHTML = '<div class="crt-empty-hint">Organ fetch threw an exception</div>';
     }
   }
 

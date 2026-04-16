@@ -10,6 +10,7 @@ let pauseBuffer = [];
 let allMessages = [];         // master log (never cleared by filter)
 let totalMessages = 0;
 let errorCount = 0;
+let scrollPending = false;
 
 const MAX_VISIBLE_ROWS = 2000; // keep DOM lean
 
@@ -60,6 +61,9 @@ function connect() {
         // EventSource automatically reconnects, but we update status
     };
 
+let renderTimer = null;
+let messageBuffer = [];
+
     evtSource.onmessage = (e) => {
         let msg;
         try { msg = JSON.parse(e.data); } catch (_) { return; }
@@ -67,7 +71,10 @@ function connect() {
             pauseBuffer.push(msg);
             pauseBuffered.textContent = pauseBuffer.length;
         } else {
-            appendMessage(msg);
+            messageBuffer.push(msg);
+            if (!renderTimer) {
+                renderTimer = requestAnimationFrame(flushMessages);
+            }
         }
     };
 }
@@ -78,43 +85,62 @@ function setStatus(state) {
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────
-function appendMessage(msg) {
-    allMessages.push(msg);
-    totalMessages++;
+function flushMessages() {
+    renderTimer = null;
+    if (messageBuffer.length === 0) return;
 
-    const cat = categorize(msg.cat);
-    if (msg.cat & 1) { errorCount++; }
+    const fragment = document.createDocumentFragment();
 
-    // Format timestamp as relative seconds with 2 decimal places
-    const tSec = (msg.t / 1000).toFixed(2);
+    // If the backend dumps a huge backlog on connection (e.g. 30,000 logs), we only 
+    // want to build DOM nodes for the last MAX_VISIBLE_ROWS. The rest are recorded in allMessages.
+    const renderLimit = MAX_VISIBLE_ROWS;
+    const renderStartIndex = Math.max(0, messageBuffer.length - renderLimit);
 
-    const row = document.createElement("div");
-    row.className = `log-row ${msg.cat === 0 ? "cat-banner" : cat.cls}`;
-    row.dataset.cat = msg.cat;
-    row.dataset.msg = msg.msg.toLowerCase();
+    for (let i = 0; i < messageBuffer.length; i++) {
+        const msg = messageBuffer[i];
+        allMessages.push(msg);
+        totalMessages++;
 
-    if (msg.cat === 0) {
-        // System banner ("── connected ──" etc.)
-        row.innerHTML = `<span class="log-msg">${escHtml(msg.msg)}</span>`;
-    } else {
-        row.innerHTML =
-            `<span class="log-ts" style="${optTs.checked ? "" : "display:none"}">${tSec}s</span>` +
-            `<span class="log-cat">${cat.label}</span>` +
-            `<span class="log-msg">${escHtml(msg.msg)}</span>`;
+        const cat = categorize(msg.cat);
+        if (msg.cat & 1) { errorCount++; }
+
+        // Skip heavy DOM allocation for messages that will be instantly trimmed anyway
+        if (i < renderStartIndex) continue;
+
+        const tSec = (msg.t / 1000).toFixed(2);
+
+        const row = document.createElement("div");
+        row.className = `log-row ${msg.cat === 0 ? "cat-banner" : cat.cls}`;
+        row.dataset.cat = msg.cat;
+        row.dataset.msg = msg.msg.toLowerCase();
+
+        if (msg.cat === 0) {
+            row.innerHTML = `<span class="log-msg">${escHtml(msg.msg)}</span>`;
+        } else {
+            row.innerHTML =
+                `<span class="log-ts" style="${optTs.checked ? "" : "display:none"}">${tSec}s</span>` +
+                `<span class="log-cat">${cat.label}</span>` +
+                `<span class="log-msg">${escHtml(msg.msg)}</span>`;
+        }
+
+        applyRowFilter(row);
+        fragment.appendChild(row);
     }
 
-    // Apply current search filter
-    applyRowFilter(row);
-
-    logInner.appendChild(row);
+    logInner.appendChild(fragment);
+    messageBuffer = [];
 
     // Trim DOM to prevent memory blow-up
     while (logInner.children.length > MAX_VISIBLE_ROWS) {
         logInner.removeChild(logInner.firstChild);
     }
 
-    if (optScroll.checked && !paused) {
-        scrollAnchor.scrollIntoView({ block: "end" });
+    if (optScroll.checked && !paused && !scrollPending) {
+        scrollPending = true;
+        requestAnimationFrame(() => {
+            scrollAnchor.scrollIntoView({ block: "end" });
+            scrollPending = false;
+        });
     }
 }
 
@@ -151,9 +177,12 @@ btnPause.addEventListener("click", () => {
     pauseOverlay.hidden = !paused;
     if (!paused) {
         // Flush buffer
-        pauseBuffer.forEach(appendMessage);
+        messageBuffer.push(...pauseBuffer);
         pauseBuffer = [];
         pauseBuffered.textContent = 0;
+        if (!renderTimer) {
+            renderTimer = requestAnimationFrame(flushMessages);
+        }
     }
 });
 
