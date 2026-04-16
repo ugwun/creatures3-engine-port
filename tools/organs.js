@@ -237,6 +237,58 @@
     return ORGAN_NAMES[organId] + ':' + tissue + ':' + locus;
   }
 
+  // ── Biochemical Duck Typing ────────────────────────────────────────
+  function guessOrganName(organ) {
+    if (organ.index === 0) return "Brain";
+    
+    const chemicals = new Set();
+    if (organ.reactions) {
+        for (const r of organ.reactions) {
+            chemicals.add(r.r1); chemicals.add(r.r2); chemicals.add(r.p1); chemicals.add(r.p2);
+        }
+    }
+    if (organ.emitters) {
+        for (const e of organ.emitters) chemicals.add(e.chemical);
+    }
+    if (organ.receptors) {
+        for (const r of organ.receptors) chemicals.add(r.chemical);
+    }
+    chemicals.delete(0); // Ignore '(none)'
+
+    // Lungs: Exchanging Air (29) / Oxygen (30)
+    if (chemicals.has(29) && chemicals.has(30)) return "Lungs";
+    
+    // Stomach: Starch (5)/Protein (12) to Glucose (3)/Amino Acid (13)
+    if (chemicals.has(5) && chemicals.has(3)) return "Stomach / Digestion";
+    if (chemicals.has(12) && chemicals.has(13)) return "Stomach / Digestion";
+    
+    // Liver: Detoxes Heavy Metals (66), Belladonna (68), Glycotoxin (70), Alcohol (75, 247)
+    if (chemicals.has(66) || chemicals.has(68) || chemicals.has(70) || chemicals.has(75) || chemicals.has(247)) return "Liver / Detox";
+    
+    // Immune System: Antibodies (102-109, 27, 28, 31)
+    for (const c of [27, 28, 31, 102, 103, 104, 105, 106, 107, 108, 109]) {
+        if (chemicals.has(c)) return "Immune System / Bone Marrow";
+    }
+    
+    // Muscle: ATP (35) to ADP (36)
+    if (chemicals.has(35) && chemicals.has(36)) return "Muscle Tissue";
+    
+    // Reproductive: Testosterone (53), Oestrogen (46, 47), Progesterone (48)
+    if (chemicals.has(53) || chemicals.has(46) || chemicals.has(47) || chemicals.has(48)) return "Reproductive System";
+
+    // Skin/Adipose: Adipose Tissue (9)
+    if (chemicals.has(9)) return "Adipose (Fat Stores)";
+    
+    // Spleen/Blood: Antigens (82-89)
+    for (let c=82; c<=89; c++) {
+        if (chemicals.has(c)) return "Blood / Spleen";
+    }
+    
+    if (organ.index === 1) return "Heart / Core";
+
+    return null;
+  }
+
   // ── State ──────────────────────────────────────────────────────────
   let organsData = null;
   let selectedCreatureId = null;
@@ -277,9 +329,12 @@
       html += '<div class="org-card' + (isExpanded ? ' org-card--expanded' : '') + '" data-organ="' + organ.index + '">';
 
       // Card header
+      const guessedName = guessOrganName(organ);
+      const titleStr = guessedName ? `Organ ${organ.index}: ${guessedName}` : `Organ ${organ.index}`;
+
       html += '<div class="org-card-header" data-organ-toggle="' + organ.index + '">';
       html += '<span class="org-expand-icon">' + (isExpanded ? '▾' : '▸') + '</span>';
-      html += '<span class="org-card-title">Organ ' + organ.index + '</span>';
+      html += '<span class="org-card-title">' + titleStr + '</span>';
       html += '<span class="org-status-badge ' + statusCls + '">' + status.toUpperCase() + '</span>';
       html += '<span class="org-health-mini">';
       html += '<span class="org-health-bar-mini"><span class="org-health-fill-mini" style="width:' + healthPct + '%"></span></span>';
