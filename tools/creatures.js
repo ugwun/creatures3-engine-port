@@ -507,4 +507,135 @@
     }
   });
 
+  // ── Chemistry Internal Tabs (Monitoring vs Syringe) ───────────────────
+  document.querySelectorAll('.crt-chem-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.crt-chem-tab-btn').forEach(b => b.classList.remove('crt-chem-tab-btn--active'));
+      btn.classList.add('crt-chem-tab-btn--active');
+      const tab = btn.dataset.chemTab;
+      document.querySelectorAll('.crt-chem-view').forEach(v => {
+        v.hidden = true;
+        v.classList.remove('crt-chem-view--active');
+      });
+      const target = document.getElementById('crt-chem-' + tab + '-view');
+      if (target) {
+        target.hidden = false;
+        target.classList.add('crt-chem-view--active');
+      }
+    });
+  });
+
+  // ── Syringe UI Logic ──────────────────────────────────────────────────
+  let selectedChemId = null;
+  let syringeShowAll = false;
+  const syringeList = document.getElementById('crt-syringe-list');
+  const syringeSearch = document.getElementById('crt-syringe-search');
+  const syringeAction = document.getElementById('crt-syringe-action');
+  const syringeSelectedName = document.getElementById('crt-syringe-selected-name');
+  const syringeAmount = document.getElementById('crt-syringe-amount');
+  const btnSyringeInject = document.getElementById('btn-syringe-inject');
+
+  function renderSyringeList() {
+    if (!syringeList) return;
+    const query = syringeSearch.value.toLowerCase().trim();
+    let html = '';
+    
+    const matches = [];
+    for (let i = 0; i < 256; i++) {
+        const name = getChemicalName(i);
+        const searchStr = `${i} ${name}`.toLowerCase();
+        if (query && !searchStr.includes(query)) continue;
+        matches.push({ id: i, name });
+    }
+
+    const limit = syringeShowAll ? matches.length : Math.min(5, matches.length);
+    for (let i = 0; i < limit; i++) {
+        const item = matches[i];
+        const isSelected = item.id === selectedChemId;
+        html += `<div class="crt-syringe-item ${isSelected ? 'crt-syringe-item--selected' : ''}" data-id="${item.id}">
+          <span class="crt-chem-id">${item.id}</span> <span class="crt-chem-name">${item.name}</span>
+        </div>`;
+    }
+
+    if (!syringeShowAll && matches.length > 5) {
+        html += `<div class="crt-syringe-item crt-syringe-show-all" style="justify-content: center; color: var(--orange); font-weight: 600;">
+          Show all ${matches.length} matches...
+        </div>`;
+    }
+    
+    syringeList.innerHTML = html;
+  }
+
+  if (syringeList) {
+    syringeList.addEventListener('click', (e) => {
+      const showAllBtn = e.target.closest('.crt-syringe-show-all');
+      if (showAllBtn) {
+          syringeShowAll = true;
+          renderSyringeList();
+          return;
+      }
+
+      const item = e.target.closest('.crt-syringe-item');
+      if (!item) return;
+      selectedChemId = parseInt(item.dataset.id, 10);
+      renderSyringeList();
+      syringeAction.hidden = false;
+      syringeSelectedName.textContent = `Selected: ${selectedChemId} - ${getChemicalName(selectedChemId)}`;
+    });
+  }
+
+  if (syringeSearch) {
+    syringeSearch.addEventListener('input', () => {
+        syringeShowAll = false;
+        renderSyringeList();
+    });
+    // Initial render
+    renderSyringeList();
+  }
+
+  const syringeFeedback = document.getElementById('crt-syringe-feedback');
+
+  async function injectChemical(agentId, chemId, amount) {
+    const caos = `enum 4 0 0\n  doif unid eq ${agentId}\n    setv va00 chem ${chemId}\n    chem ${chemId} ${amount}\n    outv va00\n    outs " "\n    outv chem ${chemId}\n  endi\nnext`;
+    try {
+      const resp = await fetch("/api/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caos: caos })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+          fetchChemistry(agentId);
+          if (data.output && data.output.trim() && syringeFeedback) {
+              const parts = data.output.trim().split(" ");
+              if (parts.length === 2) {
+                  const oldVal = parseFloat(parts[0]);
+                  const newVal = parseFloat(parts[1]);
+                  const name = getChemicalName(chemId);
+                  const action = newVal >= oldVal ? "Increased" : "Decreased";
+                  syringeFeedback.textContent = `${action} ${name} from ${oldVal.toFixed(2)} to ${newVal.toFixed(2)}`;
+                  syringeFeedback.style.opacity = "1";
+                  
+                  if (syringeFeedback._timeout) clearTimeout(syringeFeedback._timeout);
+                  syringeFeedback._timeout = setTimeout(() => {
+                      syringeFeedback.style.opacity = "0";
+                  }, 4000);
+              }
+          }
+      } else {
+          console.warn('DevTools: inject CAOS error', data.error);
+      }
+    } catch (e) {
+      console.warn('DevTools: inject network failed', e);
+    }
+  }
+
+  if (btnSyringeInject) {
+    btnSyringeInject.addEventListener('click', () => {
+        if (selectedId === null || selectedChemId === null) return;
+        const amount = parseFloat(syringeAmount.value) || 0;
+        injectChemical(selectedId, selectedChemId, amount);
+    });
+  }
+
 })();

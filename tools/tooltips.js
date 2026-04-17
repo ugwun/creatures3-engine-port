@@ -107,6 +107,11 @@ const TIPS = [
     { selector: '.crt-sub-btn[data-subtab="brain"]', text: 'Brain Monitor — spatial neural network visualization with lobe heatmaps, tract connections, and dendrite weights' },
 
     // Creatures — chemistry controls
+    { selector: '.crt-chem-tab-btn[data-chem-tab="monitoring"]', text: 'Monitoring — view all chemical levels and track non-zero concentrations' },
+    { selector: '.crt-chem-tab-btn[data-chem-tab="syringe"]', text: 'Syringe — search and inject specific chemicals into the creature\'s bloodstream' },
+    { selector: '#crt-syringe-search', text: 'Search for a specific chemical by name or ID among the 256 available chemicals' },
+    { selector: '#crt-syringe-amount', text: 'Dosage amount to inject. Positive adds, negative removes. Range runs from -1.0 to 1.0' },
+    { selector: '#btn-syringe-inject', text: 'Inject the specified dosage of the selected chemical into the creature' },
     { selector: '#opt-chem-nonzero', text: 'Show only chemicals with non-zero concentrations to reduce clutter' },
 
     // Creatures — summary panel

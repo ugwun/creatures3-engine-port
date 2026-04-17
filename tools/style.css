@@ -1809,6 +1809,155 @@ body.nav-collapsed #left-nav {
   color: rgba(0, 0, 0, 0.45);
 }
 
+/* ── Chemistry sub-tabs & Syringe ─────────────────────────────────────── */
+.crt-chem-header-wrap {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 12px;
+}
+
+.crt-internal-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.crt-chem-tab-btn {
+  padding: 6px 16px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font-ui);
+  border-bottom: 2px solid transparent;
+}
+
+.crt-chem-tab-btn:hover {
+  color: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.crt-chem-tab-btn--active {
+  color: var(--black);
+  border-bottom-color: var(--orange);
+}
+
+.crt-chem-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.crt-chem-view[hidden] {
+  display: none !important;
+}
+
+/* Syringe View */
+#crt-chem-syringe-view {
+  height: 100%;
+}
+
+#crt-syringe-search-wrap {
+  margin-bottom: 10px;
+}
+
+#crt-syringe-search {
+  width: 100%;
+  padding: 6px 12px;
+  background: var(--white);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--black);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+#crt-syringe-search:focus {
+  border-color: var(--orange);
+}
+
+#crt-syringe-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  min-height: 150px;
+}
+
+.crt-syringe-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.crt-syringe-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.crt-syringe-item--selected {
+  background: var(--orange-dim) !important;
+  border-left: 3px solid var(--orange);
+}
+
+#crt-syringe-action {
+  padding: 12px;
+  background: var(--slate);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#crt-syringe-selected-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--black);
+}
+
+.crt-syringe-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crt-syringe-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--near-black);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-light {
+  padding: 6px 13px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: transparent;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+
+.btn-light:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: var(--orange-dim);
+}
+
 /* ── Summary panel (right) ────────────────────────────────────────────── */
 #crt-summary-panel {
   width: 240px;

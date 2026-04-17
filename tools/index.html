@@ -323,11 +323,38 @@
           </div>
           <!-- Chemistry sub-view -->
           <div id="crt-chemistry" class="crt-subview" hidden>
-            <div id="crt-chem-controls">
-              <label class="opt-toggle"><input type="checkbox" id="opt-chem-nonzero" checked /> Non-zero only</label>
+            <div class="crt-chem-header-wrap">
+              <nav id="crt-chem-sub-tabs" class="crt-internal-tabs">
+                <button class="crt-chem-tab-btn crt-chem-tab-btn--active" data-chem-tab="monitoring">Monitoring</button>
+                <button class="crt-chem-tab-btn" data-chem-tab="syringe">Syringe</button>
+              </nav>
             </div>
-            <div id="crt-chem-bars">
-              <div class="crt-empty-hint">Select a creature to view chemistry</div>
+
+            <div id="crt-chem-monitoring-view" class="crt-chem-view crt-chem-view--active">
+              <div id="crt-chem-controls">
+                <label class="opt-toggle"><input type="checkbox" id="opt-chem-nonzero" checked /> Non-zero only</label>
+              </div>
+              <div id="crt-chem-bars">
+                <div class="crt-empty-hint">Select a creature to view chemistry</div>
+              </div>
+            </div>
+
+            <div id="crt-chem-syringe-view" class="crt-chem-view" hidden>
+              <div id="crt-syringe-search-wrap">
+                <input type="text" id="crt-syringe-search" placeholder="Search 256 chemicals…" autocomplete="off" />
+              </div>
+              <div id="crt-syringe-list">
+                <!-- populated by creatures.js -->
+              </div>
+              <div id="crt-syringe-action" hidden>
+                <div id="crt-syringe-selected-name">Selected: none</div>
+                <div class="crt-syringe-controls">
+                  <span class="crt-syringe-label">Dosage:</span>
+                  <input type="number" id="crt-syringe-amount" class="opt-select" step="0.1" min="-1.0" max="1.0" value="0.1" style="width: 80px;" />
+                  <button id="btn-syringe-inject" class="btn-light">Inject Payload</button>
+                  <span id="crt-syringe-feedback" style="font-size: 10px; font-weight: 600; margin-left: 8px; color: var(--orange); opacity: 0; transition: opacity 0.3s; white-space: nowrap;"></span>
+                </div>
+              </div>
             </div>
           </div>
           <!-- Organs sub-view -->

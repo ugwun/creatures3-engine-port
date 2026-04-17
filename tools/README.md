@@ -218,7 +218,11 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - Highest drive highlighted with an orange accent border
 - Numeric values displayed alongside each bar
 
-**Chemistry Sub-Tab:**
+**Chemistry Sub-Tabs:**
+
+The Chemistry inspector is split into two modes: **Monitoring** and **Syringe**.
+
+**Monitoring:**
 
 ![Developer Tools — Chemistry View](developer_tools_chemistry.png)
 
@@ -227,6 +231,15 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - "Non-zero only" toggle to filter out inactive chemicals
 - Full repository of all 256 biochemicals mapped out. This list is sourced directly from the engine's internal structure and the historical [GameWare Chemical List](https://web.archive.org/web/20110807073010/http://www.gamewaredevelopment.co.uk/cdn/C3chemicalList.php).
 - Colour-coded by category: purple (drives), red (antigens), orange (antibodies), green (smells), blue (general)
+
+**Syringe:**
+
+![Developer Tools — Syringe View](developer_tools_chemicals_syringe.png)
+
+- Inject or extract specific chemicals into the creature's bloodstream on the fly
+- Dynamic filtering to search through all 256 available chemicals by ID or label
+- Adjustable dosage spinner spanning from -1.0 to 1.0 amounts
+- Instant visual feedback and engine recalculations upon payload injection
 
 **Organs Sub-Tab:**
 
