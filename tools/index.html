@@ -52,6 +52,7 @@
   <!-- ── Left Navigation ───────────────────────────────────────────────────── -->
   <nav id="left-nav">
     <button class="tab-btn tab-btn--active" data-tab="creatures">Creatures</button>
+    <button class="tab-btn" data-tab="genetics">Genetics Kit</button>
     <button class="tab-btn" data-tab="log">Log</button>
     <button class="tab-btn" data-tab="console">Console</button>
     <button class="tab-btn" data-tab="scripts">Scripts</button>
@@ -521,7 +522,76 @@
     </div>
   </div>
 
+  <!-- ── Tab: Genetics Kit ──────────────────────────────────────────────── -->
+  <div id="tab-genetics" class="tab-panel" hidden>
+    <div id="genetics-container">
+      <!-- Kit controls bar -->
+      <div id="genetics-controls-bar">
+        <div class="genetics-file-group">
+          <label class="genetics-label">File:</label>
+          <select id="genetics-file-select"></select>
+          <button id="btn-genetics-refresh" class="btn-light">⟳</button>
+        </div>
+        <div class="toolbar-sep"></div>
+        <div id="genetics-summary" class="genetics-summary-inline">
+          Select a .gen file to load.
+        </div>
+        <div style="flex:1"></div>
+        <button id="btn-genetics-crossover" class="btn-light">Crossover</button>
+        <button id="btn-genetics-inject" class="btn-light" style="border-color: var(--orange); color: var(--orange);">Inject to Engine</button>
+        <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
+      </div>
+
+      <!-- Gene data grid -->
+      <div id="genetics-genes-wrap">
+        <table id="genetics-genes-table">
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Type</th>
+              <th>Subtype</th>
+              <th>ID</th>
+              <th>SwOn</th>
+              <th style="text-align:center;">Active</th>
+              <th style="text-align:center;">Mut</th>
+              <th style="text-align:center;">Dup</th>
+              <th style="text-align:center;">Cut</th>
+            </tr>
+          </thead>
+          <tbody id="genetics-genes-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Crossover Modal -->
+    <div id="modal-crossover" hidden>
+      <div class="modal-crossover-backdrop"></div>
+      <div class="modal-crossover-content">
+        <h3 style="margin:0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">Crossover / Splicing</h3>
+        <p style="color:rgba(0,0,0,0.45); font-size:11px; margin:0 0 16px;">Select another genome to cross with Parent A.</p>
+        <div class="modal-row">
+          <span class="modal-label">Parent A:</span>
+          <strong id="cross-parent-a-lbl"></strong>
+        </div>
+        <div class="modal-row">
+          <span class="modal-label">Parent B:</span>
+          <select id="cross-parent-b-select" style="flex:1;"></select>
+        </div>
+        <div class="modal-row">
+          <span class="modal-label">Child Name:</span>
+          <input type="text" id="cross-child-name" value="ChildGen" style="flex:1;" />
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+          <button id="btn-cross-cancel" class="btn-light">Cancel</button>
+          <button id="btn-cross-run" class="btn-light" style="border-color:var(--orange);color:var(--orange);">Cross</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="utils.js"></script>
+
   <script src="caos_format.js"></script>
   <script src="tooltips.js"></script>
   <script src="app.js"></script>
@@ -535,6 +605,7 @@
   <script src="genome.js"></script>
   <script src="caos_ide.js"></script>
   <script src="docs.js"></script>
+  <script src="genetics.js"></script>
 </body>
 
 </html>

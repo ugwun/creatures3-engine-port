@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Legacy flags from old Makefile
-add_compile_options(-ftemplate-depth=32)
+add_compile_options(-ftemplate-depth=256)
 add_definitions(-DC2E_SDL -DC2E_NO_INLINE_ASM -DC2E_OLD_CPP_LIB)
 
 # Find zlib

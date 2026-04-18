@@ -4022,3 +4022,203 @@ body.nav-collapsed #left-nav {
 .chem-placeholder {
   color: rgba(0,0,0,0.3);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GENOME INTERNAL TABS (Inspector / Genetics Kit)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.crt-genome-header-wrap {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 12px;
+}
+
+.crt-genome-tab-btn {
+  padding: 6px 16px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font-ui);
+  border-bottom: 2px solid transparent;
+}
+
+.crt-genome-tab-btn:hover {
+  color: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.crt-genome-tab-btn--active {
+  color: var(--black);
+  border-bottom-color: var(--orange);
+}
+
+.crt-genome-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.crt-genome-view[hidden] {
+  display: none !important;
+}
+
+/* ── Genetics Kit — Controls Bar ──────────────────────────────────────── */
+#genetics-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 20px;
+  background: var(--off-white);
+  overflow: hidden;
+}
+
+#genetics-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.genetics-file-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.genetics-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  font-family: var(--font-ui);
+}
+
+#genetics-file-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--white);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--black);
+  min-width: 180px;
+}
+
+.genetics-summary-inline {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+  font-family: var(--font-ui);
+}
+
+.genetics-summary-inline strong {
+  color: var(--black);
+}
+
+/* ── Genetics Kit — Gene Table ────────────────────────────────────────── */
+#genetics-genes-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+#genetics-genes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+#genetics-genes-table th {
+  padding: 6px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  color: rgba(0, 0, 0, 0.5);
+  border-bottom: 2px solid var(--black);
+  text-align: left;
+  position: sticky;
+  top: 0;
+  background: var(--off-white);
+  z-index: 1;
+}
+
+#genetics-genes-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+#genetics-genes-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* ── Genetics Kit — Crossover Modal ───────────────────────────────────── */
+#modal-crossover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal-crossover[hidden] {
+  display: none !important;
+}
+
+.modal-crossover-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.modal-crossover-content {
+  position: relative;
+  background: var(--white);
+  border: 2px solid var(--black);
+  padding: 24px;
+  width: 380px;
+  z-index: 1;
+}
+
+.modal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.modal-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  font-family: var(--font-ui);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.modal-crossover-content select,
+.modal-crossover-content input[type="text"] {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--off-white);
+  color: var(--black);
+}

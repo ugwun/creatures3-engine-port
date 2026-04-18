@@ -1,6 +1,12 @@
 # Build directory
 build/
 
+# Compilation object files
+*.o
+*.a
+*.so
+*.dylib
+
 # Logs
 *.log
 

@@ -336,6 +336,27 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
 - Dendrite data is fetched **on-demand** only (when clicking a tract or neuron) and is not auto-polled, as tract data can be large
 - Switching creatures clears the brain view and loads data for the newly selected creature
 
+### Genetics Kit
+
+![Developer Tools — Genetics Kit](developer_tools_genetics_kit.png)
+
+The **Genetics Kit** tab is a standalone tool for manipulating, cross-breeding, and injecting genomes directly into the engine, bypassing the normal biological reproduction cycle. Use this to instantly draft new creatures or orchestrate careful genetic crosses without waiting for in-game life cycles.
+
+**Basic Concepts:**
+
+- **Moniker:** Every creature and genome in the game has a unique hash called a "moniker" (e.g., `985-haze-kszy7-dqh74-qvfpg-qq7vs`). This designates the `.gen` genome file located in your game's *Genetics* directory.
+- **Cross-Breeding:** Select two parent monikers from the active world or your genetics library. The engine's native crossover algorithm will shuffle their genes using proper biological inheritance and mutation to produce a unique child genome.
+
+**Workflow:**
+
+1. **Load Moniker 1 and Moniker 2:** Provide the unique monikers of the two parents. The engine reads their `.gen` files natively.
+2. **Cross:** Clicking this button executes the crossover algorithm. It generates a completely new moniker representing the child's genome.
+3. **Inject:** Once a child genome is bred (or if you manually load a specific genome), you can inject it directly into the metaroom. This creates a temporary incubator agent, loads the genome, hatches the creature natively using `NEW: CREA`, registers it with the game history via the `BORN` event, and then officially places it in the Docking Station Norn Meso, ready to interact.
+
+**Engine Integration:**
+
+This tool directly hooks into the underlying C++ `GenomeStore` and `CreatureGallery`. By operating exactly how natural births work, injected creatures behave authentically. They will appear successfully in the built-in game UI panels (like the creature tracking panel) and preserve full lifecycle history logging.
+
 ### CAOS IDE
 
 ![Developer Tools — CAOS IDE](developer_tools_caos_ide.png)

@@ -25,6 +25,7 @@ const TIPS = [
     { selector: '.tab-btn[data-tab="debugger"]', text: 'CAOS Debugger — source-level debugger with breakpoints, stepping, and variable inspection' },
     { selector: '.tab-btn[data-tab="ide"]', text: 'CAOS IDE — code editor with syntax highlighting, autocomplete, scriptorium browser, and breakpoints' },
     { selector: '.tab-btn[data-tab="docs"]', text: 'Architecture Docs — interactive class graph of the engine architecture' },
+    { selector: '.tab-btn[data-tab="genetics"]', text: 'Genetics Kit — manipulate, cross-breed, and inject custom creature genomes directly into the world' },
 
     // ── Log Tab ───────────────────────────────────────────────────────────
     { selector: '#search', text: 'Filter log messages by text — only matching rows are shown' },
@@ -183,6 +184,20 @@ const TIPS = [
     // Docs — legend layer items
     { selector: '.docs-legend-title', text: 'Legend section heading' },
     { selector: '.docs-node', text: 'Engine class node — click to inspect, drag to reposition' },
+
+    // ── Genetics Kit Tab ─────────────────────────────────────────────────
+    { selector: '#genetics-file-select', text: 'Select a .gen file or moniker from the active world or genetics library to load' },
+    { selector: '#btn-genetics-refresh', text: 'Refresh the list of available monikers from the engine\'s GenomeStore' },
+    { selector: '#btn-genetics-crossover', text: 'Cross-breed the currently selected genome with another parent to generate a brand new child moniker' },
+    { selector: '#btn-genetics-inject', text: 'Inject the currently selected genome directly into the world. The creature will be hatched automatically and officially registered' },
+    { selector: '#genetics-genes-table th:nth-child(6)', text: 'Active — indicates if this gene is currently switched on' },
+    { selector: '#genetics-genes-table th:nth-child(7)', text: 'Mutable — indicates if this gene is allowed to mutate during crossovers' },
+    { selector: '#genetics-genes-table th:nth-child(8)', text: 'Duplicatable — indicates if this gene can be duplicated during crossovers' },
+    { selector: '#genetics-genes-table th:nth-child(9)', text: 'Cuttable — indicates if this gene can be removed during crossovers' },
+    { selector: '#cross-parent-b-select', text: 'Select the second parent genome to cross-breed with Parent A', context: '#modal-crossover' },
+    { selector: '#cross-child-name', text: 'Provide an optional custom name prefix for the resulting child\'s genome file', context: '#modal-crossover' },
+    { selector: '#btn-cross-run', text: 'Execute the genetic crossover operation to generate the new child genome', context: '#modal-crossover' },
+    { selector: '#btn-cross-cancel', text: 'Cancel the crossover operation', context: '#modal-crossover' },
 
     // ── Scripts Table Headers ────────────────────────────────────────────
     { selector: '#scripts-table th:nth-child(1)', text: 'Unique numeric ID of the agent running this script' },
