@@ -1889,6 +1889,64 @@ body.nav-collapsed #left-nav {
   min-height: 150px;
 }
 
+#genetics-file-search-wrap {
+  margin-bottom: 10px;
+}
+
+#genetics-file-search, #cross-parent-b-search {
+  padding: 6px 12px;
+  background: var(--white);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--black);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  outline: none;
+  transition: border-color .2s;
+}
+#genetics-file-search:focus, #cross-parent-b-search:focus {
+  border-color: var(--orange);
+}
+
+#genetics-file-list, .genetics-file-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  min-height: 150px;
+}
+
+.genetics-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.genetics-file-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.genetics-file-item--selected {
+  background: var(--orange-dim) !important;
+  border-left: 3px solid var(--orange);
+}
+
+#genetics-file-action {
+  padding: 12px;
+  background: var(--slate);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#genetics-selected-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--black);
+}
+
 .crt-syringe-item {
   display: flex;
   align-items: center;

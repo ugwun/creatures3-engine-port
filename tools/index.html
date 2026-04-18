@@ -525,25 +525,27 @@
   <!-- ── Tab: Genetics Kit ──────────────────────────────────────────────── -->
   <div id="tab-genetics" class="tab-panel" hidden>
     <div id="genetics-container">
-      <!-- Kit controls bar -->
-      <div id="genetics-controls-bar">
-        <div class="genetics-file-group">
-          <label class="genetics-label">File:</label>
-          <select id="genetics-file-select"></select>
+      <!-- Kit controls area (Syringe style) -->
+      <div id="genetics-top-wrap" style="display:flex; flex-direction:column; max-height:280px; flex-shrink:0;">
+        <div id="genetics-file-search-wrap" style="display:flex; gap:8px;">
+          <input type="text" id="genetics-file-search" placeholder="Search .gen files..." autocomplete="off" style="flex:1;" />
           <button id="btn-genetics-refresh" class="btn-light">⟳</button>
         </div>
-        <div class="toolbar-sep"></div>
-        <div id="genetics-summary" class="genetics-summary-inline">
-          Select a .gen file to load.
+        <div id="genetics-file-list">
+          <!-- populated dynamically -->
         </div>
-        <div style="flex:1"></div>
-        <button id="btn-genetics-crossover" class="btn-light">Crossover</button>
-        <button id="btn-genetics-inject" class="btn-light" style="border-color: var(--orange); color: var(--orange);">Inject to Engine</button>
-        <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
+        <div id="genetics-file-action" hidden>
+          <div id="genetics-selected-name" style="flex:1;">Selected: none</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button id="btn-genetics-crossover" class="btn-light">Crossover</button>
+            <button id="btn-genetics-inject" class="btn-light" style="border-color: var(--orange); color: var(--orange);">Inject Payload</button>
+            <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
+          </div>
+        </div>
       </div>
 
       <!-- Gene data grid -->
-      <div id="genetics-genes-wrap">
+      <div id="genetics-genes-wrap" style="flex:1; margin-top: 12px;">
         <table id="genetics-genes-table">
           <thead>
             <tr>
@@ -574,9 +576,12 @@
           <span class="modal-label">Parent A:</span>
           <strong id="cross-parent-a-lbl"></strong>
         </div>
-        <div class="modal-row">
-          <span class="modal-label">Parent B:</span>
-          <select id="cross-parent-b-select" style="flex:1;"></select>
+        <div class="modal-row" style="margin-bottom: 4px; flex-direction:column; align-items:stretch;">
+          <span class="modal-label" style="margin-bottom:4px;">Parent B:</span>
+          <div id="cross-parent-b-search-wrap">
+            <input type="text" id="cross-parent-b-search" placeholder="Search .gen files..." autocomplete="off" style="width: 100%;" />
+          </div>
+          <div id="cross-parent-b-list" class="genetics-file-list" style="max-height:120px; border:1px solid rgba(0,0,0,0.08); overflow-y:auto; margin-top:8px;"></div>
         </div>
         <div class="modal-row">
           <span class="modal-label">Child Name:</span>

@@ -9,10 +9,18 @@
   let availableFiles = [];
   let currentGenome = null;
 
+  let selectedFile = null;
+  let fileShowAll = false;
+
+  let selectedParentB = null;
+  let parentBShowAll = false;
+
   // ── DOM Refs ───────────────────────────────────────────────────────────
-  const fileSelect = document.getElementById('genetics-file-select');
+  const fileSearch = document.getElementById('genetics-file-search');
+  const fileList = document.getElementById('genetics-file-list');
+  const fileAction = document.getElementById('genetics-file-action');
+  const selectedName = document.getElementById('genetics-selected-name');
   const btnRefresh = document.getElementById('btn-genetics-refresh');
-  const summaryBox = document.getElementById('genetics-summary');
   const tbody = document.getElementById('genetics-genes-body');
 
   const btnCrossover = document.getElementById('btn-genetics-crossover');
@@ -21,7 +29,8 @@
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
-  const parentBSelect = document.getElementById('cross-parent-b-select');
+  const parentBSearch = document.getElementById('cross-parent-b-search');
+  const parentBList = document.getElementById('cross-parent-b-list');
   const childName = document.getElementById('cross-child-name');
   const btnCrossRun = document.getElementById('btn-cross-run');
   const btnCrossCancel = document.getElementById('btn-cross-cancel');
@@ -36,17 +45,109 @@
   // ── Controls ───────────────────────────────────────────────────────────
   btnRefresh.addEventListener('click', fetchFiles);
 
-  fileSelect.addEventListener('change', (e) => {
-    if (e.target.value) {
-      loadGenome(e.target.value);
+  function renderFileList() {
+    if (!fileList) return;
+    const query = fileSearch ? fileSearch.value.toLowerCase().trim() : '';
+    const matches = availableFiles.filter(f => f.toLowerCase().includes(query));
+    
+    let html = '';
+    const limit = fileShowAll ? matches.length : Math.min(5, matches.length);
+    for (let i = 0; i < limit; i++) {
+        const item = matches[i];
+        const isSelected = item === selectedFile;
+        // Match the layout seen in Syringe (e.g. index followed by moniker name)
+        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item}">
+          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item}</span>
+        </div>`;
     }
-  });
+
+    if (!fileShowAll && matches.length > 5) {
+        html += `<div class="genetics-file-item genetics-file-show-all" style="justify-content: center; color: var(--orange); font-weight: 600;">
+          Show all ${matches.length} matches...
+        </div>`;
+    }
+    
+    fileList.innerHTML = html;
+  }
+
+  function renderParentBList() {
+    if (!parentBList) return;
+    const query = parentBSearch ? parentBSearch.value.toLowerCase().trim() : '';
+    const matches = availableFiles.filter(f => f.toLowerCase().includes(query));
+    
+    let html = '';
+    const limit = parentBShowAll ? matches.length : Math.min(5, matches.length);
+    for (let i = 0; i < limit; i++) {
+        const item = matches[i];
+        const isSelected = item === selectedParentB;
+        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item}">
+          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item}</span>
+        </div>`;
+    }
+
+    if (!parentBShowAll && matches.length > 5) {
+        html += `<div class="genetics-file-item genetics-file-show-all-b" style="justify-content: center; color: var(--orange); font-weight: 600;">
+          Show all ${matches.length} matches...
+        </div>`;
+    }
+    
+    parentBList.innerHTML = html;
+  }
+
+  if (fileSearch) {
+    fileSearch.addEventListener('input', () => {
+      fileShowAll = false;
+      renderFileList();
+    });
+  }
+
+  if (parentBSearch) {
+    parentBSearch.addEventListener('input', () => {
+      parentBShowAll = false;
+      renderParentBList();
+    });
+  }
+
+  if (fileList) {
+    fileList.addEventListener('click', (e) => {
+      const showAllBtn = e.target.closest('.genetics-file-show-all');
+      if (showAllBtn) {
+          fileShowAll = true;
+          renderFileList();
+          return;
+      }
+      const item = e.target.closest('.genetics-file-item');
+      if (!item) return;
+      selectedFile = item.dataset.id;
+      renderFileList();
+      fileAction.hidden = false;
+      selectedName.innerHTML = `Loading <strong>${selectedFile}</strong>...`;
+      if (selectedFile) loadGenome(selectedFile);
+    });
+  }
+
+  if (parentBList) {
+    parentBList.addEventListener('click', (e) => {
+      const showAllBtn = e.target.closest('.genetics-file-show-all-b');
+      if (showAllBtn) {
+          parentBShowAll = true;
+          renderParentBList();
+          return;
+      }
+      const item = e.target.closest('.genetics-file-item');
+      if (!item) return;
+      selectedParentB = item.dataset.id;
+      renderParentBList();
+    });
+  }
 
   // ── Crossover Modal ────────────────────────────────────────────────────
   btnCrossover.addEventListener('click', () => {
     if (!currentGenome) return;
     parentALbl.innerText = currentGenome.moniker;
-    parentBSelect.innerHTML = availableFiles.map(f => `<option value="${f}">${f}</option>`).join('');
+    if (parentBSearch) parentBSearch.value = '';
+    parentBShowAll = false;
+    renderParentBList();
     modalCross.hidden = false;
   });
 
@@ -58,7 +159,7 @@
 
   btnCrossRun.addEventListener('click', async () => {
     const a = currentGenome ? currentGenome.moniker : '';
-    const b = parentBSelect.value;
+    const b = selectedParentB;
     const c = childName.value;
     if (!a || !b || !c) return;
 
@@ -72,7 +173,12 @@
       const data = await resp.json();
       if (data.status === 'success') {
         await fetchFiles();
-        fileSelect.value = data.child;
+        selectedFile = data.child;
+        fileShowAll = false;
+        if (fileSearch) fileSearch.value = '';
+        renderFileList();
+        fileAction.hidden = false;
+        selectedName.innerHTML = `Loading <strong>${data.child}</strong>...`;
         loadGenome(data.child);
         modalCross.hidden = true;
       } else {
@@ -116,12 +222,9 @@
     try {
       const resp = await fetch('/api/genetics/files');
       availableFiles = await resp.json();
-      fileSelect.innerHTML = '<option value="">-- Select File --</option>' +
-        availableFiles.map(f => `<option value="${f}">${f}</option>`).join('');
-
-      if (currentGenome && availableFiles.includes(currentGenome.moniker)) {
-        fileSelect.value = currentGenome.moniker;
-      }
+      
+      renderFileList();
+      renderParentBList();
     } catch (e) {
       console.warn("DevTools: genetics file list fetch failed", e);
     }
@@ -134,7 +237,7 @@
       const resp = await fetch('/api/genetics/file/' + moniker);
       const data = await resp.json();
       if (data.error) {
-        summaryBox.innerHTML = 'Error: ' + data.error;
+        if (selectedName) selectedName.innerHTML = `<span style="color:var(--red);">Error: ${data.error}</span>`;
         tbody.innerHTML = '';
         currentGenome = null;
         return;
@@ -144,7 +247,7 @@
       currentGenome = data;
       renderGenome();
     } catch (e) {
-      summaryBox.innerHTML = "Failed to load genome";
+      if (selectedName) selectedName.innerHTML = `<span style="color:var(--red);">Failed to load genome</span>`;
     }
   }
 
@@ -152,8 +255,9 @@
   function renderGenome() {
     if (!currentGenome) return;
 
-    summaryBox.innerHTML =
-      `<strong>${currentGenome.moniker}</strong> \u2014 ${currentGenome.geneCount} genes`;
+    if (selectedName) {
+      selectedName.innerHTML = `Selected: <strong>${currentGenome.moniker}</strong> &mdash; <span style="color:var(--orange);">${currentGenome.geneCount} genes</span>`;
+    }
 
     tbody.innerHTML = '';
     currentGenome.genes.forEach((g, i) => {
