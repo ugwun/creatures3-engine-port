@@ -349,13 +349,189 @@ The **Genetics Kit** tab is a standalone tool for manipulating, cross-breeding, 
 
 **Workflow:**
 
-1. **Load Moniker 1 and Moniker 2:** Provide the unique monikers of the two parents. The engine reads their `.gen` files natively.
-2. **Cross:** Clicking this button executes the crossover algorithm. It generates a completely new moniker representing the child's genome.
-3. **Inject:** Once a child genome is bred (or if you manually load a specific genome), you can inject it directly into the metaroom. This creates a temporary incubator agent, loads the genome, hatches the creature natively using `NEW: CREA`, registers it with the game history via the `BORN` event, and then officially places it in the Docking Station Norn Meso, ready to interact.
+1. **Browse genomes** — the file list (left panel) shows all `.gen` files in the world's `Genetics/` directory. Use the search box to filter by moniker substring. Click a moniker to parse and display its genes.
+2. **Inspect** — the gene table shows every gene in the selected genome: type (Brain/Biochemistry/Creature/Organ), subtype, ID, switch-on time, and mutability flags (mutable/dupable/cutable). Checkboxes allow toggling gene activation and flag states before injection.
+3. **Cross** — select two parent monikers and click **Cross**. The engine's native `Genome::Cross` algorithm performs biological crossover with mutation (see *Crossover Algorithm* below). A new child `.gen` file is written to the Genetics directory.
+4. **Inject** — click **Inject to Engine** to hatch the currently loaded genome as a live creature. This writes a modified `.gen` file, executes a CAOS macro to spawn the creature, registers it with the history system, and places it in the Norn Meso (see *Injection Pipeline* below).
 
-**Engine Integration:**
+#### End-to-End Pipeline Architecture
 
-This tool directly hooks into the underlying C++ `GenomeStore` and `CreatureGallery`. By operating exactly how natural births work, injected creatures behave authentically. They will appear successfully in the built-in game UI panels (like the creature tracking panel) and preserve full lifecycle history logging.
+The Genetics Kit operates through four layers:
+
+```
+┌──────────────────────┐
+│  Frontend (genetics.js)  │  Browser: file list, gene table, crossover modal
+├──────────────────────┤
+│  REST API (DebugServer.cpp) │  HTTP endpoints: /api/genetics/*
+├──────────────────────┤
+│  Engine Core │  Genome class, GenomeStore, Creature constructor
+├──────────────────────┤
+│  CAOS VM │  NEW: SIMP → GENE LOAD → NEW: CREA → BORN → physics
+└──────────────────────┘
+```
+
+1. **Frontend (`tools/genetics.js`)** — renders the file list with search-driven filtering, the gene inspection table, and the crossover modal. Communicates exclusively via `fetch()` to the REST API. State is managed in-browser (no server-side sessions).
+
+2. **REST API (`engine/DebugServer.cpp`)** — four endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
+   - `GET /api/genetics/files` — scans the world's `GENETICS_DIR` for `.gen` files
+   - `GET /api/genetics/file/:moniker` — reads and parses a `.gen` binary file into structured JSON
+   - `POST /api/genetics/crossover` — performs `Genome::Cross` and writes the child to disk
+   - `POST /api/genetics/inject` — serializes a (potentially modified) genome to a `.gen` file and executes the CAOS injection macro
+
+3. **Engine Core (`engine/Creature/Genome.cpp`, `GenomeStore.cpp`)** — the `Genome` class handles binary file I/O (`ReadFromFile` / `WriteToFile`), crossover (`Cross` / `CrossLoop`), and gene expression (`GetGeneType`). `GenomeStore` manages genome slots, moniker generation, and history event registration.
+
+4. **CAOS VM** — the injection endpoint compiles and executes a multi-command CAOS script that creates a temporary agent, loads the genome, hatches the creature, sets physics properties, and places it in the world.
+
+#### Binary `.gen` File Format
+
+Genome files use the proprietary `dna3` binary format. The structure is:
+
+```
+┌─────────────────────────────┐
+│  File Header: "dna3" (4 bytes)  │
+├─────────────────────────────┤
+│  Gene 1: "gene" marker + header + data │
+│  Gene 2: "gene" marker + header + data │
+│  ...                          │
+│  Gene N: "gene" marker + header + data │
+├─────────────────────────────┤
+│  End Marker: "gend" (4 bytes)   │
+└─────────────────────────────┘
+```
+
+**File Header:** The first 4 bytes must be `dna3` (the `DNA3TOKEN`). Files without this marker are rejected with a `genome_old_dna` error.
+
+**Gene Markers:** Each gene begins with the 4-byte `gene` marker (`GENETOKEN`). The genome ends with the 4-byte `gend` marker (`ENDGENOMETOKEN`).
+
+**Gene Header:** Immediately after each `gene` marker, an 8-byte header follows:
+
+| Offset | Field | Size | Description |
+|---|---|---|---|
+| +4 | Type | 1 byte | Gene type: `0`=Brain, `1`=Biochemistry, `2`=Creature, `3`=Organ |
+| +5 | Subtype | 1 byte | Gene subtype (e.g. Brain: `0`=Lobe, `1`=Organ, `2`=Tract) |
+| +6 | ID | 1 byte | Unique gene ID (for editor tracking and crossover alignment) |
+| +7 | Generation | 1 byte | Clone generation counter (incremented on gene duplication) |
+| +8 | Switch-On Time | 1 byte | Life stage when gene activates (`0`=Embryo, `1`=Baby, ..., `6`=Senile) |
+| +9 | Flags | 1 byte | Mutability flags bitmask (see below) |
+| +10 | Mutability | 1 byte | Mutation breadth weighting (higher = more likely to mutate) |
+| +11 | Variant | 1 byte | Behaviour variant (`0`=express always, `1`–`8`=specific variant only) |
+
+**Flags bitmask:**
+
+| Bit | Value | Name | Description |
+|---|---|---|---|
+| 0 | `0x01` | `MUT` | Gene allows point mutations during crossover |
+| 1 | `0x02` | `DUP` | Gene may be duplicated by cutting errors |
+| 2 | `0x04` | `CUT` | Gene may be deleted by cutting errors |
+| 3 | `0x08` | `LINKMALE` | Gene only expressed in males |
+| 4 | `0x10` | `LINKFEMALE` | Gene only expressed in females |
+| 5 | `0x20` | `MIGNORE` | Gene is carried but never expressed (dormant) |
+
+**Gene Data:** After the header, the gene-specific data follows. The data layout varies by type/subtype. A typical C3/DS genome contains ~200–350 genes across 19 distinct subtypes.
+
+**Gene Subtypes Reference:**
+
+| Type | Subtype | Name | Key Data Fields |
+|---|---|---|---|
+| 0 Brain | 0 | Lobe | 4-char name, position (x,y,w,h), colour, WTA flag, SVRules (2×48 bytes) |
+| 0 Brain | 1 | Brain Organ | Clock rate, damage rate, life force, biotick, ATP coefficient |
+| 0 Brain | 2 | Tract | Source/dest lobe names, neuron ranges, migration flags, SVRules (2×48 bytes) |
+| 1 Biochem | 0 | Receptor | Organ/tissue/locus address, chemical, threshold, nominal, gain, effect |
+| 1 Biochem | 1 | Emitter | Organ/tissue/locus address, chemical, threshold, rate, gain, flags |
+| 1 Biochem | 2 | Reaction | 2 reactants + 2 products (chemical ID + proportion each), rate |
+| 1 Biochem | 3 | Half-Lives | 256 bytes — natural decay rate for each chemical |
+| 1 Biochem | 4 | Initial Conc. | Chemical ID + starting amount |
+| 1 Biochem | 5 | Neuroemitter | 3 lobe/neuron pairs, sample rate, 4 chemical/amount pairs |
+| 2 Creature | 0 | Stimulus | Stimulus ID, significance, input, intensity, 4 chemical adjustments |
+| 2 Creature | 1 | Genus | Genus byte + mother moniker (32 bytes) + father moniker (32 bytes) |
+| 2 Creature | 2 | Appearance | Body region, variant, species |
+| 2 Creature | 3 | Pose | Pose number + 16-char pose string |
+| 2 Creature | 4 | Gait | Gait number + 8 pose indices |
+| 2 Creature | 5 | Instinct | 3 lobe/cell pairs, action, reinforcement chemical/amount |
+| 2 Creature | 6 | Pigment | Colour channel (R/G/B) + intensity |
+| 2 Creature | 7 | Pigment Bleed | Rotation + swap |
+| 2 Creature | 8 | Expression | Facial expression ID, weight, 4 drive/amount pairs |
+| 3 Organ | 0 | Organ | Clock rate, damage rate, life force, biotick start, ATP damage coefficient |
+
+#### Crossover Algorithm
+
+When the **Cross** button is clicked, the REST API reads both parent `.gen` files into `Genome` objects and calls `Genome::Cross()`. The crossover algorithm (`CrossLoop()` in `Genome.cpp`) simulates biological meiosis:
+
+1. **Initialization** — a parent strand (`src`) is chosen randomly (50/50 mum or dad). Both parent genomes are reset to their first gene.
+
+2. **Gene copying** — genes are copied from `src` to the child genome, one at a time, with possible mutations. The header is copied without mutation (except the switch-on time), but gene data codons may mutate:
+   - **Mutation probability:** `1 / (MUTATIONRATE × (256 − Mutability) / 256 × (256 − ParentChanceOfMutation) / 256)` per codon (base rate `1/4800`)
+   - **Mutation magnitude:** controlled by `ParentDegreeOfMutation` — higher values produce wider bit-flips via `pow(random, degree)` shaping
+
+3. **Crossover points** — after copying `cross` genes (random value between 10 and `LINKAGE×2`, where `LINKAGE=50`), the algorithm attempts to swap strands. It only crosses over when both strands are synchronized (i.e., the alternate parent has a gene with the same `GeneID` as the current position). Average linkage of 50 genes means genes near each other on the "chromosome" tend to stay together in offspring.
+
+4. **Cutting errors** — at each crossover point, there is a `1/CUTERRORRATE` (1/80) chance of a structural error:
+   - **Duplication (50%)** — the gene from the previous strand is copied *again* before continuing on the new strand. The duplicated gene's generation counter is incremented. Only occurs if the gene's `DUP` flag is set.
+   - **Deletion (50%)** — one gene on the new strand is skipped entirely. Only occurs if the gene's `CUT` flag is set.
+
+5. **Termination** — when the end-of-genome marker (`gend`) is reached on the source strand, the child genome is terminated and parent monikers are written into the Genus gene header.
+
+**Crossover parameters used by the Genetics Kit:** `MumChanceOfMutation=200`, `MumDegreeOfMutation=200`, `DadChanceOfMutation=200`, `DadDegreeOfMutation=200`. These are intentionally high to produce diverse offspring from the developer tool (the game's native breeding uses creature-specific mutation rates from biochemistry).
+
+**Child moniker:** Since `GenomeStore::GenerateUniqueMoniker` is protected, the REST API synthesizes a moniker using `000-chld-<random hex>` format. In contrast, the engine's native moniker generation uses an MD5 hash seeded with timestamps, mouse position, world tick, agent count, and random data to guarantee universal uniqueness.
+
+#### Injection Pipeline (CAOS Macro)
+
+When **Inject to Engine** is clicked, the following steps execute in sequence:
+
+**Step 1: Binary Serialization** — the frontend sends the full genome JSON (including any checkbox modifications to gene flags or active states) to `POST /api/genetics/inject`. The server re-serializes the gene array back into a `dna3` binary file. Genes with `active: false` are omitted. A fresh moniker is generated by appending `_<random>` to the input moniker, and the `.gen` file is written to the Genetics directory.
+
+**Step 2: CAOS Execution** — the server constructs and executes this CAOS macro on the main thread:
+
+```caos
+new: simp 1 1 1 "blnk" 1 0 0      \ Create temporary "blank" agent (family 1, genus 1, species 1)
+gene load targ 1 "<moniker>"        \ Load the .gen file into genome slot 1 of the temp agent
+setv va00 unid                      \ Store temp agent's unique ID in va00
+new: crea 4 targ 1 0 0              \ Hatch creature from genome slot 1 (family 4 = Norn)
+                                     \ Sex=0 (random), Variant=0 (random)
+                                     \ → AgentManager::CreateCreature() → Creature constructor
+                                     \ → body parts formed, added to creature update list
+born                                 \ Register birth in HistoryStore:
+                                     \   - child: LifeEvent::typeBorn
+                                     \   - mum:   LifeEvent::typeChildBorn
+                                     \   - dad:   LifeEvent::typeChildBorn
+                                     \ Sets LifeFaculty::myProperlyBorn = true
+accg game "c3_creature_accg"         \ Set gravitational acceleration (default: 5.0)
+attr game "c3_creature_attr"         \ Set agent attributes (default: 198)
+bhvr game "c3_creature_bhvr"         \ Set click behaviours (default: 15)
+perm game "c3_creature_perm"         \ Set wall permeability (default: 100)
+setv va01 unid                       \ Store new creature's unique ID in va01
+targ agnt va00                       \ Re-select the temporary blank agent
+kill targ                            \ Destroy the temporary agent
+targ agnt va01                       \ Re-select the creature
+mvsf 1000 8900                       \ Move to safe position in Norn Meso (Metaroom 11)
+```
+
+**Why the temporary agent?** The `GENE LOAD` CAOS command (`SubCommand_GENE_LOAD`) calls `GenomeStore::LoadEngineeredFile()`, which requires an existing agent to hold the genome slot. The temporary `blnk` agent serves as a genome carrier. When `NEW: CREA` executes, `AgentManager::CreateCreature()` reads the genome from the carrier's `GenomeStore` slot, constructs the `Creature` object (brain, biochemistry, skeleton, body parts), and adds it to the world. After hatching, the temp agent is killed.
+
+**Why explicit physics properties?** The `accg`/`attr`/`bhvr`/`perm` commands read from game variables (`c3_creature_accg`, etc.) to match the physics configuration used by the DS bootstrap egg-hatching scripts in `creatureBreeding.cos`. Without these, the creature inherits default `Agent` physics (e.g., `accg=0.3`) rather than the standard creature gravity (`accg=5.0`), causing the creature to float.
+
+**Step 3: History Registration** — `BORN` calls `LifeFaculty::SetProperlyBorn()`, which:
+- Sets `myProperlyBorn = true` (enables tick aging)
+- Creates a `LifeEvent::typeBorn` entry in the child's `CreatureHistory`
+- Creates `LifeEvent::typeChildBorn` entries in both parents' histories
+- This ensures the creature appears in the in-game creature tracking panel and has a correct life history
+
+**Step 4: World Placement** — `MVSF 1000 8900` moves the creature to a safe floor position in the Docking Station Norn Meso (Metaroom 11). The `MVSF` command validates the position against the physics map and finds the nearest valid standing location.
+
+#### Binary Serialization (Read/Write)
+
+The REST API contains **two parallel binary codec implementations** in `DebugServer.cpp`:
+
+1. **`parseGenomeFileToJson` (reader)** — a lambda (line ~1445) that opens the `.gen` file, validates the `dna3` header, and walks each gene sequentially. It reads the 8-byte header and then dispatches on `type/subtype` to parse the gene-specific data into JSON fields. SVRule byte arrays (48 bytes) in Brain Lobe and Tract genes are passed through `decompileSVRuleByBytes()` for human-readable display.
+
+2. **Inject serializer (writer)** — inside the `POST /api/genetics/inject` handler (line ~1686), the server iterates the JSON gene array and re-writes each gene back to binary using `writeU8`, `writeU16BE`, and `writeFloat8` helpers. Genes with `active: false` are skipped. The file is bookended with `dna3` and `gend` markers.
+
+> **⚠️ MAINTENANCE WARNING:** These two codecs are **manually mirrored** and must stay in exact sync with each other and with the engine's `Genome.cpp` binary format. Any change to gene data layout in the engine (e.g., adding a field to a gene subtype) must be reflected in **both** the parser and the serializer in `DebugServer.cpp`. There is no shared schema — each codec independently hard-codes the byte layout per gene subtype. Failure to keep them synchronized will produce corrupted `.gen` files or incorrect gene displays.
+
+#### Engine Integration
+
+This tool directly hooks into the underlying C++ `GenomeStore` and `CreatureGallery`. By operating exactly how natural births work — using the same `Genome::Cross`, `GENE LOAD`, `NEW: CREA`, and `BORN` CAOS commands that the game's own egg-hatching scripts use — injected creatures behave authentically. They appear in the built-in game UI panels (creature tracking panel), preserve full lifecycle history logging, and have correct physics properties.
 
 ### CAOS IDE
 
@@ -912,6 +1088,108 @@ Get deep inspection details for a single specific neuron, including state variab
   ]
 }
 ```
+
+### `GET /api/genetics/files`
+
+List all `.gen` genome files in the world's Genetics directory. Returns an array of moniker strings (filenames without the `.gen` extension).
+
+**Response:**
+```json
+["985-haze-kszy7-dqh74-qvfpg-qq7vs", "000-chld-4a3b2c1d-...", "norn.brain.gen.template"]
+```
+
+**Timeout:** 5 seconds. Scans the directory returned by `theApp.GetDirectory(GENETICS_DIR)`.
+
+### `GET /api/genetics/file/:moniker`
+
+Parse a binary `.gen` file and return its full gene structure as JSON. Used by the Genetics Kit to display the gene inspection table and by the Genome sub-tab for creature genome viewing.
+
+**Response (success):**
+```json
+{
+  "moniker": "985-haze-kszy7-...",
+  "geneCount": 287,
+  "genes": [
+    {
+      "type": 2, "subtype": 1,
+      "typeName": "Creature", "subtypeName": "Genus",
+      "id": 0, "generation": 0,
+      "switchOnTime": 0, "switchOnLabel": "Embryo",
+      "flags": { "mutable": true, "dupable": false, "cutable": false, "maleOnly": false, "femaleOnly": false, "dormant": false },
+      "flagsRaw": 1,
+      "mutability": 156, "variant": 0,
+      "data": { "genus": 1, "motherMoniker": "...", "fatherMoniker": "..." }
+    }
+  ]
+}
+```
+
+Each gene object includes the parsed 8-byte header fields and a `data` object whose shape depends on `type`/`subtype` (see *Gene Subtypes Reference* in the Genetics Kit section). Brain Lobe and Tract genes include decompiled SVRule arrays.
+
+**Response (error):**
+```json
+{ "error": "Could not open genome file" }
+```
+
+**Timeout:** 5 seconds. The binary parser (`parseGenomeFileToJson` lambda in `DebugServer.cpp`) reads the file sequentially, validating the `dna3` header and walking `gene`/`gend` markers.
+
+### `POST /api/genetics/crossover`
+
+Perform genetic crossover between two parent genomes. Reads both parent `.gen` files, executes `Genome::Cross()` with high mutation parameters, and writes the child genome to disk.
+
+**Request:**
+```json
+{
+  "parentA": "985-haze-kszy7-...",
+  "parentB": "000-chld-4a3b2c1d-..."
+}
+```
+
+**Response (success):**
+```json
+{ "status": "success", "child": "000-chld-7f8e9d0c-..." }
+```
+
+**Response (error):**
+```json
+{ "error": "Could not open genome file: ..." }
+```
+
+The child moniker is synthesized as `000-chld-<8 hex>-<8 hex>-<8 hex>-<5 hex>` using `rand()`. Crossover uses mutation parameters `(200, 200, 200, 200)` — intentionally high to produce diverse offspring from the developer tool.
+
+**Timeout:** 5 seconds.
+
+### `POST /api/genetics/inject`
+
+Serialize a genome from JSON back to binary `.gen` format, then execute the CAOS injection macro to hatch it as a live creature in the world. This is the most complex genetics endpoint — it performs binary file writing, CAOS compilation, and VM execution in a single request.
+
+**Request:** The full genome JSON object as returned by `GET /api/genetics/file/:moniker`, with optional modifications (toggled `active` flags on genes, modified `flags` fields).
+
+```json
+{
+  "moniker": "985-haze-kszy7-...",
+  "genes": [
+    { "type": 2, "subtype": 1, "active": true, "data": { "genus": 1, "..." }, "..." },
+    { "type": 0, "subtype": 0, "active": false, "..." }
+  ]
+}
+```
+
+Genes with `"active": false` are omitted from the binary output, effectively deleting them from the injected genome.
+
+**Response (success):**
+```json
+{ "status": "success", "moniker": "985-haze-kszy7-..._1234567890" }
+```
+
+**Response (error):**
+```json
+{ "error": "Could not write gen file" }
+```
+
+The returned moniker has `_<random>` appended to avoid overwriting the original `.gen` file. See *Injection Pipeline (CAOS Macro)* in the Genetics Kit section for the full CAOS script that executes after the file is written.
+
+**Timeout:** 5 seconds. This endpoint performs significant work on the main thread: file I/O, CAOS compilation (`Orderiser::OrderFromCAOS`), VM execution (`CAOSMachine::UpdateVM(-1)`), creature construction (skeleton, brain, biochemistry initialization), and world placement.
 
 ### `GET /api/events`
 
