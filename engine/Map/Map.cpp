@@ -3762,9 +3762,15 @@ void Map::MoveCreatureInsideRoomSystem(
     footRightTemp += deltaCollision;
     yMinTemp += deltaCollision.y;
 
-    // Check integrity
-    _ASSERT(IsCreatureLocationValidInRoomSystem(footLeftTemp, footRightTemp,
-                                                yMinTemp, minDoorPermiability));
+    // Check integrity — if the creature ended up outside the room system
+    // after moving to the collision point, recover gracefully rather than
+    // crashing.  This can happen during elevator transitions or edge cases.
+    if (!IsCreatureLocationValidInRoomSystem(footLeftTemp, footRightTemp,
+                                             yMinTemp, minDoorPermiability)) {
+      velocity = ZERO_VECTOR;
+      stopped = true;
+      return;
+    }
 
     if (minSquaredDistance < 0.0001f)
       moved = false;

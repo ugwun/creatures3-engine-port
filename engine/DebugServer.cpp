@@ -1787,13 +1787,19 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
                 // slot 1, then NEW: CREA to hatch a creature from it.
                 // The temp agent is destroyed by the script (GENE LOAD moves
                 // ownership of the genome slot to the new creature).
+                // Physics properties (accg, bhvr, perm, attr) are read from
+                // game variables to match what the bootstrap egg-hatching
+                // scripts in DS creatureBreeding.cos set.
                 std::string cmd =
                     "new: simp 1 1 1 \"blnk\" 1 0 0 "
                     "gene load targ 1 \"" + moniker + "\" "
                     "setv va00 unid "            // remember temp agent ID
                     "new: crea 4 targ 1 0 0 "    // hatch: family 4 = Norn
                     "born "                      // register with creature panel & history
-                    "attr 198 "                  // activatable+pickupable+mouse
+                    "accg game \"c3_creature_accg\" " // gravity (default 5.0)
+                    "attr game \"c3_creature_attr\" " // attributes (default 198)
+                    "bhvr game \"c3_creature_bhvr\" " // click behaviors (default 15)
+                    "perm game \"c3_creature_perm\" " // permeability (default 100)
                     "setv va01 unid "            // new creature's ID
                     "targ agnt va00 "            // re-select temp agent
                     "kill targ "                 // destroy temp agent
