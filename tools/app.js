@@ -11,6 +11,8 @@ let allMessages = [];         // master log (never cleared by filter)
 let totalMessages = 0;
 let errorCount = 0;
 let scrollPending = false;
+let renderTimer = null;
+let messageBuffer = [];
 
 const MAX_VISIBLE_ROWS = 2000; // keep DOM lean
 
@@ -60,9 +62,6 @@ function connect() {
         setStatus("disconnected");
         // EventSource automatically reconnects, but we update status
     };
-
-let renderTimer = null;
-let messageBuffer = [];
 
     evtSource.onmessage = (e) => {
         let msg;

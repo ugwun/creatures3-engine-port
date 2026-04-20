@@ -143,6 +143,7 @@ struct DebugServer::Impl {
 	std::condition_variable logCV;
 	std::deque<std::string> logBuffer;
 	static const size_t MAX_LOG_BUFFER = 5000;
+	uint64_t totalLogs = 0;
 
 	// UDP listener for FlightRecorder rebroadcast
 	int udpSocket = -1;
@@ -160,6 +161,7 @@ struct DebugServer::Impl {
 	void PushLog(const std::string& line) {
 		std::lock_guard<std::mutex> lock(logMutex);
 		logBuffer.push_back(line);
+		totalLogs++;
 		while (logBuffer.size() > MAX_LOG_BUFFER)
 			logBuffer.pop_front();
 		logCV.notify_all();
@@ -2567,10 +2569,11 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 	myImpl->svr.Get("/api/events", [this](const httplib::Request& req, httplib::Response& res) {
 		// We need to figure out where the client should start reading from.
 		// New connections get all buffered log lines then live updates.
-		size_t startIdx = 0;
+		uint64_t clientNextLog = 0;
 		{
 			std::lock_guard<std::mutex> lock(myImpl->logMutex);
-			startIdx = myImpl->logBuffer.size(); // will send from here
+			clientNextLog = (myImpl->totalLogs > myImpl->logBuffer.size()) ? 
+				(myImpl->totalLogs - myImpl->logBuffer.size()) : 0;
 		}
 
 		res.set_header("Cache-Control", "no-cache");
@@ -2578,14 +2581,17 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 
 		res.set_chunked_content_provider(
 			"text/event-stream",
-			[this, startIdx](size_t offset, httplib::DataSink& sink) mutable -> bool {
+			[this, clientNextLog](size_t offset, httplib::DataSink& sink) mutable -> bool {
 				// Send any buffered log lines first
 				{
 					std::lock_guard<std::mutex> lock(myImpl->logMutex);
-					while (startIdx < myImpl->logBuffer.size()) {
-						std::string event = "data: " + myImpl->logBuffer[startIdx] + "\n\n";
+					while (clientNextLog < myImpl->totalLogs) {
+						uint64_t startOfDeque = myImpl->totalLogs - myImpl->logBuffer.size();
+						if (clientNextLog < startOfDeque) clientNextLog = startOfDeque;
+						size_t idx = myImpl->logBuffer.size() - (myImpl->totalLogs - clientNextLog);
+						std::string event = "data: " + myImpl->logBuffer[idx] + "\n\n";
 						sink.write(event.c_str(), event.size());
-						startIdx++;
+						clientNextLog++;
 					}
 				}
 
@@ -2593,16 +2599,19 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				{
 					std::unique_lock<std::mutex> lock(myImpl->logMutex);
 					myImpl->logCV.wait_for(lock, std::chrono::milliseconds(500),
-						[this, &startIdx]() {
-							return startIdx < myImpl->logBuffer.size() || !myImpl->running;
+						[this, &clientNextLog]() {
+							return clientNextLog < myImpl->totalLogs || !myImpl->running;
 						});
 
 					// Send any newly arrived lines
 					bool wroteAnything = false;
-					while (startIdx < myImpl->logBuffer.size()) {
-						std::string event = "data: " + myImpl->logBuffer[startIdx] + "\n\n";
+					while (clientNextLog < myImpl->totalLogs) {
+						uint64_t startOfDeque = myImpl->totalLogs - myImpl->logBuffer.size();
+						if (clientNextLog < startOfDeque) clientNextLog = startOfDeque;
+						size_t idx = myImpl->logBuffer.size() - (myImpl->totalLogs - clientNextLog);
+						std::string event = "data: " + myImpl->logBuffer[idx] + "\n\n";
 						sink.write(event.c_str(), event.size());
-						startIdx++;
+						clientNextLog++;
 						wroteAnything = true;
 					}
 
