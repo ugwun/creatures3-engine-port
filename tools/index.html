@@ -530,7 +530,11 @@
       <div id="genetics-top-wrap" style="display:flex; flex-direction:column; max-height:280px; flex-shrink:0;">
         <div id="genetics-file-search-wrap" style="display:flex; gap:8px;">
           <input type="text" id="genetics-file-search" placeholder="Search .gen files..." autocomplete="off" style="flex:1;" />
-          <button id="btn-genetics-refresh" class="btn-light">⟳</button>
+          <button id="btn-genetics-refresh" class="btn-light" title="Refresh">⟳</button>
+          <div class="toolbar-sep"></div>
+          <button id="btn-genetics-new" class="btn-light" title="Create a new blank genome">New</button>
+          <button id="btn-genetics-import" class="btn-light" title="Import from JSON">Import JSON</button>
+          <input type="file" id="genetics-import-file" accept=".json" style="display:none;" />
         </div>
         <div id="genetics-file-list">
           <!-- populated dynamically -->
@@ -538,6 +542,8 @@
         <div id="genetics-file-action" hidden>
           <div id="genetics-selected-name" style="flex:1;">Selected: none</div>
           <div style="display:flex; align-items:center; gap:8px;">
+            <button id="btn-genetics-export" class="btn-light" title="Export current genome as JSON">Export JSON</button>
+            <button id="btn-genetics-save" class="btn-light" title="Save back to a .gen file">Save .gen</button>
             <button id="btn-genetics-crossover" class="btn-light">Crossover</button>
             <button id="btn-genetics-inject" class="btn-light" style="border-color: var(--orange); color: var(--orange);">Inject Payload</button>
             <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
@@ -545,25 +551,53 @@
         </div>
       </div>
 
-      <!-- Gene data grid -->
-      <div id="genetics-genes-wrap" style="flex:1; margin-top: 12px;">
-        <table id="genetics-genes-table">
-          <thead>
-            <tr>
-              <th>Index</th>
-              <th>Type</th>
-              <th>Subtype</th>
-              <th>ID</th>
-              <th>SwOn</th>
-              <th style="text-align:center;">Active</th>
-              <th style="text-align:center;">Mut</th>
-              <th style="text-align:center;">Dup</th>
-              <th style="text-align:center;">Cut</th>
-            </tr>
-          </thead>
-          <tbody id="genetics-genes-body">
-          </tbody>
-        </table>
+      <!-- Gene data section -->
+      <div id="genetics-genes-wrap" style="flex:1; margin-top: 12px; display: flex; flex-direction: column;">
+        <div id="genetics-genome-controls" style="display:flex; align-items:center; gap:8px; margin-bottom: 8px; flex-wrap: wrap;">
+          <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="all" checked /> All</label>
+          <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="brain" /> Brain</label>
+          <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="biochemistry" /> Biochemistry</label>
+          <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="creature" /> Creature</label>
+          <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="organ" /> Organ</label>
+          <div class="toolbar-sep"></div>
+          <input id="genetics-genome-search" type="text" placeholder="Filter genes…" autocomplete="off" style="flex: 1; min-width: 120px;" />
+          <select id="genetics-genome-age" class="opt-select">
+            <option value="all">All Ages</option>
+            <option value="0">Baby</option>
+            <option value="1">Child</option>
+            <option value="2">Adolescent</option>
+            <option value="3">Youth</option>
+            <option value="4">Adult</option>
+            <option value="5">Old</option>
+            <option value="6">Senile</option>
+          </select>
+          <div class="toolbar-sep"></div>
+          <select id="genetics-add-gene-type" class="opt-select" style="max-width: 120px;">
+            <option value="0/0">Brain Lobe</option>
+            <option value="0/1">Brain Organ</option>
+            <option value="0/2">Brain Tract</option>
+            <option value="1/0">Receptor</option>
+            <option value="1/1">Emitter</option>
+            <option value="1/2">Reaction</option>
+            <option value="1/3" disabled>Half-lives (Max 1)</option>
+            <option value="1/4">InitConc</option>
+            <option value="1/5">Neuroemitter</option>
+            <option value="2/0">Stimulus</option>
+            <option value="2/1" disabled>Genus (Max 1)</option>
+            <option value="2/2">Appearance</option>
+            <option value="2/3">Pose</option>
+            <option value="2/4">Gait</option>
+            <option value="2/5">Instinct</option>
+            <option value="2/6">Pigment</option>
+            <option value="2/7">Pigment Bleed</option>
+            <option value="2/8">Expression</option>
+            <option value="3/0">Organ</option>
+          </select>
+          <button id="btn-genetics-add-gene" class="btn-light" style="padding: 2px 6px;">➕ Add</button>
+        </div>
+        <div id="genetics-genes-content" style="flex: 1; overflow-y: auto;">
+          <div class="crt-empty-hint">Select a genome to view</div>
+        </div>
       </div>
     </div>
 
@@ -608,6 +642,7 @@
   <script src="svrule.js"></script>
   <script src="brain.js"></script>
   <script src="organs.js"></script>
+  <script src="gene_renderer.js"></script>
   <script src="genome.js"></script>
   <script src="caos_ide.js"></script>
   <script src="docs.js"></script>

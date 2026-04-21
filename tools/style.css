@@ -3980,7 +3980,7 @@ body.nav-collapsed #left-nav {
   gap: 12px;
 }
 
-#crt-genome-search {
+#crt-genome-search, #genetics-genome-search {
   padding: 4px 8px;
   border: 1px solid rgba(0,0,0,0.2);
   font-family: var(--font-ui);
@@ -4180,42 +4180,26 @@ body.nav-collapsed #left-nav {
   color: var(--black);
 }
 
-/* ── Genetics Kit — Gene Table ────────────────────────────────────────── */
+/* ── Genetics Kit — Gene Cards ────────────────────────────────────────── */
 #genetics-genes-wrap {
   flex: 1;
   overflow-y: auto;
 }
 
-#genetics-genes-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-mono);
-  font-size: 11px;
+label.crt-gene-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
 }
 
-#genetics-genes-table th {
-  padding: 6px 10px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  font-family: var(--font-ui);
-  color: rgba(0, 0, 0, 0.5);
-  border-bottom: 2px solid var(--black);
-  text-align: left;
-  position: sticky;
-  top: 0;
-  background: var(--off-white);
-  z-index: 1;
+label.crt-gene-badge input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
 }
 
-#genetics-genes-table td {
-  padding: 5px 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-#genetics-genes-table tbody tr:hover {
-  background: rgba(0, 0, 0, 0.03);
+.crt-gene-interactive:hover {
+  border-color: var(--orange) !important;
 }
 
 /* ── Genetics Kit — Crossover Modal ───────────────────────────────────── */

@@ -1670,120 +1670,153 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 		}
 	});
 
-	myImpl->svr.Post("/api/genetics/inject", [this](const httplib::Request& req, httplib::Response& res) {
+		auto writeGenome = [](const nlohmann::json& j, const std::string& moniker) -> bool {
+			std::string genPath = theApp.GetDirectory(GENETICS_DIR) + moniker + ".gen";
+			std::ofstream file(genPath, std::ios::binary);
+			if (!file.is_open()) return false;
+			
+			auto writeU8 = [&file](uint8_t c) { file.write((char*)&c, 1); };
+			auto writeU16BE = [&file](uint16_t v) { uint8_t hi=v>>8, lo=v&0xff; file.write((char*)&hi, 1); file.write((char*)&lo, 1); };
+			auto writeFloat8 = [&writeU8](float v) { int i = (int)round(v * 128.0f) + 128; writeU8((uint8_t)i); };
+
+			file.write("dna3", 4);
+			if (j.contains("genes")) {
+				for (auto& g : j["genes"]) {
+					if (g.contains("active") && !g.value("active", true)) continue;
+					
+					file.write("gene", 4);
+					uint8_t type = g.value("type", 0); writeU8(type);
+					uint8_t subtype = g.value("subtype", 0); writeU8(subtype);
+					uint8_t id = g.value("id", 0); writeU8(id);
+					uint8_t gen = g.value("generation", 0); writeU8(gen);
+					uint8_t switchOn = g.value("switchOnTime", 0); writeU8(switchOn);
+					
+					uint8_t flags = 0;
+					if (g.contains("flagsRaw")) {
+						flags = g["flagsRaw"];
+					} else if (g.contains("flags")) {
+						auto& f = g["flags"];
+						if (f.value("mutable", false)) flags |= 1;
+						if (f.value("dupable", false)) flags |= 2;
+						if (f.value("cutable", false)) flags |= 4;
+						if (f.value("maleOnly", false)) flags |= 8;
+						if (f.value("femaleOnly", false)) flags |= 16;
+						if (f.value("dormant", false)) flags |= 128;
+					}
+					writeU8(flags);
+					uint8_t mut = g.value("mutability", 0); writeU8(mut);
+					uint8_t var = g.value("variant", 0); writeU8(var);
+					
+					auto& d = g["data"];
+					if (type == 0 && subtype == 0) { // Lobe
+						std::string ln = d.value("lobeName", ""); ln.resize(4, '\0');
+						file.write(ln.c_str(), 4);
+						writeU16BE(d.value("updateTime", 0));
+						writeU16BE(d.value("x", 0)); writeU16BE(d.value("y", 0));
+						writeU8(d.value("width", 0)); writeU8(d.value("height", 0));
+						writeU8(d.value("red", 0)); writeU8(d.value("green", 0)); writeU8(d.value("blue", 0));
+						writeU8(d.value("wta", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("initAlways", 0));
+						char pad[7]={0}; file.write(pad, 7);
+						auto rI = d["initRuleBytes"]; for(int i=0;i<48;i++) writeU8(rI.size()>i? (uint8_t)rI[i]:0);
+						auto rU = d["updateRuleBytes"]; for(int i=0;i<48;i++) writeU8(rU.size()>i? (uint8_t)rU[i]:0);
+					} else if (type == 0 && subtype == 1) { // Lobe Organ
+						writeU8(d.value("clockRate", 0)); writeU8(d.value("damageRate", 0)); writeU8(d.value("lifeForce", 0)); writeU8(d.value("biotickStart", 0)); writeU8(d.value("atpDamageCoef", 0));
+					} else if (type == 0 && subtype == 2) { // Tract
+						writeU16BE(d.value("updateTime", 0));
+						std::string sl = d.value("srcLobe", ""); sl.resize(4, '\0'); file.write(sl.c_str(), 4);
+						writeU16BE(d.value("sLower", 0)); writeU16BE(d.value("sUpper", 0)); writeU16BE(d.value("sNum", 0));
+						std::string dl = d.value("dstLobe", ""); dl.resize(4, '\0'); file.write(dl.c_str(), 4);
+						writeU16BE(d.value("dLower", 0)); writeU16BE(d.value("dUpper", 0)); writeU16BE(d.value("dNum", 0));
+						writeU8(d.value("migrates", 0)); writeU8(d.value("ran", 0)); writeU8(d.value("srcVar", 0)); writeU8(d.value("dstVar", 0)); writeU8(d.value("initAlways", 0));
+						char pad[5]={0}; file.write(pad, 5);
+						auto rI = d["initRuleBytes"]; for(int i=0;i<48;i++) writeU8(rI.size()>i? (uint8_t)rI[i]:0);
+						auto rU = d["updateRuleBytes"]; for(int i=0;i<48;i++) writeU8(rU.size()>i? (uint8_t)rU[i]:0);
+					} else if (type == 1 && subtype == 0) { // Receptor
+						writeU8(d.value("organ", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("locus", 0)); writeU8(d.value("chemical", 0));
+						writeU8(d.value("threshold", 0)); writeU8(d.value("nominal", 0)); writeU8(d.value("gain", 0)); writeU8(d.value("flags", 0));
+					} else if (type == 1 && subtype == 1) { // Emitter
+						writeU8(d.value("organ", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("locus", 0)); writeU8(d.value("chemical", 0));
+						writeU8(d.value("threshold", 0)); writeU8(d.value("rate", 0)); writeU8(d.value("gain", 0)); writeU8(d.value("flags", 0));
+					} else if (type == 1 && subtype == 2) { // Reaction
+						writeU8(d.value("r1Amount", 0)); writeU8(d.value("r1Chem", 0)); writeU8(d.value("r2Amount", 0)); writeU8(d.value("r2Chem", 0));
+						writeU8(d.value("p1Amount", 0)); writeU8(d.value("p1Chem", 0)); writeU8(d.value("p2Amount", 0)); writeU8(d.value("p2Chem", 0)); writeU8(d.value("rate", 0));
+					} else if (type == 1 && subtype == 3) { // HalfLives
+						auto hl = d["halfLives"]; for(int i=0;i<256;i++) writeU8(hl.size()>i? (uint8_t)hl[i] : 0);
+					} else if (type == 1 && subtype == 4) { // InitConc
+						writeU8(d.value("chemical", 0)); writeU8(d.value("amount", 0));
+					} else if (type == 1 && subtype == 5) { // Neuroemitter
+						writeU8(d.value("lobe0", 0)); writeU8(d.value("neuron0", 0)); writeU8(d.value("lobe1", 0)); writeU8(d.value("neuron1", 0)); writeU8(d.value("lobe2", 0)); writeU8(d.value("neuron2", 0)); writeU8(d.value("rate", 0));
+						writeU8(d.value("chem0", 0)); writeU8(d.value("amount0", 0)); writeU8(d.value("chem1", 0)); writeU8(d.value("amount1", 0)); writeU8(d.value("chem2", 0)); writeU8(d.value("amount2", 0)); writeU8(d.value("chem3", 0)); writeU8(d.value("amount3", 0));
+					} else if (type == 2 && subtype == 0) { // Stimulus
+						writeU8(d.value("stimulus", 0)); writeU8(d.value("significance", 0)); writeU8(d.value("input", 0)); writeU8(d.value("intensity", 0)); writeU8(d.value("features", 0));
+						writeU8(d.value("chem0", 0)); writeFloat8(d.value("amount0", 0.0f)); writeU8(d.value("chem1", 0)); writeFloat8(d.value("amount1", 0.0f)); writeU8(d.value("chem2", 0)); writeFloat8(d.value("amount2", 0.0f)); writeU8(d.value("chem3", 0)); writeFloat8(d.value("amount3", 0.0f));
+					} else if (type == 2 && subtype == 1) { // Genus
+						writeU8(d.value("genus", 0)); std::string mom = d.value("motherMoniker", ""); mom.resize(32, '\0'); file.write(mom.c_str(), 32); std::string dad = d.value("fatherMoniker", ""); dad.resize(32, '\0'); file.write(dad.c_str(), 32);
+					} else if (type == 2 && subtype == 2) { // Appearance
+						writeU8(d.value("part", 0)); writeU8(d.value("variant", 0)); writeU8(d.value("species", 0));
+					} else if (type == 2 && subtype == 3) { // Pose
+						writeU8(d.value("poseNumber", 0)); std::string ps = d.value("poseString", ""); ps.resize(16, '\0'); file.write(ps.c_str(), 16);
+					} else if (type == 2 && subtype == 4) { // Gait
+						writeU8(d.value("gait", 0)); auto po = d["poses"]; for(int i=0;i<8;i++) writeU8(po.size()>i? (uint8_t)po[i]:0);
+					} else if (type == 2 && subtype == 5) { // Instinct
+						writeU8(d.value("lobe0", 0)); writeU8(d.value("cell0", 0)); writeU8(d.value("lobe1", 0)); writeU8(d.value("cell1", 0)); writeU8(d.value("lobe2", 0)); writeU8(d.value("cell2", 0));
+						writeU8(d.value("action", 0)); writeU8(d.value("reinforcementChemical", 0)); writeU8(d.value("reinforcementAmount", 0));
+					} else if (type == 2 && subtype == 6) { // Pigment
+						writeU8(d.value("pigment", 0)); writeU8(d.value("amount", 0));
+					} else if (type == 2 && subtype == 7) { // PigmentBleed
+						writeU8(d.value("rotation", 0)); writeU8(d.value("swap", 0));
+					} else if (type == 2 && subtype == 8) { // Expression
+						writeU8(d.value("expression", 0)); writeU8(0); writeU8(d.value("weight", 0));
+						writeU8(d.value("drive0", 0)); writeU8(d.value("amount0", 0)); writeU8(d.value("drive1", 0)); writeU8(d.value("amount1", 0)); writeU8(d.value("drive2", 0)); writeU8(d.value("amount2", 0)); writeU8(d.value("drive3", 0)); writeU8(d.value("amount3", 0));
+					} else if (type == 3 && subtype == 0) { // Organ
+						writeU8(d.value("clockRate", 0)); writeU8(d.value("damageRate", 0)); writeU8(d.value("lifeForce", 0)); writeU8(d.value("biotickStart", 0)); writeU8(d.value("atpDamageCoef", 0));
+					}
+				}
+			}
+			file.write("gend", 4);
+			file.flush();
+			file.close();
+			return true;
+		};
+
+	myImpl->svr.Post("/api/genetics/save", [this, writeGenome](const httplib::Request& req, httplib::Response& res) {
 		std::string body = req.body;
 		auto* item = new WorkItem();
-		item->work = [body]() -> std::string {
+		item->work = [body, writeGenome]() -> std::string {
+			try {
+				auto j = nlohmann::json::parse(body);
+				std::string inputMoniker = j.value("moniker", "CustomGenome");
+				std::string moniker = j.value("saveName", inputMoniker);
+                
+				if (!writeGenome(j, moniker)) {
+					return "{\"error\": \"Could not write gen file\"}";
+				}
+				return "{\"status\":\"success\",\"moniker\":\"" + moniker + "\"}";
+			} catch (std::exception& e) {
+				return std::string("{\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.set_content("{\"error\":\"Timeout waiting for Engine thread\"}", "application/json");
+		}
+	});
+
+	myImpl->svr.Post("/api/genetics/inject", [this, writeGenome](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		auto* item = new WorkItem();
+		item->work = [body, writeGenome]() -> std::string {
 			try {
 				auto j = nlohmann::json::parse(body);
 				std::string inputMoniker = j.value("moniker", "CustomGenome");
                 std::string moniker = inputMoniker + "_" + std::to_string(rand());
                 
-				std::string genPath = theApp.GetDirectory(GENETICS_DIR) + moniker + ".gen";
-				std::ofstream file(genPath, std::ios::binary);
-                if (!file.is_open()) return "{\"error\": \"Could not write gen file\"}";
-                
-                auto writeU8 = [&file](uint8_t c) { file.write((char*)&c, 1); };
-                auto writeU16BE = [&file](uint16_t v) { uint8_t hi=v>>8, lo=v&0xff; file.write((char*)&hi, 1); file.write((char*)&lo, 1); };
-                auto writeFloat8 = [&writeU8](float v) { int i = (int)round(v * 128.0f) + 128; writeU8((uint8_t)i); };
-
-                file.write("dna3", 4);
-                if (j.contains("genes")) {
-                    for (auto& g : j["genes"]) {
-                        if (g.contains("active") && !g.value("active", true)) continue;
-                        
-                        file.write("gene", 4);
-                        uint8_t type = g.value("type", 0); writeU8(type);
-                        uint8_t subtype = g.value("subtype", 0); writeU8(subtype);
-                        uint8_t id = g.value("id", 0); writeU8(id);
-                        uint8_t gen = g.value("generation", 0); writeU8(gen);
-                        uint8_t switchOn = g.value("switchOnTime", 0); writeU8(switchOn);
-                        
-                        uint8_t flags = 0;
-                        if (g.contains("flagsRaw")) {
-                            flags = g["flagsRaw"];
-                        } else if (g.contains("flags")) {
-                            auto& f = g["flags"];
-                            if (f.value("mutable", false)) flags |= 1;
-                            if (f.value("dupable", false)) flags |= 2;
-                            if (f.value("cutable", false)) flags |= 4;
-                            if (f.value("maleOnly", false)) flags |= 8;
-                            if (f.value("femaleOnly", false)) flags |= 16;
-                            if (f.value("dormant", false)) flags |= 128;
-                        }
-                        writeU8(flags);
-                        uint8_t mut = g.value("mutability", 0); writeU8(mut);
-                        uint8_t var = g.value("variant", 0); writeU8(var);
-                        
-                        auto& d = g["data"];
-                        if (type == 0 && subtype == 0) { // Lobe
-                            std::string ln = d.value("lobeName", ""); ln.resize(4, '\0');
-                            file.write(ln.c_str(), 4);
-                            writeU16BE(d.value("updateTime", 0));
-                            writeU16BE(d.value("x", 0)); writeU16BE(d.value("y", 0));
-                            writeU8(d.value("width", 0)); writeU8(d.value("height", 0));
-                            writeU8(d.value("red", 0)); writeU8(d.value("green", 0)); writeU8(d.value("blue", 0));
-                            writeU8(d.value("wta", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("initAlways", 0));
-                            char pad[7]={0}; file.write(pad, 7);
-                            auto rI = d["initRuleBytes"]; for(int i=0;i<48;i++) writeU8(rI.size()>i? (uint8_t)rI[i]:0);
-                            auto rU = d["updateRuleBytes"]; for(int i=0;i<48;i++) writeU8(rU.size()>i? (uint8_t)rU[i]:0);
-                        } else if (type == 0 && subtype == 1) { // Lobe Organ
-                            writeU8(d.value("clockRate", 0)); writeU8(d.value("damageRate", 0)); writeU8(d.value("lifeForce", 0)); writeU8(d.value("biotickStart", 0)); writeU8(d.value("atpDamageCoef", 0));
-                        } else if (type == 0 && subtype == 2) { // Tract
-                            writeU16BE(d.value("updateTime", 0));
-                            std::string sl = d.value("srcLobe", ""); sl.resize(4, '\0'); file.write(sl.c_str(), 4);
-                            writeU16BE(d.value("sLower", 0)); writeU16BE(d.value("sUpper", 0)); writeU16BE(d.value("sNum", 0));
-                            std::string dl = d.value("dstLobe", ""); dl.resize(4, '\0'); file.write(dl.c_str(), 4);
-                            writeU16BE(d.value("dLower", 0)); writeU16BE(d.value("dUpper", 0)); writeU16BE(d.value("dNum", 0));
-                            writeU8(d.value("migrates", 0)); writeU8(d.value("ran", 0)); writeU8(d.value("srcVar", 0)); writeU8(d.value("dstVar", 0)); writeU8(d.value("initAlways", 0));
-                            char pad[5]={0}; file.write(pad, 5);
-                            auto rI = d["initRuleBytes"]; for(int i=0;i<48;i++) writeU8(rI.size()>i? (uint8_t)rI[i]:0);
-                            auto rU = d["updateRuleBytes"]; for(int i=0;i<48;i++) writeU8(rU.size()>i? (uint8_t)rU[i]:0);
-                        } else if (type == 1 && subtype == 0) { // Receptor
-                            writeU8(d.value("organ", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("locus", 0)); writeU8(d.value("chemical", 0));
-                            writeU8(d.value("threshold", 0)); writeU8(d.value("nominal", 0)); writeU8(d.value("gain", 0)); writeU8(d.value("flags", 0));
-                        } else if (type == 1 && subtype == 1) { // Emitter
-                            writeU8(d.value("organ", 0)); writeU8(d.value("tissue", 0)); writeU8(d.value("locus", 0)); writeU8(d.value("chemical", 0));
-                            writeU8(d.value("threshold", 0)); writeU8(d.value("rate", 0)); writeU8(d.value("gain", 0)); writeU8(d.value("flags", 0));
-                        } else if (type == 1 && subtype == 2) { // Reaction
-                            writeU8(d.value("r1Amount", 0)); writeU8(d.value("r1Chem", 0)); writeU8(d.value("r2Amount", 0)); writeU8(d.value("r2Chem", 0));
-                            writeU8(d.value("p1Amount", 0)); writeU8(d.value("p1Chem", 0)); writeU8(d.value("p2Amount", 0)); writeU8(d.value("p2Chem", 0)); writeU8(d.value("rate", 0));
-                        } else if (type == 1 && subtype == 3) { // HalfLives
-                            auto hl = d["halfLives"]; for(int i=0;i<256;i++) writeU8(hl.size()>i? (uint8_t)hl[i] : 0);
-                        } else if (type == 1 && subtype == 4) { // InitConc
-                            writeU8(d.value("chemical", 0)); writeU8(d.value("amount", 0));
-                        } else if (type == 1 && subtype == 5) { // Neuroemitter
-                            writeU8(d.value("lobe0", 0)); writeU8(d.value("neuron0", 0)); writeU8(d.value("lobe1", 0)); writeU8(d.value("neuron1", 0)); writeU8(d.value("lobe2", 0)); writeU8(d.value("neuron2", 0)); writeU8(d.value("rate", 0));
-                            writeU8(d.value("chem0", 0)); writeU8(d.value("amount0", 0)); writeU8(d.value("chem1", 0)); writeU8(d.value("amount1", 0)); writeU8(d.value("chem2", 0)); writeU8(d.value("amount2", 0)); writeU8(d.value("chem3", 0)); writeU8(d.value("amount3", 0));
-                        } else if (type == 2 && subtype == 0) { // Stimulus
-                            writeU8(d.value("stimulus", 0)); writeU8(d.value("significance", 0)); writeU8(d.value("input", 0)); writeU8(d.value("intensity", 0)); writeU8(d.value("features", 0));
-                            writeU8(d.value("chem0", 0)); writeFloat8(d.value("amount0", 0.0f)); writeU8(d.value("chem1", 0)); writeFloat8(d.value("amount1", 0.0f)); writeU8(d.value("chem2", 0)); writeFloat8(d.value("amount2", 0.0f)); writeU8(d.value("chem3", 0)); writeFloat8(d.value("amount3", 0.0f));
-                        } else if (type == 2 && subtype == 1) { // Genus
-                            writeU8(d.value("genus", 0)); std::string mom = d.value("motherMoniker", ""); mom.resize(32, '\0'); file.write(mom.c_str(), 32); std::string dad = d.value("fatherMoniker", ""); dad.resize(32, '\0'); file.write(dad.c_str(), 32);
-                        } else if (type == 2 && subtype == 2) { // Appearance
-                            writeU8(d.value("part", 0)); writeU8(d.value("variant", 0)); writeU8(d.value("species", 0));
-                        } else if (type == 2 && subtype == 3) { // Pose
-                            writeU8(d.value("poseNumber", 0)); std::string ps = d.value("poseString", ""); ps.resize(16, '\0'); file.write(ps.c_str(), 16);
-                        } else if (type == 2 && subtype == 4) { // Gait
-                            writeU8(d.value("gait", 0)); auto po = d["poses"]; for(int i=0;i<8;i++) writeU8(po.size()>i? (uint8_t)po[i]:0);
-                        } else if (type == 2 && subtype == 5) { // Instinct
-                            writeU8(d.value("lobe0", 0)); writeU8(d.value("cell0", 0)); writeU8(d.value("lobe1", 0)); writeU8(d.value("cell1", 0)); writeU8(d.value("lobe2", 0)); writeU8(d.value("cell2", 0));
-                            writeU8(d.value("action", 0)); writeU8(d.value("reinforcementChemical", 0)); writeU8(d.value("reinforcementAmount", 0));
-                        } else if (type == 2 && subtype == 6) { // Pigment
-                            writeU8(d.value("pigment", 0)); writeU8(d.value("amount", 0));
-                        } else if (type == 2 && subtype == 7) { // PigmentBleed
-                            writeU8(d.value("rotation", 0)); writeU8(d.value("swap", 0));
-                        } else if (type == 2 && subtype == 8) { // Expression
-                            writeU8(d.value("expression", 0)); writeU8(0); writeU8(d.value("weight", 0));
-                            writeU8(d.value("drive0", 0)); writeU8(d.value("amount0", 0)); writeU8(d.value("drive1", 0)); writeU8(d.value("amount1", 0)); writeU8(d.value("drive2", 0)); writeU8(d.value("amount2", 0)); writeU8(d.value("drive3", 0)); writeU8(d.value("amount3", 0));
-                        } else if (type == 3 && subtype == 0) { // Organ
-                            writeU8(d.value("clockRate", 0)); writeU8(d.value("damageRate", 0)); writeU8(d.value("lifeForce", 0)); writeU8(d.value("biotickStart", 0)); writeU8(d.value("atpDamageCoef", 0));
-                        }
-                    }
-                }
-                file.write("gend", 4);
-                file.flush();
-                file.close();
+				if (!writeGenome(j, moniker)) {
+					return "{\"error\": \"Could not write gen file\"}";
+				}
 
                 // INJECT via CAOS: create temp agent, GENE LOAD the genome into
                 // slot 1, then NEW: CREA to hatch a creature from it.

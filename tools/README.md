@@ -347,12 +347,15 @@ The **Genetics Kit** tab is a standalone tool for manipulating, cross-breeding, 
 - **Moniker:** Every creature and genome in the game has a unique hash called a "moniker" (e.g., `985-haze-kszy7-dqh74-qvfpg-qq7vs`). This designates the `.gen` genome file located in your game's *Genetics* directory.
 - **Cross-Breeding:** Select two parent monikers from the active world or your genetics library. The engine's native crossover algorithm will shuffle their genes using proper biological inheritance and mutation to produce a unique child genome.
 
-**Workflow:**
+**Workflow & Features:**
 
-1. **Browse genomes** — the file list (left panel) shows all `.gen` files in the world's `Genetics/` directory. Use the search box to filter by moniker substring. Click a moniker to parse and display its genes.
-2. **Inspect** — the gene table shows every gene in the selected genome: type (Brain/Biochemistry/Creature/Organ), subtype, ID, switch-on time, and mutability flags (mutable/dupable/cutable). Checkboxes allow toggling gene activation and flag states before injection.
-3. **Cross** — select two parent monikers and click **Cross**. The engine's native `Genome::Cross` algorithm performs biological crossover with mutation (see *Crossover Algorithm* below). A new child `.gen` file is written to the Genetics directory.
-4. **Inject** — click **Inject to Engine** to hatch the currently loaded genome as a live creature. This writes a modified `.gen` file, executes a CAOS macro to spawn the creature, registers it with the history system, and places it in the Norn Meso (see *Injection Pipeline* below).
+1. **Browse & Manage Genomes** — the file list (left panel) shows all `.gen` files in the world's `Genetics/` directory. Use the search box to filter by moniker substring. Click a moniker to parse and display its genes. Use the **New**, **Save .GEN**, **Export**, and **Import** tools in the header to manage genome files locally and externally.
+2. **Inspect & Search** — the gene table categorizes every gene in the selected genome (Brain/Biochemistry/Creature/Organ). Use the primary search filter to deeply search through the genetic literal structures (e.g., search for a specific chemical ID like `148`, or an SV-Rule property).
+3. **Inline Property Editing** — all gene properties are natively editable. Structural checkboxes toggle mutability flags (mutable/dupable/cutable) and activation states, while number inputs allow you to tune biochemical thresholds, brain coordinates, clock rates, and reaction values on the fly.
+4. **Structural Chromosome Modifiers** — full visual CRUD operations allow you to dynamically groom the DNA strand without raw byte patching. Click the action buttons on a gene to **Duplicate**, **Delete**, or **Move** it up or down the genetic ladder. You can also press **Add Gene** to create a completely blank gene of any subtype at the end of the genome.
+5. **Editing Complex SV Rules** — Brain Lobe and Neural Tract genes, which rely on engine-compiled State Variable Rules for logical behavior, bypass the need for a complex compiler IDE by exposing direct **Raw Init Bytes** and **Raw Update Bytes** array editors. You can type raw bytecode arrays (0-255) seamlessly, hit Save/refresh, and view the decompiled pseudo-CAOS update dynamically.
+6. **Cross** — select two parent monikers and click **Cross**. The engine's native `Genome::Cross` algorithm performs biological crossover with mutation (see *Crossover Algorithm* below). A new child `.gen` file is written to the Genetics directory.
+7. **Inject** — click **Inject to Engine** to hatch the currently loaded genome as a live creature. This writes a modified `.gen` file, executes a CAOS macro to spawn the creature, registers it with the history system, and places it in the Norn Meso (see *Injection Pipeline* below).
 
 #### End-to-End Pipeline Architecture
 
@@ -360,7 +363,7 @@ The Genetics Kit operates through four layers:
 
 ```
 ┌──────────────────────┐
-│  Frontend (genetics.js)  │  Browser: file list, gene table, crossover modal
+│  Frontend (genetics.js)  │  Browser: editing, file list, structural modifiers, crossover
 ├──────────────────────┤
 │  REST API (DebugServer.cpp) │  HTTP endpoints: /api/genetics/*
 ├──────────────────────┤
@@ -370,13 +373,14 @@ The Genetics Kit operates through four layers:
 └──────────────────────┘
 ```
 
-1. **Frontend (`tools/genetics.js`)** — renders the file list with search-driven filtering, the gene inspection table, and the crossover modal. Communicates exclusively via `fetch()` to the REST API. State is managed in-browser (no server-side sessions).
+1. **Frontend (`tools/genetics.js`)** — renders the file list with deep-search-driven filtering, the interactive gene property modifiers, structural chromosome tools, and the crossover modal. Communicates exclusively via `fetch()` to the REST API. State is managed in-browser (no server-side sessions).
 
-2. **REST API (`engine/DebugServer.cpp`)** — four endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
+2. **REST API (`engine/DebugServer.cpp`)** — five endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
    - `GET /api/genetics/files` — scans the world's `GENETICS_DIR` for `.gen` files
    - `GET /api/genetics/file/:moniker` — reads and parses a `.gen` binary file into structured JSON
    - `POST /api/genetics/crossover` — performs `Genome::Cross` and writes the child to disk
-   - `POST /api/genetics/inject` — serializes a (potentially modified) genome to a `.gen` file and executes the CAOS injection macro
+   - `POST /api/genetics/save` — serializes a (potentially modified) genome JSON back into a binary `.gen` file
+   - `POST /api/genetics/inject` — serializes a genome, writes it, and executes the CAOS injection macro to hatch it
 
 3. **Engine Core (`engine/Creature/Genome.cpp`, `GenomeStore.cpp`)** — the `Genome` class handles binary file I/O (`ReadFromFile` / `WriteToFile`), crossover (`Cross` / `CrossLoop`), and gene expression (`GetGeneType`). `GenomeStore` manages genome slots, moniker generation, and history event registration.
 

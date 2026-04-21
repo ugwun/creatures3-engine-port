@@ -15,17 +15,32 @@
   let selectedParentB = null;
   let parentBShowAll = false;
 
+  let currentFilter = 'all';
+  let currentSearch = '';
+  let currentAgeFilter = 'all';
+
   // ── DOM Refs ───────────────────────────────────────────────────────────
   const fileSearch = document.getElementById('genetics-file-search');
   const fileList = document.getElementById('genetics-file-list');
   const fileAction = document.getElementById('genetics-file-action');
   const selectedName = document.getElementById('genetics-selected-name');
   const btnRefresh = document.getElementById('btn-genetics-refresh');
-  const tbody = document.getElementById('genetics-genes-body');
+  const genesContent = document.getElementById('genetics-genes-content');
+
+  const filterRadios = document.querySelectorAll('input[name="genetics-gfilter"]');
+  const genomeSearch = document.getElementById('genetics-genome-search');
+  const genomeAge = document.getElementById('genetics-genome-age');
+  const btnAddGene = document.getElementById('btn-genetics-add-gene');
+  const addGeneType = document.getElementById('genetics-add-gene-type');
 
   const btnCrossover = document.getElementById('btn-genetics-crossover');
   const btnInject = document.getElementById('btn-genetics-inject');
   const injectStatus = document.getElementById('genetics-inject-status');
+  const btnNew = document.getElementById('btn-genetics-new');
+  const btnExport = document.getElementById('btn-genetics-export');
+  const btnImport = document.getElementById('btn-genetics-import');
+  const fileImport = document.getElementById('genetics-import-file');
+  const btnSave = document.getElementById('btn-genetics-save');
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
@@ -44,6 +59,41 @@
 
   // ── Controls ───────────────────────────────────────────────────────────
   btnRefresh.addEventListener('click', fetchFiles);
+
+  filterRadios.forEach(r => r.addEventListener('change', () => {
+    currentFilter = r.value;
+    renderGenome();
+  }));
+
+  if (genomeSearch) {
+    genomeSearch.addEventListener('input', (e) => {
+      currentSearch = e.target.value.toLowerCase();
+      renderGenome();
+    });
+  }
+
+  if (genomeAge) {
+    genomeAge.addEventListener('change', (e) => {
+      currentAgeFilter = e.target.value;
+      renderGenome();
+    });
+  }
+
+  if (btnAddGene && addGeneType) {
+    btnAddGene.addEventListener('click', () => {
+      if (!currentGenome) return;
+      const [typeStr, subtypeStr] = addGeneType.value.split('/');
+      const newGene = createBlankGene(parseInt(typeStr, 10), parseInt(subtypeStr, 10));
+      // Give it a new ID (highest ID + 1)
+      const maxId = currentGenome.genes.length > 0 ? Math.max(...currentGenome.genes.map(g => g.id || 0)) : 0;
+      newGene.id = maxId + 1;
+      currentGenome.genes.push(newGene);
+      currentGenome.geneCount = currentGenome.genes.length;
+      renderGenome();
+      // Scroll roughly to bottom
+      genesContent.scrollTop = genesContent.scrollHeight;
+    });
+  }
 
   function renderFileList() {
     if (!fileList) return;
@@ -191,6 +241,100 @@
     }
   });
 
+  // ── New/Import/Export/Save ─────────────────────────────────────────────
+  if (btnNew) {
+    btnNew.addEventListener('click', () => {
+      fileAction.hidden = false;
+      const g = {
+        moniker: "NewGenome",
+        geneCount: 2,
+        genes: [
+          createBlankGene(2, 1), // Genus
+          createBlankGene(2, 2)  // Appearance (Head)
+        ]
+      };
+      g.genes[0].id = 1;
+      g.genes[1].id = 2;
+      currentGenome = g;
+      renderGenome();
+    });
+  }
+
+  if (btnExport) {
+    btnExport.addEventListener('click', () => {
+      if (!currentGenome) return;
+      const json = JSON.stringify(currentGenome, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentGenome.moniker + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  if (btnImport && fileImport) {
+    btnImport.addEventListener('click', () => fileImport.click());
+    fileImport.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const loaded = JSON.parse(e.target.result);
+          if (loaded.genes && loaded.moniker) {
+             currentGenome = loaded;
+             fileAction.hidden = false;
+             renderGenome();
+          } else {
+             alert('Invalid genome JSON format.');
+          }
+        } catch (err) {
+          alert('Error parsing JSON');
+        }
+        fileImport.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      if (!currentGenome) return;
+      btnSave.textContent = "Saving\u2026";
+      
+      const saveName = prompt("Save as:", currentGenome.moniker);
+      if (!saveName) {
+         btnSave.textContent = "Save .gen";
+         return;
+      }
+      const dataOut = { ...currentGenome, saveName: saveName };
+      
+      try {
+        const resp = await fetch('/api/genetics/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataOut)
+        });
+        const data = await resp.json();
+        if (data.status === "success") {
+          await fetchFiles();
+          currentGenome.moniker = saveName;
+          renderGenome();
+        } else {
+          alert("Error: " + (data.error || 'Unknown'));
+        }
+      } catch (e) {
+        alert("Save failed");
+      } finally {
+        btnSave.textContent = "Save .gen";
+      }
+    });
+  }
+
   // ── Inject ─────────────────────────────────────────────────────────────
   btnInject.addEventListener('click', async () => {
     if (!currentGenome) return;
@@ -232,13 +376,13 @@
 
   // ── Load & parse a genome ──────────────────────────────────────────────
   async function loadGenome(moniker) {
-    tbody.innerHTML = '<tr><td colspan="9" style="padding:12px; text-align:center; color:rgba(0,0,0,0.4);">Loading\u2026</td></tr>';
+    genesContent.innerHTML = '<div class="crt-empty-hint">Loading\u2026</div>';
     try {
       const resp = await fetch('/api/genetics/file/' + moniker);
       const data = await resp.json();
       if (data.error) {
         if (selectedName) selectedName.innerHTML = `<span style="color:var(--red);">Error: ${data.error}</span>`;
-        tbody.innerHTML = '';
+        genesContent.innerHTML = '<div class="crt-empty-hint">Error: ' + data.error + '</div>';
         currentGenome = null;
         return;
       }
@@ -251,7 +395,7 @@
     }
   }
 
-  // ── Render gene grid ───────────────────────────────────────────────────
+  // ── Render gene cards ──────────────────────────────────────────────────
   function renderGenome() {
     if (!currentGenome) return;
 
@@ -259,46 +403,198 @@
       selectedName.innerHTML = `Selected: <strong>${currentGenome.moniker}</strong> &mdash; <span style="color:var(--orange);">${currentGenome.geneCount} genes</span>`;
     }
 
-    tbody.innerHTML = '';
+    const typeMap = {
+      'all': -1,
+      'brain': 0,
+      'biochemistry': 1,
+      'creature': 2,
+      'organ': 3
+    };
+    const reqType = typeMap[currentFilter];
+
+    let html = '';
+    let count = 0;
+
     currentGenome.genes.forEach((g, i) => {
-      const tr = document.createElement('tr');
+      if (reqType !== -1 && g.type !== reqType) return;
+      if (currentAgeFilter !== 'all') {
+         if (g.switchOnTime.toString() !== currentAgeFilter) return;
+      }
 
-      tr.innerHTML =
-        `<td style="color:rgba(0,0,0,0.35);">${i}</td>` +
-        `<td style="font-weight:700; color:${getGeneCol(g.type)}">${g.typeName}</td>` +
-        `<td>${g.subtypeName}</td>` +
-        `<td>${g.id}</td>` +
-        `<td>${g.switchOnLabel}</td>` +
-        `<td style="text-align:center;"><input type="checkbox" class="g-active" data-idx="${i}" ${g.active ? 'checked' : ''} /></td>` +
-        `<td style="text-align:center;"><input type="checkbox" class="g-mut" data-idx="${i}" ${g.flags.mutable ? 'checked' : ''} /></td>` +
-        `<td style="text-align:center;"><input type="checkbox" class="g-dup" data-idx="${i}" ${g.flags.dupable ? 'checked' : ''} /></td>` +
-        `<td style="text-align:center;"><input type="checkbox" class="g-cut" data-idx="${i}" ${g.flags.cutable ? 'checked' : ''} /></td>`;
+      const cardHtml = window.GeneRenderer.renderGeneCard(g, i, true);
 
-      tbody.appendChild(tr);
+      if (currentSearch) {
+        // Extract input values so they aren't destroyed when stripping HTML tags
+        let textWithInputs = cardHtml.replace(/<input\b[^>]*\bvalue="([^"]*)"[^>]*>/gi, ' $1 ');
+        const rawText = textWithInputs.replace(/<[^>]*>/g, ' ').toLowerCase();
+        if (!rawText.includes(currentSearch)) return;
+      }
+
+      html += cardHtml;
+      count++;
     });
 
-    // Bind checkbox changes back to data model
-    tbody.querySelectorAll('.g-active').forEach(cb => cb.addEventListener('change', (e) => {
-      currentGenome.genes[e.target.dataset.idx].active = e.target.checked;
-    }));
-    tbody.querySelectorAll('.g-mut').forEach(cb => cb.addEventListener('change', (e) => {
-      currentGenome.genes[e.target.dataset.idx].flags.mutable = e.target.checked;
-    }));
-    tbody.querySelectorAll('.g-dup').forEach(cb => cb.addEventListener('change', (e) => {
-      currentGenome.genes[e.target.dataset.idx].flags.dupable = e.target.checked;
-    }));
-    tbody.querySelectorAll('.g-cut').forEach(cb => cb.addEventListener('change', (e) => {
-      currentGenome.genes[e.target.dataset.idx].flags.cutable = e.target.checked;
-    }));
+    if (count === 0) {
+      genesContent.innerHTML = '<div class="crt-empty-hint">No genes match the current filters.</div>';
+    } else {
+      genesContent.innerHTML = html;
+    }
   }
 
-  // ── Gene type colour mapping ───────────────────────────────────────────
-  function getGeneCol(type) {
-    if (type === 0) return 'var(--magenta)'; // Brain
-    if (type === 1) return 'var(--orange)';  // Biochemistry
-    if (type === 2) return 'var(--blue)';    // Creature
-    if (type === 3) return '#00AA44';        // Organ
-    return 'rgba(0,0,0,0.5)';
+  // ── Event Delegation for Genes ───────────────────────────────────────
+  genesContent.addEventListener('click', (e) => {
+    const target = e.target;
+    
+    // Gene Actions
+    if (!currentGenome) return;
+    if (target.tagName === 'BUTTON' && target.dataset.idx) {
+      const idx = parseInt(target.dataset.idx, 10);
+      if (isNaN(idx)) return;
+      
+      const genes = currentGenome.genes;
+      if (target.classList.contains('g-btn-up')) {
+        if (idx > 0) {
+          const temp = genes[idx];
+          genes[idx] = genes[idx - 1];
+          genes[idx - 1] = temp;
+          renderGenome();
+        }
+        return;
+      }
+      
+      if (target.classList.contains('g-btn-down')) {
+        if (idx < genes.length - 1) {
+          const temp = genes[idx];
+          genes[idx] = genes[idx + 1];
+          genes[idx + 1] = temp;
+          renderGenome();
+        }
+        return;
+      }
+      
+      if (target.classList.contains('g-btn-dup')) {
+        const cloned = JSON.parse(JSON.stringify(genes[idx]));
+        cloned.generation += 1;
+        const maxId = currentGenome.genes.length > 0 ? Math.max(...currentGenome.genes.map(g => g.id || 0)) : 0;
+        cloned.id = maxId + 1;
+        genes.splice(idx + 1, 0, cloned);
+        currentGenome.geneCount = genes.length;
+        renderGenome();
+        return;
+      }
+      
+      if (target.classList.contains('g-btn-del')) {
+        genes.splice(idx, 1);
+        currentGenome.geneCount = genes.length;
+        renderGenome();
+        return;
+      }
+    }
+
+    // Expand / collapse cards
+    const header = target.closest('.crt-gene-header');
+    if (header) {
+      const body = header.nextElementSibling;
+      const chevron = header.querySelector('.crt-gene-chevron');
+      if (body && body.classList.contains('crt-gene-body')) {
+        if (body.style.display === 'none') {
+          body.style.display = 'block';
+          if (chevron) chevron.textContent = '▼';
+        } else {
+          body.style.display = 'none';
+          if (chevron) chevron.textContent = '▶';
+        }
+      }
+      return;
+    }
+  });
+
+  genesContent.addEventListener('change', (e) => {
+    // Bind input changes back to data model
+    if (!currentGenome) return;
+    const el = e.target;
+    if (el.tagName !== 'INPUT') return;
+    
+    const idx = parseInt(el.dataset.idx, 10);
+    if (isNaN(idx)) return;
+    const g = currentGenome.genes[idx];
+
+    if (el.type === 'checkbox') {
+      if (el.classList.contains('g-active')) {
+        g.active = el.checked;
+      } else if (el.classList.contains('g-mut')) {
+        g.flags.mutable = el.checked;
+      } else if (el.classList.contains('g-dup')) {
+        g.flags.dupable = el.checked;
+      } else if (el.classList.contains('g-cut')) {
+        g.flags.cutable = el.checked;
+      }
+      return;
+    }
+
+    if (el.classList.contains('crt-gene-input')) {
+      const keyPath = el.dataset.key;
+      if (!keyPath || !g.data) return;
+      
+      let val = el.value;
+      if (el.type === 'number') {
+        const num = parseFloat(val);
+        if (!isNaN(num)) val = num;
+      }
+
+      if (keyPath === 'poses') {
+         g.data[keyPath] = val.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+      } else {
+         g.data[keyPath] = val;
+      }
+      
+      // Note: We don't call renderGenome() here to avoid stealing focus from the user while typing.
+    }
+  });
+
+  function createBlankGene(type, subtype) {
+    const typeNames = ["Brain", "Biochemistry", "Creature", "Organ"];
+    const subtypeNames = {
+      0: ["Lobe", "Brain Organ", "Tract"],
+      1: ["Receptor", "Emitter", "Reaction", "Half-lives", "InitConc", "Neuroemitter"],
+      2: ["Stimulus", "Genus", "Appearance", "Pose", "Gait", "Instinct", "Pigment", "Pigment Bleed", "Expression"],
+      3: ["Organ"]
+    };
+
+    const g = {
+      id: 0,
+      type: type,
+      subtype: subtype,
+      typeName: typeNames[type] || "Unknown",
+      subtypeName: subtypeNames[type]?.[subtype] || "Unknown",
+      generation: 1,
+      switchOnTime: 1,
+      switchOnLabel: "Baby",
+      active: true,
+      flags: { mutable: true, dupable: true, cutable: true, maleOnly: false, femaleOnly: false, dormant: false },
+      data: {}
+    };
+
+    // Sensible defaults
+    if (type === 0 && subtype === 0) g.data = { lobeName: "lob", x: 0, y: 0, width: 1, height: 1, red: 255, green: 255, blue: 255, wta: 0, updateTime: 1, initRule: [0], updateRule: [0] };
+    if (type === 0 && subtype === 2) g.data = { srcLobe: 0, srcVar: 0, dstLobe: 0, dstVar: 0, migrates: 0, updateTime: 1, initRule: [0], updateRule: [0] };
+    if (type === 0 && subtype === 1) g.data = { clockRate: 0, damageRate: 0, lifeForce: 0, biotickStart: 0, atpDamageCoef: 0 };
+    if (type === 1 && (subtype === 0 || subtype === 1)) g.data = { organ: 0, tissue: 0, locus: 0, chemical: 0, threshold: 0, gain: 128, nominal: 0, rate: 0, flags: 0 };
+    if (type === 1 && subtype === 2) g.data = { r1Amount: 0, r1Chem: 0, r2Amount: 0, r2Chem: 0, p1Amount: 0, p1Chem: 0, p2Amount: 0, p2Chem: 0, rate: 0 };
+    if (type === 1 && subtype === 4) g.data = { chemical: 0, amount: 128 };
+    if (type === 1 && subtype === 5) g.data = { lobe0: 0, neuron0: 0, lobe1: 0, neuron1: 0, lobe2: 0, neuron2: 0, rate: 0, chem0: 0, amount0: 0, chem1: 0, amount1: 0, chem2: 0, amount2: 0, chem3: 0, amount3: 0 };
+    if (type === 2 && subtype === 0) g.data = { stimulus: 0, significance: 0, input: 0, intensity: 0, chem0: 0, amount0: 0, chem1: 0, amount1: 0, chem2: 0, amount2: 0, chem3: 0, amount3: 0 };
+    if (type === 2 && subtype === 1) g.data = { genus: 1, motherMoniker: "", fatherMoniker: "" };
+    if (type === 2 && subtype === 2) g.data = { part: 0, variant: 0, species: 0 };
+    if (type === 2 && subtype === 3) g.data = { poseNumber: 0, poseString: "0" };
+    if (type === 2 && subtype === 4) g.data = { gait: 0, poses: [0,0,0,0,0,0,0,0] };
+    if (type === 2 && subtype === 5) g.data = { lobe0: 0, cell0: 0, lobe1: 0, cell1: 0, lobe2: 0, cell2: 0, action: 0, reinforcementAmount: 0, reinforcementChemical: 0 };
+    if (type === 2 && subtype === 6) g.data = { pigment: 0, amount: 0 };
+    if (type === 2 && subtype === 7) g.data = { rotation: 0, swap: 0 };
+    if (type === 2 && subtype === 8) g.data = { expression: 0, weight: 0, drive0: 0, amount0: 0, drive1: 0, amount1: 0, drive2: 0, amount2: 0, drive3: 0, amount3: 0 };
+    if (type === 3 && subtype === 0) g.data = { clockRate: 0, damageRate: 0, lifeForce: 0, biotickStart: 0, atpDamageCoef: 0 };
+
+    return g;
   }
 
 })();
