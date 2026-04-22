@@ -36,3 +36,6 @@ monitor/node_modules/
 
 # MCP server — Node.js dependencies (install via cd mcp && npm install)
 mcp/node_modules/
+
+# AI IDE skills directory
+skills/
