@@ -138,6 +138,8 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 | `-s <N>` | Alias for `--gamespeed` |
 | `--tools` | Start the embedded developer tools server (port 9980) |
 | `--mcp` | Start the API server for AI agent access (port 9980). See [AI Agent Access](#ai-agent-access-mcp) |
+| `--no-music` | Disable music on startup |
+| `--no-sound` | Disable all sound on startup |
 | `--help`, `-h` | Print usage and exit |
 
 > [!NOTE]
