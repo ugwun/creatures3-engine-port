@@ -349,7 +349,7 @@ The **Genetics Kit** tab is a standalone tool for manipulating, cross-breeding, 
 
 **Workflow & Features:**
 
-1. **Browse & Manage Genomes** — the file list (left panel) shows all `.gen` files in the world's `Genetics/` directory. Use the search box to filter by moniker substring. Click a moniker to parse and display its genes. Use the **New**, **Save .GEN**, **Export**, and **Import** tools in the header to manage genome files locally and externally.
+1. **Browse & Manage Genomes** — the file list (left panel) shows all `.gen` files in the world's `Genetics/` directory. Use the search box to filter by moniker substring. Click a moniker to parse and display its genes. Core engine genetics are clearly marked with a `CORE` badge. Use the **Save .GEN**, **Rename**, **Delete**, **Export**, and **Import** tools to organize and manage genome files locally and externally. Core files are protected from deletion and renaming.
 2. **Inspect & Search** — the gene table categorizes every gene in the selected genome (Brain/Biochemistry/Creature/Organ). Use the primary search filter to deeply search through the genetic literal structures (e.g., search for a specific chemical ID like `148`, or an SV-Rule property).
 3. **Inline Property Editing** — all gene properties are natively editable. Structural checkboxes toggle mutability flags (mutable/dupable/cutable) and activation states, while number inputs allow you to tune biochemical thresholds, brain coordinates, clock rates, and reaction values on the fly.
 4. **Structural Chromosome Modifiers** — full visual CRUD operations allow you to dynamically groom the DNA strand without raw byte patching. Click the action buttons on a gene to **Duplicate**, **Delete**, or **Move** it up or down the genetic ladder. You can also press **Add Gene** to create a completely blank gene of any subtype at the end of the genome.
@@ -375,11 +375,13 @@ The Genetics Kit operates through four layers:
 
 1. **Frontend (`tools/genetics.js`)** — renders the file list with deep-search-driven filtering, the interactive gene property modifiers, structural chromosome tools, and the crossover modal. Communicates exclusively via `fetch()` to the REST API. State is managed in-browser (no server-side sessions).
 
-2. **REST API (`engine/DebugServer.cpp`)** — five endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
-   - `GET /api/genetics/files` — scans the world's `GENETICS_DIR` for `.gen` files
+2. **REST API (`engine/DebugServer.cpp`)** — seven endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
+   - `GET /api/genetics/files` — scans the world's `GENETICS_DIR` for `.gen` files and detects protected core files
    - `GET /api/genetics/file/:moniker` — reads and parses a `.gen` binary file into structured JSON
    - `POST /api/genetics/crossover` — performs `Genome::Cross` and writes the child to disk
    - `POST /api/genetics/save` — serializes a (potentially modified) genome JSON back into a binary `.gen` file
+   - `POST /api/genetics/rename` — safely renames a user `.gen` file (rejects if core)
+   - `POST /api/genetics/delete/:moniker` — safely deletes a user `.gen` file (rejects if core)
    - `POST /api/genetics/inject` — serializes a genome, writes it, and executes the CAOS injection macro to hatch it
 
 3. **Engine Core (`engine/Creature/Genome.cpp`, `GenomeStore.cpp`)** — the `Genome` class handles binary file I/O (`ReadFromFile` / `WriteToFile`), crossover (`Cross` / `CrossLoop`), and gene expression (`GetGeneType`). `GenomeStore` manages genome slots, moniker generation, and history event registration.

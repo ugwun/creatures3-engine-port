@@ -1636,6 +1636,49 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 		}
 	});
 
+	myImpl->svr.Post("/api/genetics/rename", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string oldName;
+		std::string newName;
+		try {
+			auto json = nlohmann::json::parse(req.body);
+			oldName = json.value("oldName", "");
+			newName = json.value("newName", "");
+		} catch (...) {}
+
+		if (oldName.empty() || newName.empty()) {
+			res.set_content("{\"error\":\"Missing oldName or newName\"}", "application/json");
+			return;
+		}
+
+		auto* item = new WorkItem();
+		item->work = [oldName, newName]() -> std::string {
+			std::string genDir = theApp.GetDirectory(GENETICS_DIR);
+			std::string oldGenPath = genDir + oldName + ".gen";
+			std::string oldGnoPath = genDir + oldName + ".gno";
+			std::string newGenPath = genDir + newName + ".gen";
+
+			if (FILE* f = fopen(oldGnoPath.c_str(), "r")) {
+				fclose(f);
+				return "{\"error\":\"Cannot rename core genome (has .gno file)\"}";
+			}
+			if (FILE* f = fopen(newGenPath.c_str(), "r")) {
+				fclose(f);
+				return "{\"error\":\"A genome with the new name already exists\"}";
+			}
+			if (rename(oldGenPath.c_str(), newGenPath.c_str()) == 0) {
+				return "{\"status\":\"success\"}";
+			}
+			return "{\"error\":\"File could not be renamed\"}";
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.set_content("{\"error\":\"Timeout waiting for Engine thread\"}", "application/json");
+		}
+	});
+
 	myImpl->svr.Get(R"(/api/genetics/file/([^/]+))", [this, parseGenomeFileToJson](const httplib::Request& req, httplib::Response& res) {
 		std::string moniker = req.matches[1];
 		auto* item = new WorkItem();

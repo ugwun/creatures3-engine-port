@@ -42,6 +42,7 @@
   const fileImport = document.getElementById('genetics-import-file');
   const btnSave = document.getElementById('btn-genetics-save');
   const btnDelete = document.getElementById('btn-genetics-delete');
+  const btnRename = document.getElementById('btn-genetics-rename');
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
@@ -180,8 +181,10 @@
       if (btnDelete) {
         if (fileData && fileData.isCore) {
           btnDelete.hidden = true;
+          if (btnRename) btnRename.hidden = true;
         } else {
           btnDelete.hidden = false;
+          if (btnRename) btnRename.hidden = false;
         }
       }
 
@@ -371,6 +374,37 @@
         alert("Delete failed");
       } finally {
         btnDelete.textContent = "Delete";
+      }
+    });
+  }
+
+  if (btnRename) {
+    btnRename.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      const newName = prompt("Enter new genome name:", selectedFile);
+      if (!newName || newName === selectedFile) return;
+      
+      btnRename.textContent = "Renaming\u2026";
+      try {
+        const resp = await fetch('/api/genetics/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldName: selectedFile, newName: newName })
+        });
+        const data = await resp.json();
+        if (data.status === "success") {
+          selectedFile = newName;
+          if (currentGenome) currentGenome.moniker = newName;
+          await fetchFiles();
+          if (selectedName) selectedName.innerHTML = `Loading <strong>${selectedFile}</strong>...`;
+          loadGenome(selectedFile);
+        } else {
+          alert("Error: " + (data.error || 'Unknown'));
+        }
+      } catch (e) {
+        alert("Rename failed");
+      } finally {
+        btnRename.textContent = "Rename";
       }
     });
   }
