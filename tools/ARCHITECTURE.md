@@ -143,6 +143,8 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
 | [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
 | [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
+| [`tools/genetics.js`](genetics.js) | Genetics Kit tab: genome browser, structural modifiers, inline editor, SV Rule bytecodes, crossover, injection, file ops |
+| [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit dom factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -167,6 +169,7 @@ Script tags in `index.html` load in this order:
 4. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
 5. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
 6. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
+7. `gene_renderer.js`, `genetics.js` — Genetics Kit tab and DOM renderers
 
 All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`) or communicated via the event bus.
 
@@ -419,6 +422,18 @@ When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished)
 | `POST` | `/api/continue/:agentId` | Resume execution from breakpoint |
 | `GET` | `/api/agent/:id` | Full agent state including source, breakpoints, context |
 
+### Genetics API Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/genetics/files` | Lists all `.gen` files available in the world's `GENETICS_DIR` |
+| `GET` | `/api/genetics/file/:moniker` | Reads and parses a binary `.gen` file into a JSON genome object |
+| `POST` | `/api/genetics/crossover` | Cross-breeds two genomes dynamically via `Genome::Cross` and saves the child |
+| `POST` | `/api/genetics/save` | Serializes a modified JSON genome back into binary and saves it to disk |
+| `POST` | `/api/genetics/inject` | Serializes, saves, and executes a CAOS injection macro to hatch the creature |
+
+**Thread Safety**: All `POST` operations in the Genetics module (`crossover`, `save`, `inject`) touch the engine's `GenomeStore`, `Genome` binary operations, and `CAOSMachine` structures. As a result, they use the `WorkItem` queue to block HTTP worker threads and execute strictly on the **main thread**.
+
 ---
 
 ## Future Phases
@@ -476,3 +491,15 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ `GET /api/scriptorium/:f/:g/:s/:e` endpoint for fetching individual script source
 - ✅ Classifier header fields auto-populated from loaded scripts
 - ✅ Output console with colour-coded results, errors, and info messages
+
+### ~~Phase 6 — Genetics Editor~~ ✅ Implemented
+
+- ✅ Fetch and parse `.gen` files directly from disk to JSON
+- ✅ Browse `.gen` library with string-based moniker search filtering
+- ✅ Real-time structural chromosome editing (Move Up, Move Down, Add, Duplicate, Delete)
+- ✅ Inline property editing for thresholds, clock rates, coordinates, parameters, and flags
+- ✅ Raw bytecode array inputs for Brain Lobe and Neural Tract SV Rules
+- ✅ Deep-search text filtering matching numerical properties housed inside DOM inputs
+- ✅ File lifecycle management (New template, Save to engine, Export to browser, Import from browser)
+- ✅ Engine cross-breeding algorithms directly wired to the API
+- ✅ Full creature injection pipeline integrated to standard CAOS hatching macros
