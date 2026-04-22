@@ -264,6 +264,11 @@ public:
   std::string myLoadThisWorldNextTick;
   bool myQuitNextTick;
   bool myToggleFullScreenNextTick;
+  bool myCommandLineNoMusic;
+  bool myCommandLineNoSound;
+
+  void SetCommandLineNoMusic(bool flag) { myCommandLineNoMusic = flag; }
+  void SetCommandLineNoSound(bool flag) { myCommandLineNoSound = flag; }
 
   int myScrollingMask;
   std::vector<byte> myScrollingSpeedRangeUp;

@@ -213,6 +213,8 @@ int main(int argc, char *argv[]) {
                 "                      Optional path overrides tools/ directory\n"
                 "  --mcp               Start API-only server on port 9980\n"
                 "                      For use with MCP clients (AI agents)\n"
+                "  --no-music          Disable music on startup\n"
+                "  --no-sound          Disable all sound on startup\n"
                 "  --help, -h          Show this help message\n"
                 "\n"
                 "Examples:\n"
@@ -247,6 +249,10 @@ int main(int argc, char *argv[]) {
         }
       } else if (arg == "--mcp") {
         enableMCP = true;
+      } else if (arg == "--no-music") {
+        theApp.SetCommandLineNoMusic(true);
+      } else if (arg == "--no-sound") {
+        theApp.SetCommandLineNoSound(true);
       }
     }
 

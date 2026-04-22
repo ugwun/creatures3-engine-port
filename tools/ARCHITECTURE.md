@@ -150,7 +150,7 @@ Log streaming works differently — it doesn't use the work queue:
 
 | File | Purpose |
 |---|---|
-| [`tools/README.md`](README.md) | Usage guide: quick start, tab descriptions, API reference |
+| [`TOOLS.md`](TOOLS.md) | Usage guide: quick start, tab descriptions, API reference |
 | [`tools/ARCHITECTURE.md`](ARCHITECTURE.md) | This file — technical reference |
 
 ---

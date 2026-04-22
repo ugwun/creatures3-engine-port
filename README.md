@@ -158,7 +158,7 @@ The engine includes a browser-based developer tools suite — an engine log moni
 
 When `--tools` is not passed, the tools server does not start and there is zero overhead.
 
-For full details see [`tools/README.md`](./tools/README.md). For the technical architecture, see [`tools/ARCHITECTURE.md`](./tools/ARCHITECTURE.md).
+For full details see [`tools/TOOLS.md`](./tools/TOOLS.md). For the technical architecture, see [`tools/ARCHITECTURE.md`](./tools/ARCHITECTURE.md).
 
 ## AI Agent Access (MCP)
 
@@ -174,7 +174,7 @@ cd mcp && npm install
 
 Once connected, an AI agent has access to 15 tools including `execute_caos`, `list_creatures`, `get_creature_chemistry`, `get_creature_brain`, `pause_engine`, and more. The `--mcp` flag starts the API server without the browser UI; use `--tools` instead if you want both the browser developer tools and AI access.
 
-For setup instructions and full tool reference, see [`mcp/README.md`](./mcp/README.md).
+For setup instructions and full tool reference, see [`mcp/MCP.md`](./mcp/MCP.md).
 
 ## Testing
 

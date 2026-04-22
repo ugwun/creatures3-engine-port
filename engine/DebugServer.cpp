@@ -2703,7 +2703,7 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 		fprintf(stderr, "[lc2e] To connect an MCP client, add to your MCP config:\n");
 		fprintf(stderr, "[lc2e]   {\"mcpServers\":{\"creatures3\":{\"command\":\"node\",\"args\":[\"mcp/server.js\"]}}}\n");
 		fprintf(stderr, "[lc2e] Install MCP server deps: cd mcp && npm install\n");
-		fprintf(stderr, "[lc2e] See mcp/README.md for full setup instructions.\n");
+		fprintf(stderr, "[lc2e] See mcp/MCP.md for full setup instructions.\n");
 	}
 }
 

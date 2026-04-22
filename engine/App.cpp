@@ -81,6 +81,8 @@ App::App() {
   myProgressBar = NULL;
 
   myAutoKillAgentsOnError = false;
+  myCommandLineNoMusic = false;
+  myCommandLineNoSound = false;
 
   myEameVars = new std::map<std::string, CAOSVar>();
 
@@ -741,24 +743,26 @@ void App::internalWindowHasMoved() { theMainView.MoveWindow(); }
 void App::SetUpSound(void) {
   // Now want two sound managers, allocated 1 meg each,
   // one for game sound, one for game music:
-  try {
-    theSoundManager = new SoundManager();
-  } catch (BasicException &e) {
-    theSoundManager = NULL;
-    theMusicSoundManager = NULL;
+  if (!myCommandLineNoSound) {
+    try {
+      theSoundManager = new SoundManager();
+    } catch (BasicException &e) {
+      theSoundManager = NULL;
+      theMusicSoundManager = NULL;
 
-    ErrorMessageHandler::Show(e, std::string("App::SetUpSound"));
-    return;
-  }
+      ErrorMessageHandler::Show(e, std::string("App::SetUpSound"));
+      return;
+    }
 
-  if (theSoundManager) {
-    theSoundManager->InitializeCache(2 * 1024);
+    if (theSoundManager) {
+      theSoundManager->InitializeCache(2 * 1024);
+    }
   }
 
   // don't go to the expense of creating the music manager
   // if it is not needed...
 
-  if (IOnlyPlayMidiMusic == false) {
+  if (IOnlyPlayMidiMusic == false && !myCommandLineNoMusic && !myCommandLineNoSound) {
     try {
       theMusicSoundManager = new SoundManager();
     } catch (SoundManager::SoundException &e) {
