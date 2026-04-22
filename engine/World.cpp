@@ -515,19 +515,23 @@ void World::TriggerTrack(std::string &trackName, int secondsToEnforce) {
 
 int World::MuteSoundManagers(int andMask, int eorMask) {
   int managers = 0;
-  if (theSoundManager->IsMixerFaded())
+  if (theSoundManager && theSoundManager->IsMixerFaded())
     managers += 1;
-  if (theMusicSoundManager->IsMixerFaded())
+  if (theMusicSoundManager && theMusicSoundManager->IsMixerFaded())
     managers += 2;
   managers = (managers & andMask) ^ eorMask;
-  if (managers & 1)
-    theSoundManager->FadeOut();
-  else
-    theSoundManager->FadeIn();
-  if (managers & 2)
-    theMusicSoundManager->FadeOut();
-  else
-    theMusicSoundManager->FadeIn();
+  if (theSoundManager) {
+    if (managers & 1)
+      theSoundManager->FadeOut();
+    else
+      theSoundManager->FadeIn();
+  }
+  if (theMusicSoundManager) {
+    if (managers & 2)
+      theMusicSoundManager->FadeOut();
+    else
+      theMusicSoundManager->FadeIn();
+  }
   return managers;
 }
 
