@@ -1575,13 +1575,20 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 	myImpl->svr.Get("/api/genetics/files", [this](const httplib::Request& req, httplib::Response& res) {
 		auto* item = new WorkItem();
 		item->work = []() -> std::string {
-			std::vector<std::string> arr;
+			std::vector<std::pair<std::string, bool>> arr;
 			std::string genDir = theApp.GetDirectory(GENETICS_DIR);
 			if (DIR* dir = opendir(genDir.c_str())) {
 				while (struct dirent* ent = readdir(dir)) {
 					std::string name = ent->d_name;
 					if (name.length() > 4 && name.substr(name.length() - 4) == ".gen") {
-						arr.push_back(name.substr(0, name.length() - 4));
+						std::string moniker = name.substr(0, name.length() - 4);
+						std::string gnoPath = genDir + moniker + ".gno";
+						bool isCore = false;
+						if (FILE* f = fopen(gnoPath.c_str(), "r")) {
+							isCore = true;
+							fclose(f);
+						}
+						arr.push_back(std::make_pair(moniker, isCore));
 					}
 				}
 				closedir(dir);
@@ -1590,10 +1597,35 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 			json << "[";
 			for (size_t i = 0; i < arr.size(); ++i) {
 				if (i > 0) json << ",";
-				json << "\"" << JsonEscape(arr[i]) << "\"";
+				json << "{\"name\":\"" << JsonEscape(arr[i].first) << "\",\"isCore\":" << (arr[i].second ? "true" : "false") << "}";
 			}
 			json << "]";
 			return json.str();
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.set_content("{\"error\":\"Timeout waiting for Engine thread\"}", "application/json");
+		}
+	});
+
+	myImpl->svr.Post(R"(/api/genetics/delete/([^/]+))", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string moniker = req.matches[1];
+		auto* item = new WorkItem();
+		item->work = [moniker]() -> std::string {
+			std::string genDir = theApp.GetDirectory(GENETICS_DIR);
+			std::string genPath = genDir + moniker + ".gen";
+			std::string gnoPath = genDir + moniker + ".gno";
+			if (FILE* f = fopen(gnoPath.c_str(), "r")) {
+				fclose(f);
+				return "{\"error\":\"Cannot delete core genome (has .gno file)\"}";
+			}
+			if (unlink(genPath.c_str()) == 0) {
+				return "{\"status\":\"success\"}";
+			}
+			return "{\"error\":\"File could not be deleted\"}";
 		};
 		auto future = item->promise.get_future();
 		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }

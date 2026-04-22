@@ -41,6 +41,7 @@
   const btnImport = document.getElementById('btn-genetics-import');
   const fileImport = document.getElementById('genetics-import-file');
   const btnSave = document.getElementById('btn-genetics-save');
+  const btnDelete = document.getElementById('btn-genetics-delete');
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
@@ -98,16 +99,17 @@
   function renderFileList() {
     if (!fileList) return;
     const query = fileSearch ? fileSearch.value.toLowerCase().trim() : '';
-    const matches = availableFiles.filter(f => f.toLowerCase().includes(query));
+    const matches = availableFiles.filter(f => f.name.toLowerCase().includes(query));
     
     let html = '';
     const limit = fileShowAll ? matches.length : Math.min(5, matches.length);
     for (let i = 0; i < limit; i++) {
         const item = matches[i];
-        const isSelected = item === selectedFile;
+        const isSelected = item.name === selectedFile;
         // Match the layout seen in Syringe (e.g. index followed by moniker name)
-        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item}">
-          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item}</span>
+        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item.name}">
+          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item.name}</span>
+          ${item.isCore ? '<span style="font-size: 0.7em; background: var(--black); color: var(--white); border-radius: 4px; padding: 2px 4px; margin-left: 8px;">CORE</span>' : ''}
         </div>`;
     }
 
@@ -123,15 +125,16 @@
   function renderParentBList() {
     if (!parentBList) return;
     const query = parentBSearch ? parentBSearch.value.toLowerCase().trim() : '';
-    const matches = availableFiles.filter(f => f.toLowerCase().includes(query));
+    const matches = availableFiles.filter(f => f.name.toLowerCase().includes(query));
     
     let html = '';
     const limit = parentBShowAll ? matches.length : Math.min(5, matches.length);
     for (let i = 0; i < limit; i++) {
         const item = matches[i];
-        const isSelected = item === selectedParentB;
-        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item}">
-          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item}</span>
+        const isSelected = item.name === selectedParentB;
+        html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item.name}">
+          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item.name}</span>
+          ${item.isCore ? '<span style="font-size: 0.7em; background: var(--black); color: var(--white); border-radius: 4px; padding: 2px 4px; margin-left: 8px;">CORE</span>' : ''}
         </div>`;
     }
 
@@ -172,6 +175,16 @@
       renderFileList();
       fileAction.hidden = false;
       selectedName.innerHTML = `Loading <strong>${selectedFile}</strong>...`;
+
+      const fileData = availableFiles.find(f => f.name === selectedFile);
+      if (btnDelete) {
+        if (fileData && fileData.isCore) {
+          btnDelete.hidden = true;
+        } else {
+          btnDelete.hidden = false;
+        }
+      }
+
       if (selectedFile) loadGenome(selectedFile);
     });
   }
@@ -331,6 +344,33 @@
         alert("Save failed");
       } finally {
         btnSave.textContent = "Save .gen";
+      }
+    });
+  }
+
+  if (btnDelete) {
+    btnDelete.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      if (!confirm(`Are you sure you want to delete ${selectedFile}.gen?`)) return;
+      btnDelete.textContent = "Deleting\u2026";
+      
+      try {
+        const resp = await fetch('/api/genetics/delete/' + encodeURIComponent(selectedFile), { method: 'POST' });
+        const data = await resp.json();
+        if (data.status === "success") {
+          currentGenome = null;
+          selectedFile = null;
+          fileAction.hidden = true;
+          genesContent.innerHTML = '<div class="crt-empty-hint">Select a genome to view</div>';
+          if (selectedName) selectedName.innerHTML = 'Selected: none';
+          await fetchFiles();
+        } else {
+          alert("Error: " + (data.error || 'Unknown'));
+        }
+      } catch (e) {
+        alert("Delete failed");
+      } finally {
+        btnDelete.textContent = "Delete";
       }
     });
   }
