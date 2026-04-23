@@ -1703,6 +1703,7 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				auto j = nlohmann::json::parse(body);
 				std::string parentA = j.value("parentA", "");
 				std::string parentB = j.value("parentB", "");
+				std::string childName = j.value("child", "");
 
 				// Resolve parent file paths
 				std::string mumPath = theApp.GetDirectory(GENETICS_DIR) + parentA + ".gen";
@@ -1719,12 +1720,14 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				Genome childGenome;
 				childGenome.Cross("", &mumGenome, &dadGenome, 200, 200, 200, 200);
 
-				// Build a child moniker — GenomeStore::GenerateUniqueMoniker is protected,
-				// so we synthesize one: "000-chld-<random hex>"
-				char monikerBuf[64];
-				snprintf(monikerBuf, sizeof(monikerBuf), "000-chld-%08x-%08x-%08x-%05x",
-					(unsigned)rand(), (unsigned)rand(), (unsigned)rand(), (unsigned)(rand() & 0xFFFFF));
-				std::string childMoniker(monikerBuf);
+				// Use user-provided child name if available, otherwise synthesize a random moniker
+				std::string childMoniker = childName;
+				if (childMoniker.empty()) {
+					char monikerBuf[64];
+					snprintf(monikerBuf, sizeof(monikerBuf), "000-chld-%08x-%08x-%08x-%05x",
+						(unsigned)rand(), (unsigned)rand(), (unsigned)rand(), (unsigned)(rand() & 0xFFFFF));
+					childMoniker = std::string(monikerBuf);
+				}
 				childGenome.SetMoniker(childMoniker);
 
 				// Write child to world genetics directory
@@ -1922,6 +1925,11 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
                     vm.UpdateVM(-1);
                     delete m;
                 }
+
+                // Auto-cleanup: remove the temporary .gen file since the engine
+                // has already loaded it into the hatched creature's body
+                std::string genPath = theApp.GetDirectory(GENETICS_DIR) + moniker + ".gen";
+                unlink(genPath.c_str());
 
 				return "{\"status\":\"success\",\"moniker\":\"" + moniker + "\"}";
 			} catch (std::exception& e) {

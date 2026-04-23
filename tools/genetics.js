@@ -41,8 +41,9 @@
   const btnImport = document.getElementById('btn-genetics-import');
   const fileImport = document.getElementById('genetics-import-file');
   const btnSave = document.getElementById('btn-genetics-save');
-  const btnDelete = document.getElementById('btn-genetics-delete');
-  const btnRename = document.getElementById('btn-genetics-rename');
+
+  const emptyState = document.getElementById('genetics-empty-state');
+  const inspectorContent = document.getElementById('genetics-inspector-content');
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
@@ -103,20 +104,20 @@
     const matches = availableFiles.filter(f => f.name.toLowerCase().includes(query));
     
     let html = '';
-    const limit = fileShowAll ? matches.length : Math.min(5, matches.length);
+    const limit = matches.length;
     for (let i = 0; i < limit; i++) {
         const item = matches[i];
         const isSelected = item.name === selectedFile;
         // Match the layout seen in Syringe (e.g. index followed by moniker name)
         html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item.name}">
-          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item.name}</span>
+          <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600; flex:1;">${item.name}</span>
           ${item.isCore ? '<span style="font-size: 0.7em; background: var(--black); color: var(--white); border-radius: 4px; padding: 2px 4px; margin-left: 8px;">CORE</span>' : ''}
-        </div>`;
-    }
-
-    if (!fileShowAll && matches.length > 5) {
-        html += `<div class="genetics-file-item genetics-file-show-all" style="justify-content: center; color: var(--orange); font-weight: 600;">
-          Show all ${matches.length} matches...
+          ${!item.isCore ? `
+            <div class="genetics-file-actions" style="margin-left:auto; display:flex; gap:4px;">
+              <button class="btn-genetics-rename-inline" data-id="${item.name}" title="Rename" style="background:transparent; border:none; cursor:pointer; font-size:12px;">✏️</button>
+              <button class="btn-genetics-delete-inline" data-id="${item.name}" title="Delete" style="background:transparent; border:none; cursor:pointer; font-size:12px;">🗑️</button>
+            </div>
+          ` : ''}
         </div>`;
     }
     
@@ -129,19 +130,13 @@
     const matches = availableFiles.filter(f => f.name.toLowerCase().includes(query));
     
     let html = '';
-    const limit = parentBShowAll ? matches.length : Math.min(5, matches.length);
+    const limit = matches.length;
     for (let i = 0; i < limit; i++) {
         const item = matches[i];
         const isSelected = item.name === selectedParentB;
         html += `<div class="genetics-file-item ${isSelected ? 'genetics-file-item--selected' : ''}" data-id="${item.name}">
           <span style="color:rgba(0,0,0,0.35); font-family:monospace; min-width: 24px;">${i}</span> <span style="font-weight:600;">${item.name}</span>
           ${item.isCore ? '<span style="font-size: 0.7em; background: var(--black); color: var(--white); border-radius: 4px; padding: 2px 4px; margin-left: 8px;">CORE</span>' : ''}
-        </div>`;
-    }
-
-    if (!parentBShowAll && matches.length > 5) {
-        html += `<div class="genetics-file-item genetics-file-show-all-b" style="justify-content: center; color: var(--orange); font-weight: 600;">
-          Show all ${matches.length} matches...
         </div>`;
     }
     
@@ -164,29 +159,26 @@
 
   if (fileList) {
     fileList.addEventListener('click', (e) => {
-      const showAllBtn = e.target.closest('.genetics-file-show-all');
-      if (showAllBtn) {
-          fileShowAll = true;
-          renderFileList();
-          return;
+      const btnRenameInline = e.target.closest('.btn-genetics-rename-inline');
+      if (btnRenameInline) {
+         e.stopPropagation();
+         doRename(btnRenameInline.dataset.id);
+         return;
       }
+      const btnDeleteInline = e.target.closest('.btn-genetics-delete-inline');
+      if (btnDeleteInline) {
+         e.stopPropagation();
+         doDelete(btnDeleteInline.dataset.id);
+         return;
+      }
+
       const item = e.target.closest('.genetics-file-item');
       if (!item) return;
       selectedFile = item.dataset.id;
       renderFileList();
-      fileAction.hidden = false;
+      if (emptyState) emptyState.style.display = 'none';
+      if (inspectorContent) inspectorContent.style.display = 'flex';
       selectedName.innerHTML = `Loading <strong>${selectedFile}</strong>...`;
-
-      const fileData = availableFiles.find(f => f.name === selectedFile);
-      if (btnDelete) {
-        if (fileData && fileData.isCore) {
-          btnDelete.hidden = true;
-          if (btnRename) btnRename.hidden = true;
-        } else {
-          btnDelete.hidden = false;
-          if (btnRename) btnRename.hidden = false;
-        }
-      }
 
       if (selectedFile) loadGenome(selectedFile);
     });
@@ -194,12 +186,6 @@
 
   if (parentBList) {
     parentBList.addEventListener('click', (e) => {
-      const showAllBtn = e.target.closest('.genetics-file-show-all-b');
-      if (showAllBtn) {
-          parentBShowAll = true;
-          renderParentBList();
-          return;
-      }
       const item = e.target.closest('.genetics-file-item');
       if (!item) return;
       selectedParentB = item.dataset.id;
@@ -243,7 +229,8 @@
         fileShowAll = false;
         if (fileSearch) fileSearch.value = '';
         renderFileList();
-        fileAction.hidden = false;
+        if (emptyState) emptyState.style.display = 'none';
+        if (inspectorContent) inspectorContent.style.display = 'flex';
         selectedName.innerHTML = `Loading <strong>${data.child}</strong>...`;
         loadGenome(data.child);
         modalCross.hidden = true;
@@ -260,7 +247,8 @@
   // ── New/Import/Export/Save ─────────────────────────────────────────────
   if (btnNew) {
     btnNew.addEventListener('click', () => {
-      fileAction.hidden = false;
+      if (emptyState) emptyState.style.display = 'none';
+      if (inspectorContent) inspectorContent.style.display = 'flex';
       const g = {
         moniker: "NewGenome",
         geneCount: 2,
@@ -303,7 +291,8 @@
           const loaded = JSON.parse(e.target.result);
           if (loaded.genes && loaded.moniker) {
              currentGenome = loaded;
-             fileAction.hidden = false;
+             if (emptyState) emptyState.style.display = 'none';
+             if (inspectorContent) inspectorContent.style.display = 'flex';
              renderGenome();
           } else {
              alert('Invalid genome JSON format.');
@@ -351,62 +340,57 @@
     });
   }
 
-  if (btnDelete) {
-    btnDelete.addEventListener('click', async () => {
-      if (!selectedFile) return;
-      if (!confirm(`Are you sure you want to delete ${selectedFile}.gen?`)) return;
-      btnDelete.textContent = "Deleting\u2026";
-      
-      try {
-        const resp = await fetch('/api/genetics/delete/' + encodeURIComponent(selectedFile), { method: 'POST' });
-        const data = await resp.json();
-        if (data.status === "success") {
+  async function doDelete(moniker) {
+    if (!moniker) return;
+    if (!confirm(`Are you sure you want to delete ${moniker}.gen?`)) return;
+    
+    try {
+      const resp = await fetch('/api/genetics/delete/' + encodeURIComponent(moniker), { method: 'POST' });
+      const data = await resp.json();
+      if (data.status === "success") {
+        if (selectedFile === moniker) {
           currentGenome = null;
           selectedFile = null;
-          fileAction.hidden = true;
-          genesContent.innerHTML = '<div class="crt-empty-hint">Select a genome to view</div>';
+          if (emptyState) emptyState.style.display = 'flex';
+          if (inspectorContent) inspectorContent.style.display = 'none';
+          genesContent.innerHTML = '';
           if (selectedName) selectedName.innerHTML = 'Selected: none';
-          await fetchFiles();
-        } else {
-          alert("Error: " + (data.error || 'Unknown'));
         }
-      } catch (e) {
-        alert("Delete failed");
-      } finally {
-        btnDelete.textContent = "Delete";
+        await fetchFiles();
+      } else {
+        alert("Error: " + (data.error || 'Unknown'));
       }
-    });
+    } catch (e) {
+      alert("Delete failed");
+    }
   }
 
-  if (btnRename) {
-    btnRename.addEventListener('click', async () => {
-      if (!selectedFile) return;
-      const newName = prompt("Enter new genome name:", selectedFile);
-      if (!newName || newName === selectedFile) return;
-      
-      btnRename.textContent = "Renaming\u2026";
-      try {
-        const resp = await fetch('/api/genetics/rename', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oldName: selectedFile, newName: newName })
-        });
-        const data = await resp.json();
-        if (data.status === "success") {
+  async function doRename(moniker) {
+    if (!moniker) return;
+    const newName = prompt("Enter new genome name:", moniker);
+    if (!newName || newName === moniker) return;
+    
+    try {
+      const resp = await fetch('/api/genetics/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldName: moniker, newName: newName })
+      });
+      const data = await resp.json();
+      if (data.status === "success") {
+        if (selectedFile === moniker) {
           selectedFile = newName;
           if (currentGenome) currentGenome.moniker = newName;
-          await fetchFiles();
           if (selectedName) selectedName.innerHTML = `Loading <strong>${selectedFile}</strong>...`;
           loadGenome(selectedFile);
-        } else {
-          alert("Error: " + (data.error || 'Unknown'));
         }
-      } catch (e) {
-        alert("Rename failed");
-      } finally {
-        btnRename.textContent = "Rename";
+        await fetchFiles();
+      } else {
+        alert("Error: " + (data.error || 'Unknown'));
       }
-    });
+    } catch (e) {
+      alert("Rename failed");
+    }
   }
 
   // ── Inject ─────────────────────────────────────────────────────────────
