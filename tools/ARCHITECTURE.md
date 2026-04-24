@@ -136,6 +136,7 @@ Log streaming works differently — it doesn't use the work queue:
 |---|---|
 | [`tools/index.html`](index.html) | UI shell — tab navigation, panel containers, sidebar |
 | [`tools/utils.js`](utils.js) | Shared utilities: `escHtml()` function + `DevToolsEvents` pub/sub event bus |
+| [`tools/tooltips.js`](tooltips.js) | Global contextual tooltip system: hover event management, positioning, and native title suppression |
 | [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching + lifecycle events |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
@@ -165,13 +166,14 @@ Script tags in `index.html` load in this order:
 
 1. `utils.js` — shared `escHtml()` + `DevToolsEvents` event bus (must be first)
 2. `caos_format.js` — exposes `formatCAOS()` and `highlightCAOS()` on `window`
-3. `app.js` — Log tab + tab switching / lifecycle events
-4. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
-5. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
-6. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
-7. `gene_renderer.js`, `genetics.js` — Genetics Kit tab and DOM renderers
+3. `tooltips.js` — adds the contextual tooltip system (`window.DevToolsTooltips`)
+4. `app.js` — Log tab + tab switching / lifecycle events
+5. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
+6. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
+7. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
+8. `gene_renderer.js`, `genetics.js` — Genetics Kit tab and DOM renderers
 
-All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`) or communicated via the event bus.
+All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`, `DevToolsTooltips`) or communicated via the event bus.
 
 ### DevToolsEvents — Cross-Module Communication
 

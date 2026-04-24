@@ -10,7 +10,7 @@ This repository contains a refactored version of the Creatures 3 / Docking Stati
 
 [![YouTube](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=LyVzUs_rTQ4)
 
-[![AI Learning in Real Time — Creatures 3 & the Embodiment Crisis](ai_learning_in_real_time_thumbnail.jpg)](https://www.youtube.com/watch?v=LyVzUs_rTQ4)
+<a href="https://www.youtube.com/watch?v=LyVzUs_rTQ4"><img src="ai_learning_in_real_time_thumbnail.jpg" alt="AI Learning in Real Time — Creatures 3 & the Embodiment Crisis" width="480"></a>
 
 *Creatures 3* is a blueprint for embodied AI. While modern LLMs hit the **Embodiment Crisis**, acting like "smart amnesiacs" in the physical world, Norns learn through **Affective Learning**, driven by internal homeostasis rather than brute-force token prediction. The port demonstrated here was built on macOS using Google Antigravity IDE, showing how 1990s artificial life research offers a path toward robots that understand the thermodynamic consequences of their actions.
 
@@ -21,6 +21,14 @@ This repository contains a refactored version of the Creatures 3 / Docking Stati
 <a href="https://www.youtube.com/watch?v=vz_2FZQ_2V8"><img src="creatures_mcp_thumbnail.jpg" alt="AI reads AI — Creatures 3 × MCP" width="480"></a>
 
 The engine now supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), allowing an AI agent to **directly observe and control the simulation** — pausing the world, reading creature brain states, inspecting biochemistry across all 256 chemicals, and querying decision neuron winners in real time. Two AIs, 26 years apart, talking to each other.
+
+### 📺 1997 Paper Breakdown — Creatures & Artificial Life Agents *(YouTube)*
+
+[![YouTube](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
+
+<a href="https://www.youtube.com/watch?v=Ymm6pWf1W0Q"><img src="creatures_3_breakdown_thumbnail.jpg" alt="Cyril Sadovsky: 1997 Creatures Paper Breakdown" width="480"></a>
+
+Before LLMs and modern AI agents, there were Norns. In this video, researcher and engineer Cyril Sadovsky unpacks the 1997 paper *"Creatures: Entertainment Software Agents with Artificial Life"* by Cliff and Grand. Discover how a 90s video game cracked autonomous behavior by simulating real biochemistry, biological drives, and a bottom-up neural network. Using the port's custom developer tools, Cyril visualizes these artificial life algorithms running in real-time, arguing that true, long-term autonomous agents need homeostasis (not just brute-force token prediction) to survive in the real world.
 
 ## What is this?
 

@@ -1232,7 +1232,7 @@ A global tooltip system (`tooltips.js`) provides contextual help for every inter
 
 **Features:**
 
-- **122 tooltips** covering every tab: header controls, navigation tabs, log category filters, console, scripts table headers, debugger inspector keys (OWNR/TARG/FROM/IT/IP), creature sub-tabs, organ/brain panels, CAOS IDE editor/classifier/breakpoint controls, and docs graph
+- **120+ tooltips** covering every tab: header controls, navigation tabs, log category filters, console, scripts table headers, debugger inspector keys (OWNR/TARG/FROM/IT/IP), creature sub-tabs, organ/brain panels, CAOS IDE editor/classifier/breakpoint controls, and docs graph
 - **500ms hover delay** with 120ms fade-in/out animations to avoid visual noise
 - **Smart positioning** — the tooltip auto-flips vertically and clamps horizontally to stay within the viewport
 - **Native `title` suppression** — when a custom tooltip is active, the system temporarily strips `title` attributes from the hovered element and its ancestors to prevent "double tooltip" conflicts (the browser's native tooltip appearing alongside the custom one). Attributes are restored on mouse-out
