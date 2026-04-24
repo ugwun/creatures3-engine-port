@@ -187,7 +187,7 @@ const TIPS = [
 
     // ── Genetics Kit Tab ─────────────────────────────────────────────────
     { selector: '#genetics-file-search', text: 'Filter genomes in the library by moniker name' },
-    { selector: '#btn-genetics-refresh', text: 'Refresh the list of available genomes from the engine\\'s GenomeStore' },
+    { selector: '#btn-genetics-refresh', text: "Refresh the list of available genomes from the engine's GenomeStore" },
     { selector: '#btn-genetics-new', text: 'Create a brand new blank genome' },
     { selector: '#btn-genetics-import', text: 'Load a genome from a JSON file into the editor' },
     { selector: '.genetics-file-item', text: 'Click to load this genome into the inspector' },
@@ -196,7 +196,8 @@ const TIPS = [
     { selector: '#btn-genetics-export', text: 'Export the currently inspected genome as a JSON file' },
     { selector: '#btn-genetics-save', text: 'Save the inspected genome back to the Genetics folder as a .gen file' },
     { selector: '#btn-genetics-crossover', text: 'Cross-breed two parent genomes to generate a brand new child genome' },
-    { selector: '#btn-genetics-inject', text: 'Inject the inspected genome directly into the world. The creature will be hatched automatically.' },
+    { selector: '#genetics-inject-mode', text: 'Select whether to inject the genome as an incubating egg or as a fully hatched baby creature' },
+    { selector: '#btn-genetics-inject', text: 'Inject the inspected genome directly into the world. The creature or egg will be spawned on the top floor of the Norn Meso room.' },
     { selector: '.crt-gene-badge-active', text: 'Active — toggle whether this gene will be included when injecting into the engine' },
     { selector: 'label.crt-gene-badge-mut:has(.g-mut)', text: 'Mutable — toggle whether this gene is allowed to mutate during crossovers' },
     { selector: 'label.crt-gene-badge-mut:has(.g-dup)', text: 'Duplicatable — toggle whether this gene can be duplicated during crossovers' },

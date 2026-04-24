@@ -1896,28 +1896,41 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 					return "{\"error\": \"Could not write gen file\"}";
 				}
 
-                // INJECT via CAOS: create temp agent, GENE LOAD the genome into
-                // slot 1, then NEW: CREA to hatch a creature from it.
-                // The temp agent is destroyed by the script (GENE LOAD moves
-                // ownership of the genome slot to the new creature).
-                // Physics properties (accg, bhvr, perm, attr) are read from
-                // game variables to match what the bootstrap egg-hatching
-                // scripts in DS creatureBreeding.cos set.
-                std::string cmd =
-                    "new: simp 1 1 1 \"blnk\" 1 0 0 "
-                    "gene load targ 1 \"" + moniker + "\" "
-                    "setv va00 unid "            // remember temp agent ID
-                    "new: crea 4 targ 1 0 0 "    // hatch: family 4 = Norn
-                    "born "                      // register with creature panel & history
-                    "accg game \"c3_creature_accg\" " // gravity (default 5.0)
-                    "attr game \"c3_creature_attr\" " // attributes (default 198)
-                    "bhvr game \"c3_creature_bhvr\" " // click behaviors (default 15)
-                    "perm game \"c3_creature_perm\" " // permeability (default 100)
-                    "setv va01 unid "            // new creature's ID
-                    "targ agnt va00 "            // re-select temp agent
-                    "kill targ "                 // destroy temp agent
-                    "targ agnt va01 "            // select creature
-                    "mvsf 1000 8900";            // move to Docking Station Norn Meso (MR 11)
+                std::string injectMode = j.value("injectMode", "creature");
+                std::string cmd;
+                if (injectMode == "egg") {
+                    cmd =
+                        "new: simp 3 4 1 \"eggs\" 8 0 0 "
+                        "gene load targ 1 \"" + moniker + "\" "
+                        "setv ov01 rand 1 2 "
+                        "elas 10 "
+                        "fric rand 10 40 "
+                        "attr 195 "
+                        "bhvr 32 "
+                        "aero 10 "
+                        "accg 4 "
+                        "perm 60 "
+                        "pose 2 "
+                        "mvsf 1000 8900 "
+                        "velo rand -50 -30 0 "
+                        "tick 900";
+                } else {
+                    cmd =
+                        "new: simp 1 1 1 \"blnk\" 1 0 0 "
+                        "gene load targ 1 \"" + moniker + "\" "
+                        "setv va00 unid "            // remember temp agent ID
+                        "new: crea 4 targ 1 0 0 "    // hatch: family 4 = Norn
+                        "born "                      // register with creature panel & history
+                        "accg game \"c3_creature_accg\" " // gravity (default 5.0)
+                        "attr game \"c3_creature_attr\" " // attributes (default 198)
+                        "bhvr game \"c3_creature_bhvr\" " // click behaviors (default 15)
+                        "perm game \"c3_creature_perm\" " // permeability (default 100)
+                        "setv va01 unid "            // new creature's ID
+                        "targ agnt va00 "            // re-select temp agent
+                        "kill targ "                 // destroy temp agent
+                        "targ agnt va01 "            // select creature
+                        "mvsf 1000 8900";            // move to Docking Station Norn Meso (MR 11)
+                }
                 Orderiser o;
                 if (MacroScript* m = o.OrderFromCAOS(cmd.c_str())) {
                     CAOSMachine vm;

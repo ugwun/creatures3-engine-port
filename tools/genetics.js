@@ -396,12 +396,14 @@
   // ── Inject ─────────────────────────────────────────────────────────────
   btnInject.addEventListener('click', async () => {
     if (!currentGenome) return;
+    const injectModeSelect = document.getElementById('genetics-inject-mode');
+    const mode = injectModeSelect ? injectModeSelect.value : 'creature';
     btnInject.textContent = "Injecting\u2026";
     try {
       const resp = await fetch('/api/genetics/inject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentGenome)
+        body: JSON.stringify({ ...currentGenome, injectMode: mode })
       });
       const data = await resp.json();
       if (data.status === "success") {
