@@ -294,6 +294,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         const ctrl = document.getElementById(`${newTab}-controls`);
         if (ctrl) ctrl.hidden = false;
 
+        document.body.classList.toggle('no-toolbar', newTab === 'genetics');
+
         // Notify the incoming tab
         activeTab = newTab;
         DevToolsEvents.emit('tab:activated', newTab);

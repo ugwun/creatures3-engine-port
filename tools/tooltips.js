@@ -191,6 +191,8 @@ const TIPS = [
     { selector: '#btn-genetics-new', text: 'Create a brand new blank genome' },
     { selector: '#btn-genetics-import', text: 'Load a genome from a JSON file into the editor' },
     { selector: '.genetics-file-item', text: 'Click to load this genome into the inspector' },
+    { selector: '#genetics-modified-section', text: 'Live summary of all genes you have added or edited since loading. Changes are not permanent until you Save' },
+    { selector: '#genetics-modified-section .crt-gene-badge', text: 'Click to scroll directly to this modified gene and highlight it in the editor' },
     { selector: '.btn-genetics-rename-inline', text: 'Rename this genome file (disabled for core genomes)' },
     { selector: '.btn-genetics-delete-inline', text: 'Delete this genome file from the disk (disabled for core genomes)' },
     { selector: '#btn-genetics-export', text: 'Export the currently inspected genome as a JSON file' },

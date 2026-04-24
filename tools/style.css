@@ -681,7 +681,6 @@ body.nav-collapsed #left-nav {
   display: none !important;
 }
 
-/* ── Tab Panels ────────────────────────────────────────────────────────── */
 .tab-panel {
   position: fixed;
   top: calc(var(--header-h) + var(--toolbar-h));
@@ -690,6 +689,14 @@ body.nav-collapsed #left-nav {
   bottom: 0;
   overflow: hidden;
   transition: left 0.2s;
+}
+
+body.no-toolbar #toolbar {
+  display: none !important;
+}
+
+body.no-toolbar .tab-panel {
+  top: var(--header-h);
 }
 
 /* Log tab has sidebar, so its children handle positioning */
@@ -4263,4 +4270,14 @@ label.crt-gene-badge input[type="checkbox"] {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: var(--off-white);
   color: var(--black);
+}
+
+@keyframes geneHighlight {
+  0% { background-color: transparent; }
+  10% { background-color: rgba(255, 95, 0, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.gene-highlight-anim {
+  animation: geneHighlight 4s ease-out;
 }

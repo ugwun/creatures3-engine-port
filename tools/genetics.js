@@ -44,6 +44,8 @@
 
   const emptyState = document.getElementById('genetics-empty-state');
   const inspectorContent = document.getElementById('genetics-inspector-content');
+  const modifiedSection = document.getElementById('genetics-modified-section');
+  const modifiedList = document.getElementById('genetics-modified-list');
 
   const modalCross = document.getElementById('modal-crossover');
   const parentALbl = document.getElementById('cross-parent-a-lbl');
@@ -259,6 +261,7 @@
       };
       g.genes[0].id = 1;
       g.genes[1].id = 2;
+      g.genes.forEach(gene => gene._originalStr = getGeneState(gene));
       currentGenome = g;
       renderGenome();
     });
@@ -290,6 +293,7 @@
         try {
           const loaded = JSON.parse(e.target.result);
           if (loaded.genes && loaded.moniker) {
+             loaded.genes.forEach(g => g._originalStr = getGeneState(g));
              currentGenome = loaded;
              if (emptyState) emptyState.style.display = 'none';
              if (inspectorContent) inspectorContent.style.display = 'flex';
@@ -328,6 +332,7 @@
         if (data.status === "success") {
           await fetchFiles();
           currentGenome.moniker = saveName;
+          currentGenome.genes.forEach(g => g._originalStr = getGeneState(g));
           renderGenome();
         } else {
           alert("Error: " + (data.error || 'Unknown'));
@@ -447,7 +452,12 @@
         return;
       }
       // Attach active flag (prevents "Slider Syndrome" — soft-delete, not array mutation)
-      data.genes.forEach(g => g.active = true);
+      data.genes.forEach(g => {
+        g.active = true;
+        g._originalStr = getGeneState(g);
+      });
+      const fileInfo = availableFiles.find(f => f.name === moniker);
+      data.isCore = fileInfo ? fileInfo.isCore : false;
       currentGenome = data;
       renderGenome();
     } catch (e) {
@@ -475,13 +485,18 @@
     let html = '';
     let count = 0;
 
+    const isInteractive = !currentGenome.isCore;
+    if (btnAddGene) btnAddGene.style.display = isInteractive ? '' : 'none';
+    if (btnSave) btnSave.style.display = isInteractive ? '' : 'none';
+    if (addGeneType) addGeneType.style.display = isInteractive ? '' : 'none';
+
     currentGenome.genes.forEach((g, i) => {
       if (reqType !== -1 && g.type !== reqType) return;
       if (currentAgeFilter !== 'all') {
          if (g.switchOnTime.toString() !== currentAgeFilter) return;
       }
 
-      const cardHtml = window.GeneRenderer.renderGeneCard(g, i, true);
+      const cardHtml = window.GeneRenderer.renderGeneCard(g, i, isInteractive);
 
       if (currentSearch) {
         // Extract input values so they aren't destroyed when stripping HTML tags
@@ -499,7 +514,48 @@
     } else {
       genesContent.innerHTML = html;
     }
+    
+    updateModifiedSection();
   }
+
+  function getGeneState(g) {
+    const clone = { ...g };
+    delete clone._originalStr;
+    return JSON.stringify(clone);
+  }
+
+  function updateModifiedSection() {
+    if (!modifiedSection || !modifiedList || !currentGenome) return;
+    
+    let html = '';
+    let hasModified = false;
+    currentGenome.genes.forEach((g, i) => {
+      if (getGeneState(g) !== g._originalStr) {
+        hasModified = true;
+        html += `<div class="crt-gene-badge" style="cursor:pointer; background: var(--white); border: 1px solid var(--orange);" onclick="window.highlightGene(${i})">
+          ${g.typeName} — ${g.subtypeName} <span style="opacity:0.5">#${g.id}</span>
+        </div>`;
+      }
+    });
+
+    if (hasModified) {
+      modifiedSection.style.display = 'flex';
+      modifiedList.innerHTML = html;
+    } else {
+      modifiedSection.style.display = 'none';
+      modifiedList.innerHTML = '';
+    }
+  }
+
+  window.highlightGene = function(idx) {
+    const el = document.querySelector(`.crt-gene-card[data-idx='${idx}']`);
+    if (el) {
+      el.scrollIntoView({behavior: 'smooth', block: 'center'});
+      el.classList.remove('gene-highlight-anim');
+      void el.offsetWidth; // trigger reflow to restart animation
+      el.classList.add('gene-highlight-anim');
+    }
+  };
 
   // ── Event Delegation for Genes ───────────────────────────────────────
   genesContent.addEventListener('click', (e) => {
@@ -589,6 +645,7 @@
       } else if (el.classList.contains('g-cut')) {
         g.flags.cutable = el.checked;
       }
+      updateModifiedSection();
       return;
     }
 
@@ -608,6 +665,7 @@
          g.data[keyPath] = val;
       }
       
+      updateModifiedSection();
       // Note: We don't call renderGenome() here to avoid stealing focus from the user while typing.
     }
   });

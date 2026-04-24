@@ -432,9 +432,13 @@ When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished)
 | `GET` | `/api/genetics/file/:moniker` | Reads and parses a binary `.gen` file into a JSON genome object |
 | `POST` | `/api/genetics/crossover` | Cross-breeds two genomes dynamically via `Genome::Cross` and saves the child |
 | `POST` | `/api/genetics/save` | Serializes a modified JSON genome back into binary and saves it to disk |
+| `POST` | `/api/genetics/rename` | Safely renames a genome file on disk (rejects if marked as a CORE file) |
+| `POST` | `/api/genetics/delete/:moniker` | Safely deletes a genome file from disk (rejects if marked as a CORE file) |
 | `POST` | `/api/genetics/inject` | Serializes, saves, and executes a CAOS injection macro to hatch the creature |
 
-**Thread Safety**: All `POST` operations in the Genetics module (`crossover`, `save`, `inject`) touch the engine's `GenomeStore`, `Genome` binary operations, and `CAOSMachine` structures. As a result, they use the `WorkItem` queue to block HTTP worker threads and execute strictly on the **main thread**.
+**Thread Safety**: All `POST` operations in the Genetics module (`crossover`, `save`, `rename`, `delete`, `inject`) touch the engine's `GenomeStore`, `Genome` binary operations, file system, and `CAOSMachine` structures. As a result, they use the `WorkItem` queue to block HTTP worker threads and execute strictly on the **main thread**.
+
+**Data Integrity & Security**: `CORE` genome files are strictly immutable in the API and UI to prevent engine corruption. For user-modifiable files, the frontend implements non-destructive in-memory state snapshotting (`_originalStr`) to track and visualise uncommitted edits dynamically via the "Modified Genes" UI.
 
 ---
 
