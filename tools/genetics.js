@@ -629,7 +629,7 @@
     // Bind input changes back to data model
     if (!currentGenome) return;
     const el = e.target;
-    if (el.tagName !== 'INPUT') return;
+    if (el.tagName !== 'INPUT' && el.tagName !== 'SELECT') return;
     
     const idx = parseInt(el.dataset.idx, 10);
     if (isNaN(idx)) return;
@@ -654,19 +654,95 @@
       if (!keyPath || !g.data) return;
       
       let val = el.value;
-      if (el.type === 'number') {
+      if (el.type === 'number' || el.tagName === 'SELECT' || (el.type === 'hidden' && !isNaN(val))) {
         const num = parseFloat(val);
         if (!isNaN(num)) val = num;
       }
 
       if (keyPath === 'poses') {
-         g.data[keyPath] = val.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+         g.data[keyPath] = String(val).split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
       } else {
          g.data[keyPath] = val;
       }
       
       updateModifiedSection();
       // Note: We don't call renderGenome() here to avoid stealing focus from the user while typing.
+    }
+  });
+
+  // ── Combobox Event Handling ───────────────────────────────────────────
+  genesContent.addEventListener('click', (e) => {
+    // 1. Click on the trigger
+    const trigger = e.target.closest('.crt-combobox-trigger');
+    if (trigger) {
+      const combobox = trigger.closest('.crt-combobox');
+      const popup = combobox.querySelector('.crt-combobox-popup');
+      const search = combobox.querySelector('.crt-combobox-search');
+      const list = combobox.querySelector('.crt-combobox-list');
+      
+      const isVisible = popup.style.display === 'block';
+      
+      // Close all other popups
+      document.querySelectorAll('.crt-combobox-popup').forEach(p => p.style.display = 'none');
+      
+      if (!isVisible) {
+        popup.style.display = 'block';
+        
+        // Reset filter and always scroll to top so human-readable items are visible
+        search.value = '';
+        list.querySelectorAll('.crt-combobox-item').forEach(item => item.style.display = 'block');
+        list.scrollTop = 0;
+        
+        search.focus();
+      }
+      return;
+    }
+
+    // 2. Click on an item
+    const item = e.target.closest('.crt-combobox-item');
+    if (item) {
+      const combobox = item.closest('.crt-combobox');
+      const hiddenInput = combobox.querySelector('.crt-gene-input');
+      const triggerSpan = combobox.querySelector('.crt-combobox-trigger span');
+      const popup = combobox.querySelector('.crt-combobox-popup');
+      
+      const val = item.dataset.val;
+      const label = item.dataset.label;
+      
+      hiddenInput.value = val;
+      triggerSpan.textContent = label;
+      combobox.querySelector('.crt-combobox-trigger').title = label;
+      popup.style.display = 'none';
+      
+      // Dispatch change event to trigger saving
+      hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+  });
+
+  genesContent.addEventListener('input', (e) => {
+    if (e.target.classList.contains('crt-combobox-search')) {
+      const combobox = e.target.closest('.crt-combobox');
+      const list = combobox.querySelector('.crt-combobox-list');
+      
+      const filter = e.target.value.toLowerCase();
+      const items = list.querySelectorAll('.crt-combobox-item');
+      items.forEach(item => {
+        const textToSearch = (item.dataset.val + ' ' + item.dataset.label).toLowerCase();
+        if (textToSearch.includes(filter)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.crt-combobox')) {
+      document.querySelectorAll('.crt-combobox-popup').forEach(popup => {
+        popup.style.display = 'none';
+      });
     }
   });
 

@@ -503,7 +503,7 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ Fetch and parse `.gen` files directly from disk to JSON
 - ✅ Browse `.gen` library with string-based moniker search filtering
 - ✅ Real-time structural chromosome editing (Move Up, Move Down, Add, Duplicate, Delete)
-- ✅ Inline property editing for thresholds, clock rates, coordinates, parameters, and flags
+- ✅ Inline property editing for thresholds, clock rates, coordinates, parameters, and flags, including custom searchable comboboxes for engine-synchronized chemical selections
 - ✅ Raw bytecode array inputs for Brain Lobe and Neural Tract SV Rules
 - ✅ Deep-search text filtering matching numerical properties housed inside DOM inputs
 - ✅ File lifecycle management (New template, Save to engine, Export to browser, Import from browser)

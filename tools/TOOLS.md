@@ -263,7 +263,7 @@ The Genome sub-tab is a fully immersive, real-time binary parser for inspecting 
 - **Text & Property Search:** Perform sub-string text searches against parameters to rapidly find elements (e.g., "Hunger" or "Chem 213").
 - **Age Filter:** Isolate genes by their specific "switch-on" time (Baby, Child, Adult, Senile).
 - **Intelligent Badges:** Individual gene cards present structural parameters like mutable/cuttable/duplicatable flags, gender targeting (Male/Female Only), and dormancy explicitly.
-- **Biochemistry Resolution:** Automatically maps raw numeric chemical IDs into localized human-readable biological names for emitters, receptors, and reactions.
+- **Biochemistry Resolution:** Automatically maps raw numeric chemical IDs into localized human-readable biological names (synchronized with the engine's internal dictionary) via a searchable dropdown combobox for emitters, receptors, and reactions.
 - **SVRule Translation:** Decompiles complex binary SVRule neuron setup structures out into formatted, human-readable CAOS pseudo-code for Brain Lobes and Neural Tracts.
 
 **Summary Card:**

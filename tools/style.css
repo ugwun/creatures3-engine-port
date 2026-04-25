@@ -4063,6 +4063,10 @@ body.no-toolbar .tab-panel {
   font-size: 11px;
 }
 
+.crt-gene-row--wide {
+  grid-column: span 2;
+}
+
 .crt-gene-label {
   font-weight: 600;
   color: rgba(0,0,0,0.5);

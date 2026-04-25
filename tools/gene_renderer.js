@@ -11,23 +11,194 @@
   }
 
   // Chemical Names
-  const CHEMS = [
-    '<span class="chem-placeholder">0</span>', // 0 is empty/unused
-    "Pain", "Need for Pleasure", "Hunger", "Coldness", "Hotness", "Tiredness", "Sleepiness", "Loneliness",
-    "Crowdedness", "Fear", "Boredom", "Anger", "Arousal", "Pain (14)", "Pain (15)", "Pain (16)", 
-    "Reward", "Punishement", "Arousal (19)", "Anticipation", "Creatin", "Muscle Toxins", "N.S Toxins", "Blood Toxins",
-    "Bacterial Toxins", "Starch", "Protein", "Fat", "Sugar", "Glycogen", "Adipose", "ATP", 
-    "Cholesterol", "Water", "Calcium", "Phosphorus", "Zincali", "Prostaglandin", "C1", "C2",
-    "Antibody 1", "Antibody 2", "Antibody 3", "Antibody 4", "Antibody 5", "Antibody 6", "Antibody 7", "Antigen 1",
-    "Antigen 2", "Antigen 3", "Antigen 4", "Antigen 5", "Antigen 6", "Antigen 7", "Sleep Toxin", "Air", 
-    "Carbon Dioxide", "Hexokinase", "Glucokinase", "G-6-Ptase", "P-fructokinase", "Fuctosediphosphatase", "G-3-P Dehydrognse", "Pyruvate Kinase",
-    "PEP Carboxykinase", "Pyruvate Cboxylse", "A-K Glutarate DHase", "Transaminase", "Acyl-CoA-Synthetase", "Lactosedehydrognse", "Lipase", "Diglyceride AcylXse",
-    "Glucogen Synthetase", "Glycogen P-ylase", "Protease", "Histamine", "Estrogen", "Progesterone", "Lutenizing Hormone", "F.S.Hormone",
-    "Testosterone", "Prostiglandin 82", "Prostiglandin 83"
-  ];
+  const CHEMS = {
+    0: '(none)',
+    1: 'Lactate',
+    2: 'Pyruvate',
+    3: 'Glucose',
+    4: 'Glycogen',
+    5: 'Starch',
+    6: 'Fatty Acid',
+    7: 'Cholesterol',
+    8: 'Triglyceride',
+    9: 'Adipose Tissue',
+    10: 'Fat',
+    11: 'Muscle Tissue',
+    12: 'Protein',
+    13: 'Amino Acid',
+    14: 'Triglyceride',
+    17: 'Downatrophin',
+    18: 'Upatrophin',
+    24: 'Dissolved carbon dioxide',
+    25: 'Urea',
+    26: 'Ammonia',
+    27: 'Antibody 3',
+    28: 'Antibody 4',
+    29: 'Air',
+    30: 'Oxygen',
+    31: 'Antibody 7',
+    33: 'Water',
+    34: 'Energy',
+    35: 'ATP',
+    36: 'ADP',
+    39: 'Arousal Potential',
+    40: 'Libido lowerer',
+    41: 'Opposite Sex Pheromone',
+    46: 'Oestrogen',
+    47: 'Oestrogen',
+    48: 'Progesterone',
+    49: 'Gonadotrophin',
+    50: 'EDTA',
+    51: 'Sodium Thiosulphate',
+    53: 'Testosterone',
+    54: 'Inhibin',
+    56: 'Geddonase',
+    66: 'Heavy Metals',
+    67: 'Cyanide',
+    68: 'Belladonna',
+    69: 'Geddonase',
+    70: 'Glycotoxin',
+    71: 'Sleep toxin',
+    72: 'Fever toxin',
+    73: 'Histamine A',
+    74: 'Histamine B',
+    75: 'Alcohol',
+    78: 'ATP Decoupler',
+    79: 'Carbon monoxide',
+    80: 'Fear toxin',
+    81: 'Muscle toxin',
+    82: 'Antigen 0',
+    83: 'Antigen 1',
+    84: 'Antigen 2',
+    85: 'Antigen 3',
+    86: 'Antigen 4',
+    87: 'Antigen 5',
+    88: 'Antigen 6',
+    89: 'Antigen 7',
+    92: 'Medicine one',
+    93: 'Anti-oxidant',
+    94: 'Prostaglandin',
+    95: 'EDTA',
+    96: 'Sodium thiosulphite',
+    97: 'Arnica',
+    98: 'Vitamin E',
+    99: 'Vitamin C',
+    100: 'Antihistamine',
+    102: 'Antibody 0',
+    103: 'Antibody 1',
+    104: 'Antibody 2',
+    105: 'Antibody 3',
+    106: 'Antibody 4',
+    107: 'Antibody 5',
+    108: 'Antibody 6',
+    109: 'Antibody 7',
+    112: 'Anabolic steroid',
+    113: 'Pistle',
+    114: 'Insulin',
+    115: 'Glycolase',
+    116: 'Dehydrogenase',
+    117: 'Adrenalin',
+    118: 'Grendel nitrate',
+    119: 'Ettin nitrate',
+    124: 'Activase',
+    125: 'Life',
+    127: 'Injury',
+    128: 'Stress',
+    129: 'Sleepase',
+    131: 'Pain backup',
+    132: 'Hunger for protein backup',
+    133: 'Hunger for carb backup',
+    134: 'Hunger for fat backup',
+    135: 'Coldness backup',
+    136: 'Hotness backup',
+    137: 'Tiredness backup',
+    138: 'Sleepiness backup',
+    139: 'Loneliness backup',
+    140: 'Crowded backup',
+    141: 'Fear backup',
+    142: 'Boredom backup',
+    143: 'Anger backup',
+    144: 'Sex drive backup',
+    145: 'Comfort backup',
+    148: 'Pain',
+    149: 'Hunger for protein',
+    150: 'Hunger for carbohydrate',
+    151: 'Hunger for fat',
+    152: 'Coldness',
+    153: 'Hotness',
+    154: 'Tiredness',
+    155: 'Sleepiness',
+    156: 'Loneliness',
+    157: 'Crowded',
+    158: 'Fear',
+    159: 'Boredom',
+    160: 'Anger',
+    161: 'Sex drive',
+    162: 'Comfort',
+    163: 'UP',
+    164: 'DOWN',
+    165: 'Ca smell 0 (sound)',
+    166: 'CA smell 1 (light)',
+    167: 'CA smell 2 (heat)',
+    168: 'Ca smell 3 (water)',
+    169: 'CA smell 4 (nutrient)',
+    170: 'CA smell 5 (water)',
+    171: 'CA smell 6 (protein)',
+    172: 'CA smell 7 (carbohydrate)',
+    173: 'CA smell 8 (fat)',
+    174: 'CA smell 9 (flowers)',
+    175: 'CA smell 10 (machinery)',
+    176: 'CA smell 11',
+    177: 'CA smell 12 (Norn)',
+    178: 'CA smell 13 (Grendel)',
+    179: 'CA smell 14 (Ettin)',
+    180: 'CA smell 15 (Norn home)',
+    181: 'CA smell 16 (Grendel home)',
+    182: 'CA smell 17 (Ettin home)',
+    183: 'CA smell 18',
+    184: 'CA smell 19',
+    187: 'Stress (H4C)',
+    188: 'Stress (H4P)',
+    189: 'Stress (H4F)',
+    190: 'Stress (Anger)',
+    191: 'Stress (Fear)',
+    192: 'Stress (Pain)',
+    193: 'Stress (Sleep)',
+    194: 'Stress (Tired)',
+    195: 'Stress (Crowded)',
+    198: 'Brain chemical 1',
+    199: 'Up',
+    200: 'Down',
+    201: 'Exit',
+    202: 'Enter',
+    203: 'Wait',
+    204: 'Reward',
+    205: 'Punishment',
+    206: 'Brain chemical 9',
+    207: 'Brain chemical 10',
+    208: 'Brain chemical 11',
+    209: 'Brain chemical 12',
+    210: 'Brain chemical 13',
+    211: 'Brain chemical 14',
+    212: 'Pre-REM sleep',
+    213: 'REM sleep',
+    247: 'Alcohol',
+    248: 'Defibrillator',
+    249: 'Medicine One',
+    250: 'Medicine Two',
+    251: 'Medicine Three',
+    252: 'Arnica',
+    253: 'Vitamin E',
+    254: 'Vitamin C',
+    255: 'Drowsiness'
+  };
+  const GENERA = { 1: 'Norn', 2: 'Grendel', 3: 'Ettin', 4: 'Geat' };
+  const PARTS = { 0: 'Head', 1: 'Body', 2: 'Legs', 3: 'Arms', 4: 'Tail', 5: 'Hair' };
+  const PIGMENTS = { 0: 'Red', 1: 'Green', 2: 'Blue' };
+  const ACTIONS = { 0: 'Rest', 1: 'Walk', 2: 'Run', 3: 'Approach', 4: 'Retreat', 5: 'Flee', 6: 'Drop', 7: 'Pick Up', 8: 'Push', 9: 'Pull', 10: 'Hit', 11: 'Eat', 12: 'Look', 13: 'Touch', 14: 'Communicate', 15: 'Mating' };
+
   function getChemName(id) {
-    if (id < CHEMS.length) return CHEMS[id];
-    return "Chem " + id;
+    return CHEMS[id] || ('Chem ' + id);
   }
 
   function renderGeneCard(gene, index, isInteractive=false) {
@@ -95,12 +266,75 @@
   function renderGeneData(gene, index = 0, isInteractive = false) {
     const d = gene.data;
     let html = '<div class="crt-gene-grid">';
-    
-    function row(label, val, keyPath = null, type = 'text') {
+    function row(label, val, keyPath = null, type = 'text', options = null) {
       if (!isInteractive || !keyPath) {
-        return `<div class="crt-gene-row"><span class="crt-gene-label">${label}:</span> <span class="crt-gene-val">${val}</span></div>`;
+        let displayVal = val;
+        if (options && (type === 'select' || type === 'combo')) {
+           if (options === CHEMS && val >= 0 && val <= 255) {
+             displayVal = CHEMS[val] !== undefined ? CHEMS[val] : "Chem " + val;
+           } else if (options[val] !== undefined) {
+             displayVal = options[val];
+           }
+           if (typeof displayVal === 'string') displayVal = displayVal.replace(/<[^>]*>/g, '');
+        }
+        return `<div class="crt-gene-row${type === 'combo' ? ' crt-gene-row--wide' : ''}"><span class="crt-gene-label">${label}:</span> <span class="crt-gene-val">${displayVal}</span></div>`;
       }
-      return `<div class="crt-gene-row"><span class="crt-gene-label">${label}:</span> <input type="${type}" class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" value="${window.engineFormat ? window.engineFormat.escapeHtml(val.toString()) : val}" style="width: 100%; max-width: 100px; padding: 2px 4px; font-family: var(--font-mono); font-size: 11px;" /></div>`;
+      
+      let html = `<div class="crt-gene-row${type === 'combo' ? ' crt-gene-row--wide' : ''}"><span class="crt-gene-label">${label}:</span> `;
+      if (type === 'combo' && options) {
+         let selectedLabel = val;
+         if (options === CHEMS && val >= 0 && val <= 255) {
+            selectedLabel = CHEMS[val] !== undefined ? CHEMS[val] : "Chem " + val;
+         } else if (options[val] !== undefined) {
+            selectedLabel = options[val];
+         }
+         if (typeof selectedLabel === 'string') selectedLabel = selectedLabel.replace(/<[^>]*>/g, '');
+
+         html += `<div class="crt-combobox" data-idx="${index}" data-key="${keyPath}" style="width:100%; max-width:160px; position:relative; display:inline-block; font-family:var(--font-mono); font-size:11px;">`;
+         
+         // Trigger
+         html += `<div class="crt-combobox-trigger" style="width:100%; box-sizing:border-box; padding:2px 4px; border:1px solid var(--border, #888); background:var(--bg-input, #fff); color:var(--text, #000); cursor:pointer; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; display:flex; justify-content:space-between; align-items:center;" title="${selectedLabel}">`;
+         html += `<span>${selectedLabel}</span><span style="font-size:8px; opacity:0.5;">▼</span></div>`;
+         
+         html += `<input type="hidden" class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" value="${val}" />`;
+         
+         // Popup
+         html += `<div class="crt-combobox-popup" style="display:none; position:absolute; z-index:9999; top:100%; left:0; width:180px; background:var(--bg-panel, #222); border:1px solid var(--border, #444); box-shadow:0 8px 16px rgba(0,0,0,0.5); border-radius:4px; padding:4px; margin-top:2px;">`;
+         html += `<input type="text" class="crt-combobox-search" placeholder="Search..." style="width:100%; box-sizing:border-box; padding:4px; margin-bottom:4px; font-family:var(--font-mono); font-size:11px; background:var(--black); color:var(--white); border:1px solid var(--orange);" />`;
+         html += `<div class="crt-combobox-list" style="max-height:200px; overflow-y:auto;">`;
+         
+         if (options === CHEMS) {
+            for (let i = 0; i < 256; i++) {
+                let labelText = CHEMS[i] !== undefined ? CHEMS[i] : "Chem " + i;
+                if (typeof labelText === 'string') labelText = labelText.replace(/<[^>]*>/g, '');
+                let displayHtml = `<span style="opacity:0.5; width:24px; display:inline-block;">${i}</span> ${labelText}`;
+                html += `<div class="crt-combobox-item" data-val="${i}" data-label="${labelText}" style="padding:4px 8px; cursor:pointer; font-size:11px; white-space:nowrap; color:var(--white); border-radius:2px;">${displayHtml}</div>`;
+            }
+         } else {
+             for (const k in options) {
+                let labelText = options[k];
+                if (typeof labelText === 'string') labelText = labelText.replace(/<[^>]*>/g, '');
+                let displayHtml = `<span style="opacity:0.5; width:24px; display:inline-block;">${k}</span> ${labelText}`;
+                html += `<div class="crt-combobox-item" data-val="${k}" data-label="${labelText}" style="padding:4px 8px; cursor:pointer; font-size:11px; white-space:nowrap; color:var(--white); border-radius:2px;">${displayHtml}</div>`;
+             }
+         }
+         html += `</div></div></div>`;
+      } else if (type === 'select' && options) {
+         html += `<select class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" style="width: 100%; max-width: 100px; padding: 2px 4px; font-family: var(--font-mono); font-size: 11px;">`;
+         for (const k in options) {
+            const isSelected = (k == val) ? 'selected' : '';
+            let labelText = options[k];
+            if (typeof labelText === 'string') {
+              labelText = labelText.replace(/<[^>]*>/g, '');
+            }
+            html += `<option value="${k}" ${isSelected}>${labelText}</option>`;
+         }
+         html += `</select>`;
+      } else {
+         html += `<input type="${type}" class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" value="${window.engineFormat ? window.engineFormat.escapeHtml(val.toString()) : val}" style="width: 100%; max-width: 100px; padding: 2px 4px; font-family: var(--font-mono); font-size: 11px;" />`;
+      }
+      html += `</div>`;
+      return html;
     }
 
     if (gene.type === 0) { // Brain
@@ -162,7 +396,7 @@
         html += row('Organ', d.organ, 'organ', 'number');
         html += row('Tissue', d.tissue, 'tissue', 'number');
         html += row('Locus', d.locus, 'locus', 'number');
-        html += row('Chemical', d.chemical, 'chemical', 'number');
+        html += row('Chemical', d.chemical, 'chemical', 'combo', CHEMS);
         html += row('Threshold', d.threshold, 'threshold', 'number');
         html += row('Gain', d.gain, 'gain', 'number');
         if (gene.subtype === 0) html += row('Nominal', d.nominal, 'nominal', 'number');
@@ -170,13 +404,13 @@
         html += row('Flags', d.flags, 'flags', 'number');
       } else if (gene.subtype === 2) { // Reaction
         html += row('R1 Amount', d.r1Amount, 'r1Amount', 'number');
-        html += row('R1 Chem', d.r1Chem, 'r1Chem', 'number');
+        html += row('R1 Chem', d.r1Chem, 'r1Chem', 'combo', CHEMS);
         html += row('R2 Amount', d.r2Amount, 'r2Amount', 'number');
-        html += row('R2 Chem', d.r2Chem, 'r2Chem', 'number');
+        html += row('R2 Chem', d.r2Chem, 'r2Chem', 'combo', CHEMS);
         html += row('P1 Amount', d.p1Amount, 'p1Amount', 'number');
-        html += row('P1 Chem', d.p1Chem, 'p1Chem', 'number');
+        html += row('P1 Chem', d.p1Chem, 'p1Chem', 'combo', CHEMS);
         html += row('P2 Amount', d.p2Amount, 'p2Amount', 'number');
-        html += row('P2 Chem', d.p2Chem, 'p2Chem', 'number');
+        html += row('P2 Chem', d.p2Chem, 'p2Chem', 'combo', CHEMS);
         html += row('Rate', d.rate, 'rate', 'number');
       } else if (gene.subtype === 3) { // Half lives
          let hlstr = '';
@@ -186,7 +420,7 @@
          if (!hlstr) hlstr = "None defined.";
          html += `<div style="grid-column: 1 / -1; font-size: 11px; max-height: 80px; overflow-y: auto;">${hlstr}</div>`;
       } else if (gene.subtype === 4) { // InitConc
-         html += row('Chemical', d.chemical, 'chemical', 'number');
+         html += row('Chemical', d.chemical, 'chemical', 'combo', CHEMS);
          html += row('Amount', d.amount, 'amount', 'number');
       } else if (gene.subtype === 5) { // Neuroemitter
          html += row('Trig L0', d.lobe0, 'lobe0', 'number');
@@ -197,10 +431,14 @@
          html += row('Trig N2', d.neuron2, 'neuron2', 'number');
          html += row('Rate', d.rate, 'rate', 'number');
          html += `</div><div class="crt-gene-grid" style="margin-top: 5px;">`;
-         html += row(getChemName(d.chem0), d.amount0, 'amount0', 'number');
-         html += row(getChemName(d.chem1), d.amount1, 'amount1', 'number');
-         html += row(getChemName(d.chem2), d.amount2, 'amount2', 'number');
-         html += row(getChemName(d.chem3), d.amount3, 'amount3', 'number');
+         html += row('Chem 0', d.chem0, 'chem0', 'combo', CHEMS);
+         html += row('Amount 0', d.amount0, 'amount0', 'number');
+         html += row('Chem 1', d.chem1, 'chem1', 'combo', CHEMS);
+         html += row('Amount 1', d.amount1, 'amount1', 'number');
+         html += row('Chem 2', d.chem2, 'chem2', 'combo', CHEMS);
+         html += row('Amount 2', d.amount2, 'amount2', 'number');
+         html += row('Chem 3', d.chem3, 'chem3', 'combo', CHEMS);
+         html += row('Amount 3', d.amount3, 'amount3', 'number');
       }
     }
 
@@ -211,17 +449,20 @@
         html += row('Input', d.input, 'input', 'number');
         html += row('Intensity', d.intensity, 'intensity', 'number');
         html += `</div><div class="crt-gene-grid" style="margin-top: 5px;">`;
-        html += row(getChemName(d.chem0), d.amount0, 'amount0', 'number');
-        html += row(getChemName(d.chem1), d.amount1, 'amount1', 'number');
-        html += row(getChemName(d.chem2), d.amount2, 'amount2', 'number');
-        html += row(getChemName(d.chem3), d.amount3, 'amount3', 'number');
+        html += row('Chem 0', d.chem0, 'chem0', 'combo', CHEMS);
+        html += row('Amount 0', d.amount0, 'amount0', 'number');
+        html += row('Chem 1', d.chem1, 'chem1', 'combo', CHEMS);
+        html += row('Amount 1', d.amount1, 'amount1', 'number');
+        html += row('Chem 2', d.chem2, 'chem2', 'combo', CHEMS);
+        html += row('Amount 2', d.amount2, 'amount2', 'number');
+        html += row('Chem 3', d.chem3, 'chem3', 'combo', CHEMS);
+        html += row('Amount 3', d.amount3, 'amount3', 'number');
       } else if (gene.subtype === 1) { // Genus
-        html += row('Genus', d.genus, 'genus', 'number');
+        html += row('Genus', d.genus, 'genus', 'select', GENERA);
         html += row('Mother', d.motherMoniker, 'motherMoniker', 'text');
         html += row('Father', d.fatherMoniker, 'fatherMoniker', 'text');
       } else if (gene.subtype === 2) { // Appearance
-        const parts = ["Head", "Body", "Legs", "Arms", "Tail", "Hair"];
-        html += row('Part', parts[d.part] || d.part);
+        html += row('Part', d.part, 'part', 'select', PARTS);
         html += row('Variant', d.variant, 'variant', 'number');
         html += row('Species', d.species, 'species', 'number');
       } else if (gene.subtype === 3) { // Pose
@@ -234,11 +475,11 @@
         html += row('Lobe0', `L${d.lobe0} #${d.cell0}`);
         html += row('Lobe1', `L${d.lobe1} #${d.cell1}`);
         html += row('Lobe2', `L${d.lobe2} #${d.cell2}`);
-        html += row('Action', d.action, 'action', 'number');
-        html += row('Reinforcement', `${d.reinforcementAmount} of ${getChemName(d.reinforcementChemical)}`);
+        html += row('Action', d.action, 'action', 'select', ACTIONS);
+        html += row('Reinf Chem', d.reinforcementChemical, 'reinforcementChemical', 'combo', CHEMS);
+        html += row('Reinf Amt', d.reinforcementAmount, 'reinforcementAmount', 'number');
       } else if (gene.subtype === 6) { // Pigment
-        const pigments = ["Red", "Green", "Blue"];
-        html += row('Pigment', pigments[d.pigment] || d.pigment);
+        html += row('Pigment', d.pigment, 'pigment', 'select', PIGMENTS);
         html += row('Amount', d.amount, 'amount', 'number');
       } else if (gene.subtype === 7) { // Pigment Bleed
         html += row('Rotation', d.rotation, 'rotation', 'number');
@@ -247,10 +488,14 @@
         html += row('Expr Num', d.expression, 'expression', 'number');
         html += row('Weight', d.weight, 'weight', 'number');
         html += `</div><div class="crt-gene-grid" style="margin-top: 5px;">`;
-        html += row('Drive ' + d.drive0, d.amount0, 'amount0', 'number');
-        html += row('Drive ' + d.drive1, d.amount1, 'amount1', 'number');
-        html += row('Drive ' + d.drive2, d.amount2, 'amount2', 'number');
-        html += row('Drive ' + d.drive3, d.amount3, 'amount3', 'number');
+        html += row('Drive 0', d.drive0, 'drive0', 'combo', CHEMS);
+        html += row('Amount 0', d.amount0, 'amount0', 'number');
+        html += row('Drive 1', d.drive1, 'drive1', 'combo', CHEMS);
+        html += row('Amount 1', d.amount1, 'amount1', 'number');
+        html += row('Drive 2', d.drive2, 'drive2', 'combo', CHEMS);
+        html += row('Amount 2', d.amount2, 'amount2', 'number');
+        html += row('Drive 3', d.drive3, 'drive3', 'combo', CHEMS);
+        html += row('Amount 3', d.amount3, 'amount3', 'number');
       }
     }
 
