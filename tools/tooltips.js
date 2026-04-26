@@ -147,7 +147,12 @@ const TIPS = [
     { selector: '.crt-gene-badge-dormant', text: 'Dormant flag — this gene will not be expressed during the creature\'s life' },
     { selector: '.crt-gene-badge-gen', text: 'Generation level of this gene' },
     { selector: '.crt-gene-badge-age', text: 'Age stage when this gene becomes active' },
-    { selector: '.crt-svrule-container', text: 'CAOS SVRule pseudo-code for neuron initialization or updating' },
+    { selector: '.crt-svrule-container', text: 'SVRule section — human-readable pseudo-code for neuron/dendrite initialization or update logic. Click the edit toggle to modify instructions' },
+    { selector: '.svrule-summary', text: 'Expand the visual SVRule grid editor — edit opcodes, operands, and values for each instruction row. Changes update the display in real-time' },
+    { selector: '.svrule-grid-header', text: 'SVRule instruction columns: Opcode (operation), Operand (data source), Value (parameter or chemical index)' },
+    { selector: '.svrule-row', text: 'One 3-byte SVRule instruction. Each row encodes an Opcode, Operand, and Value byte in the 48-byte rule buffer' },
+    { selector: '.svrule-combo .crt-combobox-trigger', text: 'Click to open a searchable dropdown. Type to filter by name or index number' },
+    { selector: '.svrule-val-text', text: 'Numeric value for this instruction — integer (0–255) or float depending on the operand type' },
     { selector: '#crt-genome-controls .opt-toggle, #genetics-genome-controls .opt-toggle', text: 'Filter genes by primary type (Brain, Biochemistry, Creature physiology, Organ properties)' },
 
     // ── CAOS IDE Tab ─────────────────────────────────────────────────────

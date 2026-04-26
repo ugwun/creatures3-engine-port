@@ -263,6 +263,165 @@
     return html;
   }
 
+  // ── SVRule Constants ─────────────────────────────────────────────────
+  const SV_OPCODES = [
+    "stop", "nop", "store", "load", "if=0", "if!=0", "add", "sub", "mul", "div",
+    "absDiff", "thresh_add", "thresh_set", "rnd", "min", "max",
+    "if<0", "if>0", "if<=0", "if>=0",
+    "setRate", "tend", "neg", "abs", "dist", "flip",
+    "nop", "setSpr", "bound01", "bound±1", "addStore", "tendStore",
+    "threshold", "leak", "rest", "gain", "persist", "noise", "wta", "setSTLT",
+    "setLTST", "storeAbs",
+    "if0Stop", "if!0Stop", "if0Goto", "if!0Goto",
+    "divAddNI", "mulAddNI", "goto",
+    "if<Stop", "if>Stop", "if<=Stop", "if>=Stop",
+    "setRwdThr", "setRwdRate", "setRwdChem", "setPunThr", "setPunRate", "setPunChem",
+    "preserve", "restore", "preserveSpr", "restoreSpr",
+    "if<0Goto", "if>0Goto"
+  ];
+  const SV_OPERANDS_UI = [
+    "acc", "input", "dend", "neuron", "spare",
+    "random",
+    "chem[src+]", "chem", "chem[dst+]",
+    "0", "1",
+    "float", "-float", "float*10", "float/10", "int"
+  ];
+  const NOOP_OPCODES = new Set([0, 1, 26, 27, 38]);
+  const CHEM_OPERANDS = new Set([6, 7, 8]);
+  const FLOAT_OPERANDS = new Set([11, 12, 13, 14]);
+
+  function encodeFloatToSVRule(floatVal, operandId) {
+    let raw = floatVal;
+    if (operandId === 12) raw = -raw;
+    else if (operandId === 13) raw = raw / 10.0;
+    else if (operandId === 14) raw = raw * 10.0;
+    return Math.max(0, Math.min(255, Math.round(raw * 255.0)));
+  }
+
+  function decodeFloatFromSVRule(valByte, operandId) {
+    let f = valByte / 255.0;
+    if (operandId === 12) f = -f;
+    else if (operandId === 13) f *= 10.0;
+    else if (operandId === 14) f /= 10.0;
+    return f;
+  }
+
+  // Parse a raw 48-byte SVRule array into the entry format used by formatSVRule.
+  // Mirrors the server-side decompileSVRuleByBytes logic.
+  function parseSVRuleBytes(bytes) {
+    const entries = [];
+    for (let i = 0; i < 48; i += 3) {
+      const opCode = bytes[i] || 0;
+      const operandCode = bytes[i + 1] || 0;
+      const valByte = bytes[i + 2] || 0;
+
+      // Skip leading stop
+      if (opCode === 0 && i === 0) break;
+
+      const op = (opCode < SV_OPCODES.length) ? SV_OPCODES[opCode] : '???';
+      const operand = (operandCode < SV_OPERANDS_UI.length) ? SV_OPERANDS_UI[operandCode] : '???';
+
+      // Float approximation (matches engine logic)
+      let val = 0.0;
+      if (operandCode >= 11 && operandCode <= 15) {
+        val = valByte / 255.0;
+        if (operandCode === 12) val = -val;
+        else if (operandCode === 13) val *= 10.0;
+        else if (operandCode === 14) val /= 10.0;
+        else if (operandCode === 15) val = val * 255.0;
+      }
+
+      entries.push({ op, operand, idx: valByte, val, opCode, operandCode });
+      if (opCode === 0) break;
+    }
+    return entries;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function svCombo(cssClass, rowIdx, optionsObj, isArray, selectedVal, extraStyle) {
+    let selectedLabel = selectedVal;
+    if (optionsObj === CHEMS && selectedVal >= 0 && selectedVal <= 255) {
+      selectedLabel = CHEMS[selectedVal] !== undefined ? CHEMS[selectedVal] : 'Chem ' + selectedVal;
+    } else if (isArray && optionsObj[selectedVal] !== undefined) {
+      selectedLabel = optionsObj[selectedVal];
+    } else if (!isArray && optionsObj[selectedVal] !== undefined) {
+      selectedLabel = optionsObj[selectedVal];
+    }
+    const safeSel = escHtml(selectedLabel);
+
+    let h = `<div class="crt-combobox svrule-combo" data-row="${rowIdx}" style="position:relative; display:inline-block; font-family:var(--font-mono); font-size:11px; ${extraStyle || ''}">`;
+    h += `<div class="crt-combobox-trigger" style="width:100%; box-sizing:border-box; padding:2px 4px; border:1px solid var(--border, #888); background:var(--bg-input, #fff); color:var(--text, #000); cursor:pointer; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; display:flex; justify-content:space-between; align-items:center;" title="${safeSel}">`;
+    h += `<span>${safeSel}</span><span style="font-size:8px; opacity:0.5;">▼</span></div>`;
+    h += `<input type="hidden" class="${cssClass}" data-row="${rowIdx}" value="${selectedVal}" />`;
+    h += `<div class="crt-combobox-popup" style="display:none; position:absolute; z-index:9999; top:100%; left:0; width:220px; background:var(--bg-panel, #222); border:1px solid var(--border, #444); box-shadow:0 8px 16px rgba(0,0,0,0.5); border-radius:4px; padding:4px; margin-top:2px;">`;
+    h += `<input type="text" class="crt-combobox-search" placeholder="Search..." style="width:100%; box-sizing:border-box; padding:4px; margin-bottom:4px; font-family:var(--font-mono); font-size:11px; background:var(--black); color:var(--white); border:1px solid var(--orange);" />`;
+    h += `<div class="crt-combobox-list" style="max-height:200px; overflow-y:auto;">`;
+
+    if (isArray) {
+      for (let i = 0; i < optionsObj.length; i++) {
+        const lbl = escHtml(optionsObj[i]);
+        h += `<div class="crt-combobox-item" data-val="${i}" data-label="${lbl}" style="padding:4px 8px; cursor:pointer; font-size:11px; white-space:nowrap; color:var(--white); border-radius:2px;"><span style="opacity:0.5; width:24px; display:inline-block;">${i}</span> ${lbl}</div>`;
+      }
+    } else if (optionsObj === CHEMS) {
+      for (let i = 0; i < 256; i++) {
+        const lbl = escHtml(CHEMS[i] !== undefined ? CHEMS[i] : 'Chem ' + i);
+        h += `<div class="crt-combobox-item" data-val="${i}" data-label="${lbl}" style="padding:4px 8px; cursor:pointer; font-size:11px; white-space:nowrap; color:var(--white); border-radius:2px;"><span style="opacity:0.5; width:24px; display:inline-block;">${i}</span> ${lbl}</div>`;
+      }
+    } else {
+      for (const k in optionsObj) {
+        const lbl = escHtml(optionsObj[k]);
+        h += `<div class="crt-combobox-item" data-val="${k}" data-label="${lbl}" style="padding:4px 8px; cursor:pointer; font-size:11px; white-space:nowrap; color:var(--white); border-radius:2px;"><span style="opacity:0.5; width:24px; display:inline-block;">${k}</span> ${lbl}</div>`;
+      }
+    }
+    h += `</div></div></div>`;
+    return h;
+  }
+
+  function renderSVRuleEditor(keyPath, bytes, geneIdx) {
+    let html = `<div class="crt-svrule-editor" data-gene-idx="${geneIdx}" data-rule-key="${keyPath}">`;
+    html += `<div class="svrule-grid-header">`;
+    html += `<span>#</span><span>Opcode</span><span>Operand</span><span>Value</span></div>`;
+    html += `<input type="hidden" class="crt-svrule-hidden-bytes crt-gene-input" data-idx="${geneIdx}" data-key="${keyPath}" value="${(bytes || []).join(',')}" />`;
+
+    for (let i = 0; i < 16; i++) {
+      const offset = i * 3;
+      const opByte = bytes.length > offset ? bytes[offset] : 0;
+      const operandByte = bytes.length > offset + 1 ? bytes[offset + 1] : 0;
+      const valByte = bytes.length > offset + 2 ? bytes[offset + 2] : 0;
+
+      const isNoOp = NOOP_OPCODES.has(opByte);
+      const isChem = CHEM_OPERANDS.has(operandByte);
+      const isFloat = FLOAT_OPERANDS.has(operandByte);
+      const hideStyle = isNoOp ? 'opacity:0; pointer-events:none;' : '';
+
+      html += `<div class="svrule-row" data-row="${i}">`;
+      html += `<span style="font-size:10px; font-weight:600; color:rgba(0,0,0,0.25); text-align:center;">${String(i + 1).padStart(2, '0')}</span>`;
+      html += svCombo('svrule-op', i, SV_OPCODES, true, opByte, 'width:100%;');
+      html += `<div class="svrule-operand-wrap" data-row="${i}" style="${hideStyle} transition:opacity 0.15s;">`;
+      html += svCombo('svrule-operand', i, SV_OPERANDS_UI, true, operandByte, 'width:100%;');
+      html += `</div>`;
+      html += `<div class="svrule-val-wrap" data-row="${i}" style="${hideStyle} transition:opacity 0.15s;">`;
+      if (isChem) {
+        html += svCombo('svrule-val-chem', i, CHEMS, false, valByte, 'width:100%;');
+        html += `<input type="number" class="svrule-val-text" data-row="${i}" value="${valByte}" style="display:none;" />`;
+      } else if (isFloat) {
+        const fv = decodeFloatFromSVRule(valByte, operandByte);
+        html += `<input type="number" class="svrule-val-text" data-row="${i}" value="${fv.toFixed(4)}" step="0.01" style="width:100%; padding:2px 4px; font-family:var(--font-mono); font-size:11px; border:1px solid rgba(0,0,0,0.15);" />`;
+        html += `<div class="svrule-val-chem-wrap" data-row="${i}" style="display:none;"></div>`;
+      } else {
+        html += `<input type="number" class="svrule-val-text" data-row="${i}" value="${valByte}" min="0" max="255" style="width:100%; padding:2px 4px; font-family:var(--font-mono); font-size:11px; border:1px solid rgba(0,0,0,0.15);" />`;
+        html += `<div class="svrule-val-chem-wrap" data-row="${i}" style="display:none;"></div>`;
+      }
+      html += `</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
   function renderGeneData(gene, index = 0, isInteractive = false) {
     const d = gene.data;
     let html = '<div class="crt-gene-grid">';
@@ -353,10 +512,18 @@
         html += `<div class="crt-svrule-container">`;
         html += `<div class="crt-svrule-title">Init Rule</div>`;
         html += window.formatSVRule ? window.formatSVRule(d.initRule) : '<div class="crt-empty-hint">svrule plugin missing</div>';
-        if (isInteractive) html += row('Raw Init Bytes', d.initRuleBytes || [], 'initRuleBytes', 'array');
+        if (isInteractive) {
+          html += `<details class="svrule-details"><summary class="svrule-summary">✏️ Edit Init Rule</summary>`;
+          html += renderSVRuleEditor('initRuleBytes', d.initRuleBytes || [], index);
+          html += `</details>`;
+        }
         html += `<div class="crt-svrule-title" style="margin-top: 8px">Update Rule (Every ${d.updateTime} ticks)</div>`;
         html += window.formatSVRule ? window.formatSVRule(d.updateRule) : '<div class="crt-empty-hint">svrule plugin missing</div>';
-        if (isInteractive) html += row('Raw Update Bytes', d.updateRuleBytes || [], 'updateRuleBytes', 'array');
+        if (isInteractive) {
+          html += `<details class="svrule-details"><summary class="svrule-summary">✏️ Edit Update Rule</summary>`;
+          html += renderSVRuleEditor('updateRuleBytes', d.updateRuleBytes || [], index);
+          html += `</details>`;
+        }
         html += `</div>`;
         return html;
       }
@@ -372,10 +539,18 @@
         html += `<div class="crt-svrule-container">`;
         html += `<div class="crt-svrule-title">Init Rule</div>`;
         html += window.formatSVRule ? window.formatSVRule(d.initRule) : '<div class="crt-empty-hint">svrule plugin missing</div>';
-        if (isInteractive) html += row('Raw Init Bytes', d.initRuleBytes || [], 'initRuleBytes', 'array');
+        if (isInteractive) {
+          html += `<details class="svrule-details"><summary class="svrule-summary">✏️ Edit Init Rule</summary>`;
+          html += renderSVRuleEditor('initRuleBytes', d.initRuleBytes || [], index);
+          html += `</details>`;
+        }
         html += `<div class="crt-svrule-title" style="margin-top: 8px">Update Rule (Every ${d.updateTime} ticks)</div>`;
         html += window.formatSVRule ? window.formatSVRule(d.updateRule) : '<div class="crt-empty-hint">svrule plugin missing</div>';
-        if (isInteractive) html += row('Raw Update Bytes', d.updateRuleBytes || [], 'updateRuleBytes', 'array');
+        if (isInteractive) {
+          html += `<details class="svrule-details"><summary class="svrule-summary">✏️ Edit Update Rule</summary>`;
+          html += renderSVRuleEditor('updateRuleBytes', d.updateRuleBytes || [], index);
+          html += `</details>`;
+        }
         html += `</div>`;
         return html;
       }
@@ -517,6 +692,15 @@
     getChemName,
     renderGeneCard,
     renderGeneData,
-    CHEMS
+    CHEMS,
+    SV_OPCODES,
+    SV_OPERANDS_UI,
+    NOOP_OPCODES,
+    CHEM_OPERANDS,
+    FLOAT_OPERANDS,
+    encodeFloatToSVRule,
+    decodeFloatFromSVRule,
+    svCombo,
+    parseSVRuleBytes
   };
 })();

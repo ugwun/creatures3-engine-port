@@ -145,7 +145,7 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
 | [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
 | [`tools/genetics.js`](genetics.js) | Genetics Kit tab: genome browser, structural modifiers, inline editor, SV Rule bytecodes, crossover, injection, file ops |
-| [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit dom factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs |
+| [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit DOM factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs, SVRule visual grid editor with searchable comboboxes, and client-side byte↔entry parsing |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -504,7 +504,7 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ Browse `.gen` library with string-based moniker search filtering
 - ✅ Real-time structural chromosome editing (Move Up, Move Down, Add, Duplicate, Delete)
 - ✅ Inline property editing for thresholds, clock rates, coordinates, parameters, and flags, including custom searchable comboboxes for engine-synchronized chemical selections
-- ✅ Raw bytecode array inputs for Brain Lobe and Neural Tract SV Rules
+- ✅ Visual 16-row SVRule grid editor with searchable Bright-Fi comboboxes for opcodes, operands, and chemical values, with real-time human-readable display sync
 - ✅ Deep-search text filtering matching numerical properties housed inside DOM inputs
 - ✅ File lifecycle management (New template, Save to engine, Export to browser, Import from browser)
 - ✅ Engine cross-breeding algorithms directly wired to the API

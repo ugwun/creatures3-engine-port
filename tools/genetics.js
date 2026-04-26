@@ -317,7 +317,7 @@
       
       const saveName = prompt("Save as:", currentGenome.moniker);
       if (!saveName) {
-         btnSave.textContent = "Save .gen";
+         btnSave.textContent = "SAVE";
          return;
       }
       const dataOut = { ...currentGenome, saveName: saveName };
@@ -340,7 +340,7 @@
       } catch (e) {
         alert("Save failed");
       } finally {
-        btnSave.textContent = "Save .gen";
+        btnSave.textContent = "SAVE";
       }
     });
   }
@@ -630,7 +630,119 @@
     if (!currentGenome) return;
     const el = e.target;
     if (el.tagName !== 'INPUT' && el.tagName !== 'SELECT') return;
-    
+
+    // ── SVRule Editor: handle opcode/operand/value changes ──────────
+    const isSVR = el.classList.contains('svrule-op') ||
+                  el.classList.contains('svrule-operand') ||
+                  el.classList.contains('svrule-val-text') ||
+                  el.classList.contains('svrule-val-chem');
+    if (isSVR) {
+      const editor = el.closest('.crt-svrule-editor');
+      if (!editor) return;
+      const hiddenInput = editor.querySelector('.crt-svrule-hidden-bytes');
+      if (!hiddenInput) return;
+
+      const GR = window.GeneRenderer;
+      const keyPath = hiddenInput.dataset.key;
+      const geneIdx = parseInt(hiddenInput.dataset.idx, 10);
+      if (isNaN(geneIdx) || !currentGenome.genes[geneIdx]) return;
+      const gene = currentGenome.genes[geneIdx];
+
+      // If opcode changed, toggle operand/value visibility
+      if (el.classList.contains('svrule-op')) {
+        const rowIdx = el.dataset.row;
+        const opVal = parseInt(el.value, 10);
+        const isNoOp = GR.NOOP_OPCODES.has(opVal);
+        const opdWrap = editor.querySelector(`.svrule-operand-wrap[data-row="${rowIdx}"]`);
+        const valWrap = editor.querySelector(`.svrule-val-wrap[data-row="${rowIdx}"]`);
+        if (opdWrap) {
+          opdWrap.style.opacity = isNoOp ? '0' : '1';
+          opdWrap.style.pointerEvents = isNoOp ? 'none' : 'auto';
+        }
+        if (valWrap) {
+          valWrap.style.opacity = isNoOp ? '0' : '1';
+          valWrap.style.pointerEvents = isNoOp ? 'none' : 'auto';
+        }
+      }
+
+      // If operand changed, swap value cell between text/number and chemical combobox
+      if (el.classList.contains('svrule-operand')) {
+        const rowIdx = el.dataset.row;
+        const operandVal = parseInt(el.value, 10);
+        const isChem = GR.CHEM_OPERANDS.has(operandVal);
+        const isFloat = GR.FLOAT_OPERANDS.has(operandVal);
+        const valWrap = editor.querySelector(`.svrule-val-wrap[data-row="${rowIdx}"]`);
+        if (valWrap) {
+          const existingText = valWrap.querySelector('.svrule-val-text');
+          const existingChem = valWrap.querySelector('.svrule-combo');
+          const existingChemWrap = valWrap.querySelector('.svrule-val-chem-wrap');
+          const currentValByte = existingText ? parseInt(existingText.value, 10) || 0 :
+                                 (existingChem ? parseInt(existingChem.querySelector('.svrule-val-chem')?.value, 10) || 0 : 0);
+
+          if (isChem) {
+            // Need chemical combobox: rebuild the entire value cell
+            valWrap.innerHTML = GR.svCombo('svrule-val-chem', rowIdx, GR.CHEMS, false, currentValByte, 'width:100%;') +
+              `<input type="number" class="svrule-val-text" data-row="${rowIdx}" value="${currentValByte}" style="display:none;" />`;
+          } else if (isFloat) {
+            const fv = GR.decodeFloatFromSVRule(currentValByte, operandVal);
+            valWrap.innerHTML = `<input type="number" class="svrule-val-text" data-row="${rowIdx}" value="${fv.toFixed(4)}" step="0.01" style="width:100%; padding:2px 4px; font-family:var(--font-mono); font-size:11px; border:1px solid rgba(0,0,0,0.15);" />` +
+              `<div class="svrule-val-chem-wrap" data-row="${rowIdx}" style="display:none;"></div>`;
+          } else {
+            valWrap.innerHTML = `<input type="number" class="svrule-val-text" data-row="${rowIdx}" value="${currentValByte}" min="0" max="255" style="width:100%; padding:2px 4px; font-family:var(--font-mono); font-size:11px; border:1px solid rgba(0,0,0,0.15);" />` +
+              `<div class="svrule-val-chem-wrap" data-row="${rowIdx}" style="display:none;"></div>`;
+          }
+        }
+      }
+
+      // Rebuild the 48-byte array from the 16 rows
+      const newBytes = [];
+      for (let r = 0; r < 16; r++) {
+        const opInput = editor.querySelector(`.svrule-op[data-row="${r}"]`);
+        const opdInput = editor.querySelector(`.svrule-operand[data-row="${r}"]`);
+        const valText = editor.querySelector(`.svrule-val-text[data-row="${r}"]`);
+        const valChem = editor.querySelector(`.svrule-val-chem[data-row="${r}"]`);
+
+        const opByte = opInput ? parseInt(opInput.value, 10) : 0;
+        const opdByte = opdInput ? parseInt(opdInput.value, 10) : 0;
+
+        let valByte = 0;
+        if (GR.CHEM_OPERANDS.has(opdByte) && valChem) {
+          valByte = parseInt(valChem.value, 10) || 0;
+        } else if (GR.FLOAT_OPERANDS.has(opdByte) && valText) {
+          valByte = GR.encodeFloatToSVRule(parseFloat(valText.value) || 0, opdByte);
+        } else if (valText) {
+          valByte = Math.max(0, Math.min(255, parseInt(valText.value, 10) || 0));
+        }
+
+        newBytes.push(opByte, opdByte, valByte);
+      }
+
+      // Update the hidden input and data model
+      hiddenInput.value = newBytes.join(',');
+      gene.data[keyPath] = newBytes;
+
+      // Re-render the human-readable SVRule display above the editor
+      const parsedKey = keyPath.replace('Bytes', ''); // initRuleBytes → initRule, updateRuleBytes → updateRule
+      const entries = GR.parseSVRuleBytes(newBytes);
+      gene.data[parsedKey] = entries;
+
+      // Find the .crt-nd-svrule display: editor → svrule-details → previous sibling
+      const details = editor.closest('.svrule-details');
+      if (details) {
+        let sibling = details.previousElementSibling;
+        while (sibling && !sibling.classList.contains('crt-nd-svrule') && !sibling.classList.contains('crt-nd-svrule-empty')) {
+          sibling = sibling.previousElementSibling;
+        }
+        if (sibling && window.formatSVRule) {
+          sibling.outerHTML = window.formatSVRule(entries);
+        }
+      }
+
+      updateModifiedSection();
+      return;
+    }
+
+    // ── Standard gene field handling ────────────────────────────────
     const idx = parseInt(el.dataset.idx, 10);
     if (isNaN(idx)) return;
     const g = currentGenome.genes[idx];
@@ -702,20 +814,20 @@
     const item = e.target.closest('.crt-combobox-item');
     if (item) {
       const combobox = item.closest('.crt-combobox');
-      const hiddenInput = combobox.querySelector('.crt-gene-input');
+      const hiddenInput = combobox.querySelector('input[type="hidden"]');
       const triggerSpan = combobox.querySelector('.crt-combobox-trigger span');
       const popup = combobox.querySelector('.crt-combobox-popup');
       
       const val = item.dataset.val;
       const label = item.dataset.label;
       
-      hiddenInput.value = val;
-      triggerSpan.textContent = label;
+      if (hiddenInput) hiddenInput.value = val;
+      if (triggerSpan) triggerSpan.textContent = label;
       combobox.querySelector('.crt-combobox-trigger').title = label;
       popup.style.display = 'none';
       
       // Dispatch change event to trigger saving
-      hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+      if (hiddenInput) hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
   });
