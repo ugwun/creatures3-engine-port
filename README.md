@@ -50,12 +50,12 @@ This is an **unofficial macOS port** of the Creatures 3 / Docking Station game e
 ## Prerequisites
 
 - **CMake** (3.10+)
-- **SDL 1.2** (or `sdl12-compat`)
+- **SDL 2.0** (`sdl2` + `sdl2_mixer`)
 - **ZLIB**
 
 On macOS, you can install these via Homebrew:
 ```bash
-brew install cmake sdl12-compat zlib
+brew install cmake sdl2 sdl2_mixer zlib
 ```
 
 ## Building
