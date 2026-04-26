@@ -13,6 +13,7 @@ const TIPS = [
     { selector: '#btn-nav-toggle', text: 'Toggle the left navigation sidebar on/off' },
     { selector: '#logo', text: 'Creatures 3 Developer Tools — macOS engine port' },
     { selector: '#status-pill', text: 'Engine connection status. Green = connected via SSE, red = disconnected' },
+    { selector: '#creator-badge', text: 'Created by Cyril Sadovsky — view LinkedIn profile' },
     { selector: '#btn-engine-play', text: 'Resume engine simulation — the game world continues running' },
     { selector: '#btn-engine-pause', text: 'Pause engine simulation — freezes the world but the API stays responsive' },
     { selector: '#opt-tooltips', text: 'Enable or disable these contextual help tooltips. Preference is saved in localStorage' },
@@ -24,7 +25,7 @@ const TIPS = [
     { selector: '.tab-btn[data-tab="scripts"]', text: 'Running Scripts — live table of all CAOS scripts currently executing across all agents' },
     { selector: '.tab-btn[data-tab="debugger"]', text: 'CAOS Debugger — source-level debugger with breakpoints, stepping, and variable inspection' },
     { selector: '.tab-btn[data-tab="ide"]', text: 'CAOS IDE — code editor with syntax highlighting, autocomplete, scriptorium browser, and breakpoints' },
-    { selector: '.tab-btn[data-tab="docs"]', text: 'Architecture Docs — interactive class graph of the engine architecture' },
+    { selector: '.tab-btn[data-tab="docs"]', text: 'Developer Documentation — internal Wiki and interactive engine Architecture Graph' },
     { selector: '.tab-btn[data-tab="genetics"]', text: 'Genetics Kit — manipulate, cross-breed, and inject custom creature genomes directly into the world' },
 
     // ── Log Tab ───────────────────────────────────────────────────────────
@@ -179,10 +180,13 @@ const TIPS = [
     { selector: '#ide-line-numbers', text: 'Line numbers — click a number to toggle a breakpoint on that line' },
 
     // ── Docs Tab ─────────────────────────────────────────────────────────
+    { selector: '.docs-sub-btn[data-docs-tab="wiki"]', text: 'Developer Wiki — browse documentation, guides, and API references' },
+    { selector: '.docs-sub-btn[data-docs-tab="graph"]', text: 'Architecture Graph — interactive class map of the engine architecture' },
     { selector: '#btn-docs-zoom-out', text: 'Zoom out the architecture graph' },
     { selector: '#btn-docs-zoom-in', text: 'Zoom in the architecture graph' },
     { selector: '#btn-docs-reset', text: 'Reset the graph view to default zoom and position' },
-    { selector: '.docs-detail-header', text: 'Click a class node in the graph to see its description, file path, and connections' },
+    { selector: '.docs-wiki-item', text: 'Click to load this documentation page into the viewer' },
+    { selector: '.docs-toc-item', text: 'Click to scroll directly to this section on the current page' },
     { selector: '#docs-legend', text: 'Colour key for the architecture layers and connection types' },
     { selector: '#docs-viewport', text: 'Architecture graph — drag to pan, Ctrl+scroll to zoom, click nodes to inspect, drag nodes to rearrange' },
 

@@ -144,6 +144,8 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
 | [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
 | [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
+| [`tools/docs.js`](docs.js) | Docs tab: Markdown-powered Developer Wiki viewer, internal document routing, and interactive Architecture Graph |
+| [`tools/marked.min.js`](marked.min.js) | Vendored Markdown parser used by the Developer Wiki |
 | [`tools/genetics.js`](genetics.js) | Genetics Kit tab: genome browser, structural modifiers, inline editor, SV Rule bytecodes, crossover, injection, file ops |
 | [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit DOM factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs, SVRule visual grid editor with searchable comboboxes, and client-side byte↔entry parsing |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
@@ -509,3 +511,12 @@ See [Breakpoint Mechanism](#breakpoint-mechanism) above.
 - ✅ File lifecycle management (New template, Save to engine, Export to browser, Import from browser)
 - ✅ Engine cross-breeding algorithms directly wired to the API
 - ✅ Full creature injection pipeline integrated to standard CAOS hatching macros
+
+### ~~Phase 7 — Developer Documentation~~ ✅ Implemented
+
+- ✅ Internal Developer Wiki using `marked.min.js` to render Markdown documents dynamically
+- ✅ Zero-reload client-side routing and file fetching from `tools/docs/index.json`
+- ✅ Auto-generated, scrollable Table of Contents synced to current page headers
+- ✅ Internal Markdown link interception mapping file paths into Wiki page loads
+- ✅ Sub-view architecture splitting Wiki documentation and interactive C++ Architecture Graph
+- ✅ Image constraint and custom styling to maintain "Bright-Fi" high-contrast aesthetic

@@ -638,11 +638,21 @@ The CAOS IDE allows you to set breakpoints on source lines, then **choose which 
 - **Breakpoints are not persistent** — breakpoints are cleared when the source text is edited, when a new script is loaded, or when the page is refreshed. They exist only in the browser session
 - **Blank-line breakpoints** — clicking a line with no CAOS instructions (blank line, comment-only line) shows an info message and does not set a breakpoint
 
-### Docs (Architecture Graph)
+### Developer Documentation (Wiki & Architecture Graph)
 
-The **Docs** tab displays an interactive, fully client-side architecture node graph of the primary C++ engine classes utilizing an SVG overlay system on a 2D DOM pane.
+![Developer Tools — Wiki](developer_tools_wiki.png)
 
-**Features:**
+The **Docs** tab acts as the built-in knowledge base for the project, featuring two integrated sub-views accessible via toolbar toggles:
+
+**Developer Wiki:**
+- **Markdown Rendering:** A fully client-side Wiki engine using `marked.min.js`. It fetches, parses, and renders Markdown documents (`.md`) dynamically into a sleek, high-contrast reading pane.
+- **Dynamic File Loading:** Page content is defined by `tools/docs/index.json`. Clicking items in the left-hand page list fetches the corresponding file from the `tools/docs/` directory without a page reload.
+- **Table of Contents:** An auto-generated right-hand sidebar scans the active Markdown document for headers (`<h2>`, `<h3>`), building a clickable Table of Contents that scrolls the reading pane directly to the selected section.
+- **Internal Routing:** Internal Markdown links (e.g., `[Link](file.md)`) are intercepted by the client router to seamlessly transition between Wiki pages.
+- **Image Scaling:** All inline Markdown images are automatically responsive and scaled to fit the reading pane, preventing overflow.
+
+**Architecture Graph:**
+- Displays an interactive, fully client-side architecture node graph of the primary C++ engine classes utilizing an SVG overlay system on a 2D DOM pane.
 - **Drag & Drop:** You can click and drag class container nodes to dynamically restructure the spatial view at any time.
 - **Auto-routing connections:** Edges reroute instantaneously linking related system objects regardless of structure. Solid lines reflect strong inheritance / ownership properties while dashed represent loosely coupled spans / dependencies.
 - **Node Highlight:** You can hover edge paths, which will visually highlight the associated connecting classes in a bright orange tint. 

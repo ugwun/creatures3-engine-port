@@ -394,4 +394,130 @@ btnZoomOut.addEventListener("click", () => applyZoom(-0.2));
 // (Defs are now called in initGraph)
 initGraph();
 
+// ── Wiki Subsystem ────────────────────────────────────────────────────────
+const docsWikiList = document.getElementById("docs-wiki-list");
+const docsWikiContent = document.getElementById("docs-wiki-content");
+const docsWikiToc = document.getElementById("docs-wiki-toc");
+const docsControls = document.getElementById("docs-controls");
+
+const docsSubTabs = document.querySelectorAll("#docs-sub-tabs .docs-sub-btn");
+const docsSubViews = document.querySelectorAll(".docs-subview");
+
+let wikiIndex = [];
+let currentWikiFile = null;
+
+docsSubTabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+        docsSubTabs.forEach(b => b.classList.remove("active"));
+        
+        const tab = btn.dataset.docsTab;
+        if (tab === "wiki") {
+            btn.classList.add("active");
+            document.getElementById("docs-wiki-view").style.display = "flex";
+            document.getElementById("docs-graph-view").style.display = "none";
+            document.getElementById("docs-zoom-controls").style.display = "none";
+        } else {
+            btn.classList.add("active");
+            document.getElementById("docs-wiki-view").style.display = "none";
+            document.getElementById("docs-graph-view").style.display = "flex";
+            document.getElementById("docs-zoom-controls").style.display = "flex";
+        }
+    });
+});
+
+async function loadWikiIndex() {
+    try {
+        const res = await fetch("/docs/index.json");
+        if (!res.ok) throw new Error("Index not found");
+        wikiIndex = await res.json();
+        renderWikiSidebar();
+        if (wikiIndex.length > 0) {
+            loadWikiPage(wikiIndex[0].file);
+        }
+    } catch (err) {
+        docsWikiList.innerHTML = `<div class="crt-empty-hint">Failed to load index.json</div>`;
+    }
+}
+
+function renderWikiSidebar() {
+    docsWikiList.innerHTML = "";
+    wikiIndex.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "docs-wiki-item";
+        el.textContent = item.title;
+        el.dataset.file = item.file;
+        el.addEventListener("click", () => loadWikiPage(item.file));
+        docsWikiList.appendChild(el);
+    });
+}
+
+async function loadWikiPage(filename) {
+    currentWikiFile = filename;
+    
+    // Update active state in sidebar
+    Array.from(docsWikiList.children).forEach(el => {
+        el.classList.toggle("docs-wiki-item--active", el.dataset.file === filename);
+    });
+
+    try {
+        const res = await fetch(`/docs/${filename}`);
+        if (!res.ok) throw new Error(`Could not load ${filename}`);
+        const text = await res.text();
+        
+        docsWikiContent.innerHTML = marked.parse(text);
+        generateWikiTOC();
+        interceptWikiLinks();
+    } catch (err) {
+        docsWikiContent.innerHTML = `<div class="crt-empty-hint">Error: ${err.message}</div>`;
+        docsWikiToc.innerHTML = "";
+    }
+}
+
+function generateWikiTOC() {
+    docsWikiToc.innerHTML = "";
+    const headers = docsWikiContent.querySelectorAll("h1, h2, h3");
+    
+    if (headers.length === 0) {
+        docsWikiToc.innerHTML = `<div class="crt-empty-hint">No headings</div>`;
+        return;
+    }
+
+    headers.forEach((h, i) => {
+        if (!h.id) h.id = `wiki-h-${i}`;
+        
+        const link = document.createElement("a");
+        link.className = `docs-toc-item docs-toc-${h.tagName.toLowerCase()}`;
+        link.href = `#${h.id}`;
+        link.textContent = h.textContent;
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            h.scrollIntoView({ behavior: "smooth" });
+        });
+        docsWikiToc.appendChild(link);
+    });
+}
+
+function interceptWikiLinks() {
+    const links = docsWikiContent.querySelectorAll("a");
+    links.forEach(a => {
+        const href = a.getAttribute("href");
+        if (href && href.endsWith(".md")) {
+            a.addEventListener("click", (e) => {
+                e.preventDefault();
+                // Strip leading ./ or / if present
+                let target = href;
+                if (target.startsWith("./")) target = target.substring(2);
+                if (target.startsWith("/")) target = target.substring(1);
+                loadWikiPage(target);
+            });
+        }
+    });
+}
+
+// Initial hide of docs zoom controls since Wiki is the default tab
+docsControls.hidden = true;
+
+// Kick off wiki load
+loadWikiIndex();
+
 })();
