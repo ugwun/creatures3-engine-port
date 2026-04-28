@@ -338,7 +338,25 @@ bool MainCamera::StartUp(
 
     DoTrackingChecks();
 
-    Update(myCompleteRedraw || DisplayEngine::theRenderer()
+    // SDL port: always force a complete background redraw.
+    //
+    // The dirty-tile optimisation (only repainting the 128×128 background tiles
+    // under sprites that moved) was essential on 1999 hardware but is
+    // unnecessary on modern systems.  In the SDL back-buffer renderer the
+    // software surface retains pixel data between frames; if a dirty-tile entry
+    // is ever stale or miscomputed the wrong background tile persists on screen
+    // until something (an agent, the hand cursor) moves over it and forces a
+    // repaint.  This manifests as an intermittent square showing content from a
+    // previous camera position (typically the Norn Terrarium at ~367, 942).
+    //
+    // Forcing completeRedraw == true every frame eliminates the issue with
+    // negligible cost (~35 tiles × 32 KB ≈ 1.1 MB memcpy per frame).
+#ifdef C2E_SDL
+    bool forceComplete = true;
+#else
+    bool forceComplete = myCompleteRedraw;
+#endif
+    Update(forceComplete || DisplayEngine::theRenderer()
                                    .ShouldIRenderTheEntireMainCameraOrNot(),
            myLoadingFlag);
     // complete redraw the first frame, and not after that
