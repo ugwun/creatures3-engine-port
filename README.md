@@ -187,7 +187,14 @@ The engine supports the [Model Context Protocol (MCP)](https://modelcontextproto
 cd mcp && npm install
 ```
 
-Once connected, an AI agent has access to 15 tools including `execute_caos`, `list_creatures`, `get_creature_chemistry`, `get_creature_brain`, `pause_engine`, and more. The `--mcp` flag starts the API server without the browser UI; use `--tools` instead if you want both the browser developer tools and AI access.
+Once connected, an AI agent has access to 25 tools across four categories:
+
+- **Engine Control**: `execute_caos`, `pause_engine`, `resume_engine`, `get_engine_state`
+- **Creature Inspection**: `list_creatures`, `get_creature_chemistry`, `get_creature_brain`, `get_brain_lobe`, `get_brain_tract`, `kill_creature`
+- **Debugging**: `get_agent`, `list_scripts`, `list_scriptorium`, `set_breakpoint`, `step_agent`, `continue_agent`
+- **Experiment Control** *(new)*: `list_worlds`, `create_world`, `load_world`, `save_world`, `get_world_tick`, `get_world_stats`, `snapshot_all_creatures`, `set_tick_rate`, `advance_ticks`
+
+The `--mcp` flag starts the API server without the browser UI; use `--tools` instead if you want both the browser developer tools and AI access.
 
 For setup instructions and full tool reference, see [`mcp/MCP.md`](./mcp/MCP.md).
 

@@ -79,9 +79,13 @@
 #include <unistd.h>
 #include <vector>
 
-// Engine pause flag — defined in SDL_Main.cpp
+// Engine control — defined in SDL_Main.cpp
 extern void SetEnginePaused(bool paused);
 extern bool IsEnginePaused();
+extern void SetGameSpeedMultiplier(float m);
+extern float GetGameSpeedMultiplier();
+extern void SetAdvanceTicks(uint32 n);
+extern uint32 GetAdvanceTicksRemaining();
 
 
 
@@ -2686,6 +2690,408 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 		}
 
 		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ═══════════════════════════════════════════════════════════════════
+	// PHASE 3: HEADLESS OPERATION — World, Creature, Experiment Tools
+	// ═══════════════════════════════════════════════════════════════════
+
+	// ── GET /api/worlds ─────────────────────────────────────────────
+	// List all available world names.
+	myImpl->svr.Get("/api/worlds", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "{\"currentWorld\":\"" << JsonEscape(theApp.GetWorld().GetWorldName()) << "\"";
+			json << ",\"worldTick\":" << theApp.GetWorld().GetWorldTick();
+			json << ",\"worlds\":[";
+			int count = theApp.GetWorld().WorldCount();
+			bool first = true;
+			for (int i = 0; i < count; ++i) {
+				std::string name;
+				if (theApp.GetWorld().WorldName(i, name)) {
+					if (name == "Startup") continue;
+					if (!first) json << ",";
+					first = false;
+					json << "\"" << JsonEscape(name) << "\"";
+				}
+			}
+			json << "]}";
+			return json.str();
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/world/create ──────────────────────────────────────
+	// Create a new empty world.  Body: { "name": "..." }
+	myImpl->svr.Post("/api/world/create", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		auto* item = new WorkItem();
+		item->work = [body]() -> std::string {
+			try {
+				auto j = nlohmann::json::parse(body);
+				std::string name = j.value("name", "");
+				if (name.empty()) return "{\"ok\":false,\"error\":\"Missing 'name'\"}";
+				bool ok = theApp.CreateNewWorld(name);
+				if (ok) return "{\"ok\":true,\"world\":\"" + JsonEscape(name) + "\"}";
+				else return "{\"ok\":false,\"error\":\"CreateNewWorld failed\"}";
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(15)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/world/load ────────────────────────────────────────
+	// Load an existing world by name.  Body: { "name": "..." }
+	// This sets the deferred load flag; the world switches on next tick.
+	myImpl->svr.Post("/api/world/load", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		auto* item = new WorkItem();
+		item->work = [body]() -> std::string {
+			try {
+				auto j = nlohmann::json::parse(body);
+				std::string name = j.value("name", "");
+				if (name.empty()) return "{\"ok\":false,\"error\":\"Missing 'name'\"}";
+				theApp.myLoadThisWorldNextTick = name;
+				return "{\"ok\":true,\"loading\":\"" + JsonEscape(name) + "\"}";
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/world/save ────────────────────────────────────────
+	// Save the current world.
+	myImpl->svr.Post("/api/world/save", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			try {
+				bool ok = theApp.GetWorld().Save();
+				return std::string("{\"ok\":") + (ok ? "true" : "false") + "}";
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(15)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/world/tick ─────────────────────────────────────────
+	// Returns current world tick, system tick, and world name.
+	myImpl->svr.Get("/api/world/tick", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "{\"worldTick\":" << theApp.GetWorld().GetWorldTick()
+			     << ",\"systemTick\":" << theApp.GetSystemTick()
+			     << ",\"worldName\":\"" << JsonEscape(theApp.GetWorld().GetWorldName()) << "\""
+			     << "}";
+			return json.str();
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(3)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/creature/kill ─────────────────────────────────────
+	// Kill (remove) a creature by agent ID.  Body: { "agentId": N }
+	myImpl->svr.Post("/api/creature/kill", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		auto* item = new WorkItem();
+		item->work = [body]() -> std::string {
+			try {
+				auto j = nlohmann::json::parse(body);
+				int agentId = j.value("agentId", 0);
+				if (agentId == 0) return "{\"ok\":false,\"error\":\"Missing 'agentId'\"}";
+
+				// Use CAOS to kill the creature — same as in-game death
+				std::string cmd = "targ agnt " + std::to_string(agentId) + " kill targ";
+				Orderiser o;
+				if (MacroScript* m = o.OrderFromCAOS(cmd.c_str())) {
+					CAOSMachine vm;
+					vm.StartScriptExecuting(m, NULLHANDLE, NULLHANDLE, INTEGERZERO, INTEGERZERO);
+					vm.UpdateVM(-1);
+					delete m;
+					return "{\"ok\":true}";
+				} else {
+					return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(o.GetLastError()) + "\"}";
+				}
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/engine/tickrate ───────────────────────────────────
+	// Change simulation speed.  Body: { "multiplier": N } or { "fastest": true }
+	myImpl->svr.Post("/api/engine/tickrate", [this](const httplib::Request& req, httplib::Response& res) {
+		std::string body = req.body;
+		auto* item = new WorkItem();
+		item->work = [body]() -> std::string {
+			try {
+				auto j = nlohmann::json::parse(body);
+				if (j.value("fastest", false)) {
+					// WOLF mode — CAOS "wolf 1 1" sets fastest ticks
+					std::string cmd = "wolf 1 1";
+					Orderiser o;
+					if (MacroScript* m = o.OrderFromCAOS(cmd.c_str())) {
+						CAOSMachine vm;
+						vm.StartScriptExecuting(m, NULLHANDLE, NULLHANDLE, INTEGERZERO, INTEGERZERO);
+						vm.UpdateVM(-1);
+						delete m;
+					}
+					return "{\"ok\":true,\"fastest\":true}";
+				}
+				float mult = j.value("multiplier", 1.0f);
+				SetGameSpeedMultiplier(mult);
+				std::ostringstream json;
+				json << "{\"ok\":true,\"multiplier\":" << GetGameSpeedMultiplier() << "}";
+				return json.str();
+			} catch (std::exception& e) {
+				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
+			}
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(3)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"ok\":false,\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── POST /api/engine/advance ────────────────────────────────────
+	// Run exactly N ticks then pause.  Body: { "ticks": N }
+	myImpl->svr.Post("/api/engine/advance", [this](const httplib::Request& req, httplib::Response& res) {
+		try {
+			auto j = nlohmann::json::parse(req.body);
+			uint32_t ticks = j.value("ticks", 0u);
+			if (ticks == 0) {
+				res.set_content("{\"ok\":false,\"error\":\"Missing or zero 'ticks'\"}", "application/json");
+				return;
+			}
+			SetAdvanceTicks(ticks);
+			std::ostringstream json;
+			json << "{\"ok\":true,\"advancing\":" << ticks << "}";
+			res.set_content(json.str(), "application/json");
+		} catch (std::exception& e) {
+			res.set_content(std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/world/stats ────────────────────────────────────────
+	// Aggregate world stats: creature count, tick, age/sex distributions.
+	myImpl->svr.Get("/api/world/stats", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			int creatureCount = 0, norns = 0, grendels = 0, ettins = 0;
+			int males = 0, females = 0;
+			int babies = 0, children = 0, adolescents = 0, adults = 0, old = 0, dead = 0;
+
+			try {
+				AgentMap& agentMap = AgentManager::GetAgentIDMap();
+				for (AgentMapIterator it = agentMap.begin(); it != agentMap.end(); ++it) {
+					AgentHandle& handle = it->second->IsValid() ? *(it->second) : NULLHANDLE;
+					if (handle.IsInvalid() || !handle.IsCreature()) continue;
+
+					try {
+						creatureCount++;
+						Agent& agent = handle.GetAgentReference();
+						Classifier c = agent.GetClassifier();
+						if (c.Genus() == 1) norns++;
+						else if (c.Genus() == 2) grendels++;
+						else if (c.Genus() == 3) ettins++;
+
+						Creature& creature = handle.GetCreatureReference();
+						LifeFaculty* life = creature.Life();
+						if (life) {
+							if (life->GetSex() == 1) males++; else females++;
+							if (life->GetWhetherDead()) dead++;
+							else {
+								int age = life->GetAge();
+								if (age <= 0) babies++;
+								else if (age <= 1) children++;
+								else if (age <= 2) adolescents++;
+								else if (age <= 4) adults++;
+								else old++;
+							}
+						}
+					} catch (...) {}
+				}
+			} catch (...) {}
+
+			json << "{\"worldTick\":" << theApp.GetWorld().GetWorldTick()
+			     << ",\"systemTick\":" << theApp.GetSystemTick()
+			     << ",\"worldName\":\"" << JsonEscape(theApp.GetWorld().GetWorldName()) << "\""
+			     << ",\"creatureCount\":" << creatureCount
+			     << ",\"norns\":" << norns
+			     << ",\"grendels\":" << grendels
+			     << ",\"ettins\":" << ettins
+			     << ",\"males\":" << males
+			     << ",\"females\":" << females
+			     << ",\"babies\":" << babies
+			     << ",\"children\":" << children
+			     << ",\"adolescents\":" << adolescents
+			     << ",\"adults\":" << adults
+			     << ",\"old\":" << old
+			     << ",\"dead\":" << dead
+			     << ",\"paused\":" << (IsEnginePaused() ? "true" : "false")
+			     << ",\"gameSpeed\":" << GetGameSpeedMultiplier()
+			     << "}";
+			return json.str();
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
+			res.set_content(future.get(), "application/json");
+		} else {
+			res.status = 504;
+			res.set_content("{\"error\":\"Timeout\"}", "application/json");
+		}
+	});
+
+	// ── GET /api/creatures/snapshot ──────────────────────────────────
+	// Bulk dump of all creature states — drives, top chemicals, brain winner.
+	myImpl->svr.Get("/api/creatures/snapshot", [this](const httplib::Request& req, httplib::Response& res) {
+		auto* item = new WorkItem();
+		item->work = []() -> std::string {
+			std::ostringstream json;
+			json << "{\"worldTick\":" << theApp.GetWorld().GetWorldTick() << ",\"creatures\":[";
+			bool first = true;
+
+			try {
+				AgentMap& agentMap = AgentManager::GetAgentIDMap();
+				for (AgentMapIterator it = agentMap.begin(); it != agentMap.end(); ++it) {
+					AgentHandle& handle = it->second->IsValid() ? *(it->second) : NULLHANDLE;
+					if (handle.IsInvalid() || !handle.IsCreature()) continue;
+
+					try {
+						Creature& creature = handle.GetCreatureReference();
+						Agent& agent = handle.GetAgentReference();
+						LifeFaculty* life = creature.Life();
+
+						if (!first) json << ",";
+						first = false;
+
+						// Moniker
+						std::string moniker;
+						try { moniker = creature.GetMoniker(); } catch (...) {}
+
+						// Name
+						std::string name;
+						try {
+							LinguisticFaculty* ling = creature.Linguistic();
+							if (ling && ling->KnownWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME))
+								name = ling->GetPlatonicWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME);
+						} catch (...) {}
+
+						json << "{\"agentId\":" << agent.GetUniqueID()
+						     << ",\"moniker\":\"" << JsonEscape(moniker) << "\""
+						     << ",\"name\":\"" << JsonEscape(name) << "\"";
+
+						if (life) {
+							json << ",\"health\":" << life->Health()
+							     << ",\"age\":" << life->GetAge()
+							     << ",\"ageInTicks\":" << life->GetTickAge()
+							     << ",\"dead\":" << (life->GetWhetherDead() ? "true" : "false");
+						}
+
+						// Position
+						json << ",\"posX\":" << (int)agent.GetPosition().x
+						     << ",\"posY\":" << (int)agent.GetPosition().y;
+
+						// Drives
+						json << ",\"drives\":[";
+						for (int d = 0; d < NUMDRIVES; ++d) {
+							if (d > 0) json << ",";
+							json << creature.GetDriveLevel(d);
+						}
+						json << "]";
+						json << ",\"highestDrive\":" << creature.GetHighestDrive();
+
+						// Top 5 non-zero chemicals
+						json << ",\"topChemicals\":[";
+						try {
+							Biochemistry* bio = creature.GetBiochemistry();
+							if (bio) {
+								struct ChemEntry { int id; float conc; };
+								std::vector<ChemEntry> chems;
+								for (int c = 0; c < 256; ++c) {
+									float conc = bio->GetChemical(c);
+									if (conc > 0.001f) chems.push_back({c, conc});
+								}
+								std::sort(chems.begin(), chems.end(),
+									[](const ChemEntry& a, const ChemEntry& b) { return a.conc > b.conc; });
+								int limit = std::min((int)chems.size(), 5);
+								for (int i = 0; i < limit; ++i) {
+									if (i > 0) json << ",";
+									json << "{\"id\":" << chems[i].id
+									     << ",\"concentration\":" << chems[i].conc << "}";
+								}
+							}
+						} catch (...) {}
+						json << "]";
+
+						json << "}";
+					} catch (...) {}
+				}
+			} catch (...) {}
+
+			json << "]}";
+			return json.str();
+		};
+		auto future = item->promise.get_future();
+		{ std::lock_guard<std::mutex> lock(myImpl->queueMutex); myImpl->workQueue.push(item); }
+		if (future.wait_for(std::chrono::seconds(10)) == std::future_status::ready) {
 			res.set_content(future.get(), "application/json");
 		} else {
 			res.status = 504;

@@ -300,6 +300,158 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════════════
+// PHASE 3: HEADLESS OPERATION — World, Creature, Experiment Tools
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── list_worlds ────────────────────────────────────────────────────────
+server.tool(
+  "list_worlds",
+  "List all available worlds, the currently loaded world name, and the current world tick.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiGet("/api/worlds"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── create_world ───────────────────────────────────────────────────────
+server.tool(
+  "create_world",
+  "Create a new empty world with the given name. The world becomes available for loading.",
+  { name: z.string().describe("Name for the new world") },
+  async ({ name }) => {
+    try {
+      return textResult(await apiPost("/api/world/create", { name }));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── load_world ─────────────────────────────────────────────────────────
+server.tool(
+  "load_world",
+  "Load an existing world by name. The world switch happens on the next engine tick.",
+  { name: z.string().describe("Name of the world to load") },
+  async ({ name }) => {
+    try {
+      return textResult(await apiPost("/api/world/load", { name }));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── save_world ─────────────────────────────────────────────────────────
+server.tool(
+  "save_world",
+  "Save the current world state to disk.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiPost("/api/world/save"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── get_world_tick ─────────────────────────────────────────────────────
+server.tool(
+  "get_world_tick",
+  "Get the current world tick count, system tick, and world name.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiGet("/api/world/tick"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── kill_creature ──────────────────────────────────────────────────────
+server.tool(
+  "kill_creature",
+  "Remove a specific creature from the world by its agent ID.",
+  { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
+  async ({ agentId }) => {
+    try {
+      return textResult(await apiPost("/api/creature/kill", { agentId }));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── set_tick_rate ──────────────────────────────────────────────────────
+server.tool(
+  "set_tick_rate",
+  "Change the simulation speed. Set a multiplier (e.g. 5 = 5× speed) or set fastest=true for maximum speed (WOLF mode).",
+  {
+    multiplier: z.number().optional().describe("Speed multiplier (e.g. 2 = double speed)"),
+    fastest: z.boolean().optional().describe("Set to true for maximum speed (WOLF mode)"),
+  },
+  async ({ multiplier, fastest }) => {
+    try {
+      const body = {};
+      if (fastest) body.fastest = true;
+      else if (multiplier) body.multiplier = multiplier;
+      else body.multiplier = 1;
+      return textResult(await apiPost("/api/engine/tickrate", body));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── advance_ticks ──────────────────────────────────────────────────────
+server.tool(
+  "advance_ticks",
+  "Run exactly N ticks then pause the engine. Useful for stepping through simulation in controlled increments.",
+  { ticks: z.number().describe("Number of ticks to advance") },
+  async ({ ticks }) => {
+    try {
+      return textResult(await apiPost("/api/engine/advance", { ticks }));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── get_world_stats ────────────────────────────────────────────────────
+server.tool(
+  "get_world_stats",
+  "Get aggregate world statistics: creature count by species, age/sex distribution, tick count, and engine state.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiGet("/api/world/stats"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── snapshot_all_creatures ─────────────────────────────────────────────
+server.tool(
+  "snapshot_all_creatures",
+  "Bulk dump of all creature states at the current tick: drives, health, position, top chemicals. " +
+  "More efficient than calling get_creature_chemistry for each creature individually.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiGet("/api/creatures/snapshot"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════════════
 

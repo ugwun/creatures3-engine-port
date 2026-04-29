@@ -197,6 +197,17 @@ static std::atomic<bool> sEnginePaused{false};
 void SetEnginePaused(bool paused) { sEnginePaused.store(paused); }
 bool IsEnginePaused() { return sEnginePaused.load(); }
 
+void SetGameSpeedMultiplier(float m) { gameSpeedMultiplier = (m > 0.0f) ? m : 1.0f; }
+float GetGameSpeedMultiplier() { return gameSpeedMultiplier; }
+
+// Advance-ticks: when > 0, the main loop runs that many ticks then pauses.
+static std::atomic<uint32> sAdvanceTicks{0};
+void SetAdvanceTicks(uint32 n) {
+  sAdvanceTicks.store(n);
+  if (n > 0) sEnginePaused.store(false); // unpause to start advancing
+}
+uint32 GetAdvanceTicksRemaining() { return sAdvanceTicks.load(); }
+
 // exter
 // HWND theMainWindow = 0;
 
@@ -394,6 +405,15 @@ int main(int argc, char *argv[]) {
           if (!sHeadlessMode && theApp.myToggleFullScreenNextTick) {
             theApp.ToggleFullScreenMode();
             theApp.myToggleFullScreenNextTick = false;
+          }
+
+          // advance_ticks: if a tick budget is active, decrement and
+          // pause when the budget is exhausted.
+          uint32 adv = sAdvanceTicks.load();
+          if (adv > 0) {
+            adv--;
+            sAdvanceTicks.store(adv);
+            if (adv == 0) sEnginePaused.store(true);
           }
         }
         if (enableTools || enableMCP) theDebugServer.Poll();

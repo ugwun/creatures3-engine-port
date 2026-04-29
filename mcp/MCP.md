@@ -67,7 +67,7 @@ Edit `.gemini/antigravity/mcp_config.json` (click "Open MCP Config" in the MCP S
 }
 ```
 
-Then click **Refresh** in the MCP Servers panel. The `creatures3` server should appear with 15 tools.
+Then click **Refresh** in the MCP Servers panel. The `creatures3` server should appear with 25 tools.
 
 #### Claude Desktop
 
@@ -96,7 +96,7 @@ Any MCP client that supports stdio transport can connect. The server expects:
 
 ---
 
-## Available Tools (15)
+## Available Tools (25)
 
 ### CAOS Execution
 
@@ -137,6 +137,31 @@ Any MCP client that supports stdio transport can connect. The server expects:
 | `pause_engine` | Pause the entire simulation. The world freezes but the API remains responsive for queries |
 | `resume_engine` | Resume the simulation after pausing |
 | `get_engine_state` | Check whether the engine is currently paused or running |
+
+### World Management
+
+| Tool | Description |
+|---|---|
+| `list_worlds` | List all available worlds, current world name, and world tick |
+| `create_world` | Create a new empty world with the given name |
+| `load_world` | Load an existing world by name (world switches on next tick) |
+| `save_world` | Save the current world state to disk |
+| `get_world_tick` | Get current world tick, system tick, and world name |
+
+### Creature Lifecycle
+
+| Tool | Description |
+|---|---|
+| `kill_creature` | Remove a specific creature from the world by agent ID |
+
+### Experiment Control
+
+| Tool | Description |
+|---|---|
+| `set_tick_rate` | Change simulation speed (multiplier or WOLF fastest mode) |
+| `advance_ticks` | Run exactly N ticks then pause — for controlled stepping |
+| `get_world_stats` | Aggregate stats: creature count by species, age/sex distribution, engine state |
+| `snapshot_all_creatures` | Bulk dump of all creature states (drives, health, position, top 5 chemicals) |
 
 ---
 
@@ -196,7 +221,7 @@ cd mcp && git status
 
 | File | Purpose |
 |---|---|
-| `server.js` | MCP server — 15 tools wrapping the engine REST API, stdio transport |
+| `server.js` | MCP server — 25 tools wrapping the engine REST API, stdio transport |
 | `package.json` | Node.js package definition (depends on `@modelcontextprotocol/sdk`) |
 | `README.md` | This file |
 | `.gitignore` | Excludes `node_modules/` |

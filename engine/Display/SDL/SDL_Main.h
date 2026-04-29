@@ -29,6 +29,15 @@ bool IsHeadlessMode();
 void SetEnginePaused(bool paused);
 bool IsEnginePaused();
 
+// Game speed multiplier — controlled via CLI --gamespeed or MCP set_tick_rate.
+void SetGameSpeedMultiplier(float m);
+float GetGameSpeedMultiplier();
+
+// Advance-ticks — run exactly N ticks then pause.
+// Set by the MCP advance_ticks tool; consumed by the main loop.
+void SetAdvanceTicks(uint32 n);
+uint32 GetAdvanceTicksRemaining();
+
 void SetSingleStepAgent( AgentHandle& agent );
 AgentHandle GetSingleStepAgent();
 void WaitForSingleStepCommand();
