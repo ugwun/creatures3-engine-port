@@ -32,6 +32,7 @@
 // #include	<dinput.h>
 #include "../EntityImage.h"
 // #include "../Maths.h"
+#include "SDL_Main.h" // IsHeadlessMode()
 
 ////////////////////////////////////////////////////////////////////////////
 // My static variables
@@ -134,6 +135,16 @@ bool DisplayEngine::Start(bool fullScreen /*= false*/) {
   ourSurfaceArea.top = 0;
   ourSurfaceArea.right = 800;
   ourSurfaceArea.bottom = 600;
+
+  // Headless mode: set up enough internal state for code that queries
+  // dimensions and pixel format, but do NOT create an SDL window or
+  // any rendering surfaces.
+  if (IsHeadlessMode()) {
+    myPixelFormat = RGB_565;
+    myEngineRunningFlag = true;
+    myFullScreenFlag = false;
+    return true;
+  }
 
   // Create the SDL2 window
   Uint32 windowFlags = 0;
@@ -567,6 +578,10 @@ void DisplayEngine::Update(Background *background,
                            DrawableObjectHandler *entityHandler,
                            bool completeRedraw, bool justBackBuffer,
                            SDL_Surface *surfaceToDrawOn /*= NULL*/) {
+
+  // Headless mode: no surfaces exist — skip all rendering.
+  if (IsHeadlessMode())
+    return;
 
   if (myEngineRunningFlag == false || myCatchingExceptionFlag == true) {
     return;

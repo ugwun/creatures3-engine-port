@@ -254,8 +254,10 @@ bool App::Init()
 
   // set up the main view before we do anything in the world
   SetUpMainView();
-  theMainView.Enable();
-  CreateProgressBar();
+  if (!IsHeadlessMode()) {
+    theMainView.Enable();
+    CreateProgressBar();
+  }
 
   DoLoadWorld("Startup");
 

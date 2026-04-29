@@ -146,6 +146,34 @@ static void InstallCrashHandlers() {
   sigaction(SIGABRT, &sa, nullptr);
   sigaction(SIGILL, &sa, nullptr);
 }
+
+// -----------------------------------------------------------------------
+// GracefulShutdownHandler()
+// Handles SIGINT (Ctrl+C) and SIGTERM for clean engine shutdown.
+// Sets the quit flag so the main loop exits normally, running
+// DoShutdown() → App::ShutDown() instead of hard-killing.
+// -----------------------------------------------------------------------
+static void GracefulShutdownHandler(int sig) {
+  // Write directly to stderr (async-signal-safe via write())
+  const char msg[] = "\n[lc2e] Caught signal, shutting down gracefully...\n";
+  write(STDERR_FILENO, msg, sizeof(msg) - 1);
+  SignalTerminateApplication();
+}
+
+// -----------------------------------------------------------------------
+// InstallShutdownHandlers()
+// Hooks SIGINT and SIGTERM for graceful shutdown.
+// -----------------------------------------------------------------------
+static void InstallShutdownHandlers() {
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = GracefulShutdownHandler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
+}
 // --- End crash reporter ------------------------------------------------
 
 const unsigned int theClientServerBufferSize = 1024 * 1024;
@@ -156,7 +184,10 @@ static bool ourQuit;
 static float gameSpeedMultiplier = 1.0f;
 static bool enableTools = false;
 static bool enableMCP = false;
+static bool sHeadlessMode = false;
 static std::string toolsPathOverride;
+
+bool IsHeadlessMode() { return sHeadlessMode; }
 
 // Global engine pause flag — controlled via Developer Tools.
 // When true, the main loop skips theApp.UpdateApp() but still
@@ -209,6 +240,8 @@ int main(int argc, char *argv[]) {
                 "  -d <path>           Alias for --game-dir\n"
                 "  --gamespeed <N>     Game speed multiplier (float, default 1)\n"
                 "  -s <N>              Alias for --gamespeed\n"
+                "  --headless          Run without graphical display\n"
+                "                      Implies --tools --no-music --no-sound\n"
                 "  --tools [path]      Start developer tools server on port 9980\n"
                 "                      Optional path overrides tools/ directory\n"
                 "  --mcp               Start API-only server on port 9980\n"
@@ -222,7 +255,7 @@ int main(int argc, char *argv[]) {
                 "Station/Docking Station\"\n"
                 "  ./build/lc2e -d \"/path/to/game\" --gamespeed 3\n"
                 "  ./build/lc2e -d \"/path/to/game\" --tools\n"
-                "  ./build/lc2e -d \"/path/to/game\" --mcp\n"
+                "  ./build/lc2e -d \"/path/to/game\" --headless\n"
                 "\n"
                 "If --game-dir is not specified, the current working directory "
                 "is used.\n");
@@ -249,6 +282,12 @@ int main(int argc, char *argv[]) {
         }
       } else if (arg == "--mcp") {
         enableMCP = true;
+      } else if (arg == "--headless") {
+        sHeadlessMode = true;
+        enableTools = true;   // headless implies --tools (full API + static files)
+        enableMCP = true;     // headless implies --mcp
+        theApp.SetCommandLineNoMusic(true);
+        theApp.SetCommandLineNoSound(true);
       } else if (arg == "--no-music") {
         theApp.SetCommandLineNoMusic(true);
       } else if (arg == "--no-sound") {
@@ -261,6 +300,10 @@ int main(int argc, char *argv[]) {
 
     // Install crash signal handlers now that FlightRecorder UDP is live.
     InstallCrashHandlers();
+
+    // Install SIGINT/SIGTERM handlers for graceful shutdown (especially
+    // important in headless mode where Ctrl+C is the primary exit method).
+    InstallShutdownHandlers();
 
     // Start debug/API server if --tools or --mcp was passed.
     if (enableTools || enableMCP) {
@@ -292,23 +335,36 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    /* Initialize the SDL library (starts the event loop) */
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-      return 1;
+    /* Initialize the SDL library */
+    if (sHeadlessMode) {
+      // Headless: timer only — no video subsystem, no window.
+      if (SDL_Init(SDL_INIT_TIMER) < 0) {
+        return 1;
+      }
+      fprintf(stderr, "[lc2e] Headless mode — no graphical display\n");
+    } else {
+      if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        return 1;
+      }
     }
 
     DoStartup();
 
-    // SDL2 text input: enable the text input subsystem so that SDL_TEXTINPUT
-    // events fire for printable characters (replaces SDL1 keysym-to-char hack).
-    SDL_StartTextInput();
+    if (!sHeadlessMode) {
+      // SDL2 text input: enable the text input subsystem so that SDL_TEXTINPUT
+      // events fire for printable characters (replaces SDL1 keysym-to-char hack).
+      SDL_StartTextInput();
+    }
 
     SDL_Event event;
 
     while (!ourQuit) {
       // Process all pending SDL events (input, window events, quit, etc.)
-      while (SDL_PollEvent(&event)) {
-        HandleEvent(event);
+      // In headless mode there is no SDL event queue.
+      if (!sHeadlessMode) {
+        while (SDL_PollEvent(&event)) {
+          HandleEvent(event);
+        }
       }
 
       // Advance the simulation and render - equivalent to WM_TICK on Windows
@@ -316,11 +372,12 @@ int main(int argc, char *argv[]) {
       if (!ourQuit) {
         if (!sEnginePaused.load()) {
           theApp.UpdateApp();
-          theApp.GetInputManager().SysFlushEventBuffer();
+          if (!sHeadlessMode)
+            theApp.GetInputManager().SysFlushEventBuffer();
 
           // Check for deferred fullscreen toggle (CAOS WDOW command sets the
           // flag; we consume it here, mirroring Window.cpp's WM_TICK handler).
-          if (theApp.myToggleFullScreenNextTick) {
+          if (!sHeadlessMode && theApp.myToggleFullScreenNextTick) {
             theApp.ToggleFullScreenMode();
             theApp.myToggleFullScreenNextTick = false;
           }
@@ -363,6 +420,7 @@ int main(int argc, char *argv[]) {
 
   //	timeEndPeriod(1);
 
+  DoShutdown();
   SDL_Quit();
   return TRUE;
 }

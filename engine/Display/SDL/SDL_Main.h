@@ -19,6 +19,15 @@
 // tell the game to shut down
 void SignalTerminateApplication();
 
+// Headless mode — run the simulation with no graphical display.
+// When true, SDL_INIT_VIDEO is skipped, no window is created,
+// and all rendering is a no-op.  The DebugServer API remains
+// fully functional for remote control via MCP.
+bool IsHeadlessMode();
+
+// Engine pause/resume — controlled via Developer Tools / MCP.
+void SetEnginePaused(bool paused);
+bool IsEnginePaused();
 
 void SetSingleStepAgent( AgentHandle& agent );
 AgentHandle GetSingleStepAgent();

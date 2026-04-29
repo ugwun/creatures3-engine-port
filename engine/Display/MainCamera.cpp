@@ -48,6 +48,10 @@
 #endif
 #include "../World.h"
 
+#ifndef _WIN32
+#include "SDL/SDL_Main.h" // IsHeadlessMode()
+#endif
+
 // serialize out as many members as you need to recreate yourself
 CREATURES_IMPLEMENT_SERIAL(MainCamera)
 
@@ -213,12 +217,14 @@ bool MainCamera::StartUp(
   myWorldPosition.SetY(viewy);
   myFullScreenFlag = fullScreen;
 
-  // start up the display engine
-  DisplayEngine::theRenderer().SetFlags(DISPLAY_BACKGROUND | DISPLAY_SPRITES);
+  if (!IsHeadlessMode()) {
+    // start up the display engine
+    DisplayEngine::theRenderer().SetFlags(DISPLAY_BACKGROUND | DISPLAY_SPRITES);
 
-  StartDisplayEngine();
+    StartDisplayEngine();
 
-  SharedGallery::theSharedGallery().PreloadBackgrounds();
+    SharedGallery::theSharedGallery().PreloadBackgrounds();
+  }
 
   // fully create the camera
   if (!Create(viewx, // world x co-ordinate of view
@@ -314,6 +320,10 @@ bool MainCamera::StartUp(
   }
 
   void MainCamera::Render() {
+    // Headless mode: skip all rendering and camera tracking.
+    if (IsHeadlessMode())
+      return;
+
     // ensure that no rogue rendering gets done
     if (myShutDownFlag || DisplayEngine::theRenderer().DealingWithExceptions())
       return;
