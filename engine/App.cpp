@@ -11,6 +11,7 @@
 
 #include "Caos/CAOSMachine.h"
 #include "Caos/CAOSVar.h"
+#include "Caos/MacroScript.h"
 #include "Caos/Orderiser.h"
 #include "Display/DisplayEngine.h"
 #include "Display/EntityImage.h"
@@ -83,6 +84,7 @@ App::App() {
   myAutoKillAgentsOnError = false;
   myCommandLineNoMusic = false;
   myCommandLineNoSound = false;
+  myMaxTicks = 0;
 
   myEameVars = new std::map<std::string, CAOSVar>();
 
@@ -259,7 +261,16 @@ bool App::Init()
     CreateProgressBar();
   }
 
-  DoLoadWorld("Startup");
+  // Load the target world.  --world <name> bypasses the "Startup" world
+  // (which shows the world-selection menu) and loads directly into the
+  // named world — essential for headless automation.
+  if (!myHeadlessWorldName.empty()) {
+    theFlightRecorder.Log(4, "Loading target world: %s",
+                          myHeadlessWorldName.c_str());
+    DoLoadWorld(myHeadlessWorldName);
+  } else {
+    DoLoadWorld("Startup");
+  }
 
   InitialiseFromGameVariables();
 
@@ -268,6 +279,51 @@ bool App::Init()
 
   // then..
   InitLocalisation();
+
+  // Execute any --run-cos scripts after the world is fully initialised.
+  // This allows headless automation to inject custom setup (agents, CAOS
+  // macros, environment configuration) before the simulation starts.
+  if (!myPostBootCOS.empty()) {
+    for (const std::string &cosPath : myPostBootCOS) {
+      theFlightRecorder.Log(4, "Executing post-boot COS: %s", cosPath.c_str());
+
+      // Read the .cos file
+      std::ifstream cosFile(cosPath);
+      if (!cosFile.is_open()) {
+        theFlightRecorder.Log(64, "ERROR: Cannot open COS file: %s",
+                              cosPath.c_str());
+        fprintf(stderr, "[lc2e] ERROR: Cannot open --run-cos file: %s\n",
+                cosPath.c_str());
+        continue;
+      }
+      std::string cosSource((std::istreambuf_iterator<char>(cosFile)),
+                            std::istreambuf_iterator<char>());
+      cosFile.close();
+
+      // Execute via the same Orderiser → CAOSMachine path used by the
+      // DebugServer /api/execute endpoint.
+      try {
+        Orderiser o;
+        MacroScript *m = o.OrderFromCAOS(cosSource.c_str());
+        if (m) {
+          CAOSMachine vm;
+          vm.StartScriptExecuting(m, NULLHANDLE, NULLHANDLE, INTEGERZERO,
+                                  INTEGERZERO);
+          vm.UpdateVM(-1);
+          delete m;
+          fprintf(stderr, "[lc2e] Executed: %s\n", cosPath.c_str());
+        } else {
+          fprintf(stderr, "[lc2e] COS compile error (%s): %s\n",
+                  cosPath.c_str(), o.GetLastError());
+        }
+      } catch (std::exception &e) {
+        fprintf(stderr, "[lc2e] COS runtime error (%s): %s\n",
+                cosPath.c_str(), e.what());
+      } catch (...) {
+        fprintf(stderr, "[lc2e] COS unknown error (%s)\n", cosPath.c_str());
+      }
+    }
+  }
 
   theFlightRecorder.Log(4, "App::Init() complete");
   return true;

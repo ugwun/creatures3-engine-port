@@ -242,6 +242,11 @@ int main(int argc, char *argv[]) {
                 "  -s <N>              Alias for --gamespeed\n"
                 "  --headless          Run without graphical display\n"
                 "                      Implies --tools --no-music --no-sound\n"
+                "  --world <name>     Load directly into a named world (skip Startup)\n"
+                "  -w <name>           Alias for --world\n"
+                "  --run-cos <file>    Execute a .cos script after world load\n"
+                "                      (can be specified multiple times)\n"
+                "  --max-ticks <N>     Run for N ticks then save and exit\n"
                 "  --tools [path]      Start developer tools server on port 9980\n"
                 "                      Optional path overrides tools/ directory\n"
                 "  --mcp               Start API-only server on port 9980\n"
@@ -251,11 +256,11 @@ int main(int argc, char *argv[]) {
                 "  --help, -h          Show this help message\n"
                 "\n"
                 "Examples:\n"
-                "  ./build/lc2e --game-dir \"/Users/me/Creatures Docking "
-                "Station/Docking Station\"\n"
-                "  ./build/lc2e -d \"/path/to/game\" --gamespeed 3\n"
                 "  ./build/lc2e -d \"/path/to/game\" --tools\n"
                 "  ./build/lc2e -d \"/path/to/game\" --headless\n"
+                "  ./build/lc2e -d \"/path/to/game\" --headless --world \"Docked\"\n"
+                "  ./build/lc2e -d \"/path/to/game\" --headless -w \"Docked\" "
+                "--max-ticks 1000\n"
                 "\n"
                 "If --game-dir is not specified, the current working directory "
                 "is used.\n");
@@ -292,6 +297,15 @@ int main(int argc, char *argv[]) {
         theApp.SetCommandLineNoMusic(true);
       } else if (arg == "--no-sound") {
         theApp.SetCommandLineNoSound(true);
+      } else if ((arg == "--world" || arg == "-w") && i + 1 < argc) {
+        theApp.myHeadlessWorldName = argv[++i];
+        fprintf(stderr, "[lc2e] Target world: %s\n",
+                theApp.myHeadlessWorldName.c_str());
+      } else if (arg == "--run-cos" && i + 1 < argc) {
+        theApp.myPostBootCOS.push_back(argv[++i]);
+      } else if (arg == "--max-ticks" && i + 1 < argc) {
+        theApp.myMaxTicks = (uint32)atoi(argv[++i]);
+        fprintf(stderr, "[lc2e] Max ticks: %u\n", theApp.myMaxTicks);
       }
     }
 
@@ -383,6 +397,14 @@ int main(int argc, char *argv[]) {
           }
         }
         if (enableTools || enableMCP) theDebugServer.Poll();
+
+        // --max-ticks: exit after N ticks (DoShutdown will save the world)
+        if (theApp.myMaxTicks > 0 &&
+            theApp.GetSystemTick() >= theApp.myMaxTicks) {
+          fprintf(stderr, "[lc2e] Reached max-ticks (%u), exiting\n",
+                  theApp.myMaxTicks);
+          ourQuit = true;
+        }
       }
 
       // Sleep for the remainder of the tick interval, mirroring the Windows
@@ -796,10 +818,29 @@ case WM_MOVE: {
 
   // -------------------------------------------------------------------------
   // DoShutdown()
-  // Stops the main application loop and tells the App to shutdown subsystems.
+  // Saves the current world (if one is loaded), stops the debug server,
+  // and tears down the App subsystems.  Called on clean exit — including
+  // SIGINT (Ctrl+C) and SIGTERM — so world state is always preserved.
   // -------------------------------------------------------------------------
   static void DoShutdown() {
     ourRunning = false;
+
+    // Save the world before destroying it.  The Startup world (main menu)
+    // has no meaningful state, so skip it.
+    try {
+      World &w = theApp.GetWorld();
+      if (!w.IsStartUpWorld()) {
+        fprintf(stderr, "[lc2e] Saving world \"%s\"...\n",
+                w.GetWorldName().c_str());
+        if (w.Save()) {
+          fprintf(stderr, "[lc2e] World saved.\n");
+        } else {
+          fprintf(stderr, "[lc2e] WARNING: World save failed.\n");
+        }
+      }
+    } catch (...) {
+      // No world loaded — nothing to save.
+    }
 
     if (enableTools || enableMCP) theDebugServer.Stop();
 

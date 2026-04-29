@@ -145,6 +145,10 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 | `--gamespeed <N>` | Game speed multiplier (float, default 1). E.g. `3` = 3× speed, `0.5` = half speed |
 | `-s <N>` | Alias for `--gamespeed` |
 | `--headless` | Run without graphical display. Implies `--tools`, `--mcp`, `--no-music`, `--no-sound`. (Use `Ctrl+C` for graceful shutdown) |
+| `--world <name>` | Load directly into a named world (skip the Startup menu). Works in both headless and graphical mode |
+| `-w <name>` | Alias for `--world` |
+| `--run-cos <file>` | Execute a `.cos` CAOS script after world load. Can be specified multiple times |
+| `--max-ticks <N>` | Run for N ticks, then save the world and exit |
 | `--tools` | Start the embedded developer tools server (port 9980) |
 | `--mcp` | Start the API server for AI agent access (port 9980). See [AI Agent Access](#ai-agent-access-mcp) |
 | `--no-music` | Disable music on startup |

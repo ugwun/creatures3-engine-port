@@ -270,6 +270,11 @@ public:
   void SetCommandLineNoMusic(bool flag) { myCommandLineNoMusic = flag; }
   void SetCommandLineNoSound(bool flag) { myCommandLineNoSound = flag; }
 
+  // Headless automation — set via CLI flags, consumed during init
+  std::string myHeadlessWorldName;         // --world <name>
+  std::vector<std::string> myPostBootCOS;  // --run-cos <file> (repeatable)
+  uint32 myMaxTicks;                       // --max-ticks <N> (0 = infinite)
+
   int myScrollingMask;
   std::vector<byte> myScrollingSpeedRangeUp;
   std::vector<byte> myScrollingSpeedRangeDown;
