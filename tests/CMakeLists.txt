@@ -380,3 +380,45 @@ target_include_directories(test_InputManager PRIVATE
 )
 target_link_libraries(test_InputManager PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_InputManager)
+
+# ===========================================================================
+# Integration Tests (Tier 1+)
+#
+# These tests launch the real lc2e binary in --headless mode and interact
+# with it via the REST API.  They require the engine to be built and a
+# minimal fixture directory.
+#
+# NOT included in the default ctest run — gated behind a CMake option.
+# Run with:  cmake -DENABLE_INTEGRATION_TESTS=ON .. && make
+#            ctest -L integration
+# ===========================================================================
+option(ENABLE_INTEGRATION_TESTS
+  "Build integration tests that launch the real engine in headless mode" OFF)
+
+if(ENABLE_INTEGRATION_TESTS)
+  # -------------------------------------------------------------------------
+  # test_IntegrationTier1 — engine lifecycle, REST API, CAOS execution
+  # -------------------------------------------------------------------------
+  add_executable(test_IntegrationTier1 test_IntegrationTier1.cpp)
+  target_include_directories(test_IntegrationTier1 PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/engine
+  )
+  target_link_libraries(test_IntegrationTier1 PRIVATE GTest::gtest_main)
+
+  # Pass the engine binary and fixture directory paths as compile-time defines
+  # so the test can locate them regardless of the working directory.
+  target_compile_definitions(test_IntegrationTier1 PRIVATE
+    ENGINE_BINARY_PATH="${CMAKE_BINARY_DIR}/lc2e"
+    FIXTURE_DIR_PATH="${CMAKE_SOURCE_DIR}/tests/fixtures/minimal"
+  )
+
+  # Register as ctest with the "integration" label — NOT auto-discovered.
+  # This ensures `ctest` (without -L) never runs these.
+  add_test(NAME IntegrationTier1 COMMAND test_IntegrationTier1)
+  set_tests_properties(IntegrationTier1 PROPERTIES
+    LABELS "integration"
+    TIMEOUT 120
+  )
+endif()

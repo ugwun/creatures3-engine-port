@@ -336,6 +336,87 @@ cmake --build build 2>&1 | grep "referenced from" | sed 's/  "//; s/", reference
 …to get the canonical list of missing symbols, then add stubs for them.
 
 
+### Integration Tests
+
+Integration tests launch the **real engine binary** in `--headless` mode and verify its behavior by communicating via the REST API (port 9980). Unlike unit tests, they require game data and are **not part of the default test run**.
+
+#### Test Tiers
+
+All integration test tiers require the `CREATURES_GAME_DIR` environment variable pointing to a valid Docking Station game data directory. The difference between tiers is what engine features are exercised and what subset of files gets copied to the isolated temp directory.
+
+| Tier | Scope | Files Copied to Temp Dir |
+|------|-------|--------------------------|
+| **Tier 1** | Engine lifecycle, REST API, CAOS execution | `machine.cfg`, `user.cfg`, `Catalogue/`, `Backgrounds/`, `Images/` |
+| **Tier 2** *(planned)* | Game variables, Scriptorium, save/reload | Same as Tier 1 + `Bootstrap/` |
+| **Tier 3+** *(planned)* | Docked worlds, creatures, biochemistry | Full directory copy (Genetics, Body Data, etc.) |
+
+> [!IMPORTANT]
+> All integration tests are intended for **local development only** — they require proprietary game data that is not available in CI pipelines. Tests auto-skip gracefully via `GTEST_SKIP()` when `CREATURES_GAME_DIR` is not set.
+
+#### Prerequisites
+
+1. A built `lc2e` binary (in `build/`)
+2. A valid Docking Station game data directory
+3. The `CREATURES_GAME_DIR` environment variable pointing to it
+
+```bash
+export CREATURES_GAME_DIR="$HOME/Creatures Docking Station/Docking Station"
+```
+
+#### Building
+
+Integration tests are gated behind the `ENABLE_INTEGRATION_TESTS` CMake option (default: `OFF`):
+
+```bash
+cmake -B build -DENABLE_INTEGRATION_TESTS=ON
+cmake --build build
+```
+
+#### Running
+
+```bash
+# Run ONLY integration tests:
+CREATURES_GAME_DIR="$HOME/Creatures Docking Station/Docking Station" \
+  ctest --test-dir build -L integration --output-on-failure
+
+# Run ONLY unit tests (excludes integration):
+ctest --test-dir build -LE integration --output-on-failure
+
+# Run everything (integration tests auto-skip if CREATURES_GAME_DIR is unset):
+ctest --test-dir build --output-on-failure
+```
+
+> [!NOTE]
+> If `CREATURES_GAME_DIR` is not set or points to an invalid directory, integration tests are automatically **skipped** (not failed). This makes the test suite safe to run in any environment.
+
+#### How it works
+
+Each integration test:
+1. Creates an **isolated temporary copy** of the game data directory (in `/tmp/`)
+2. Launches `lc2e` via `fork()` + `execv()` with `--headless` and `-d <temp_dir>`
+3. Waits for the REST API to become available on port 9980
+4. Issues HTTP requests and asserts on the JSON responses
+5. Sends `SIGTERM` to shut down the engine gracefully
+6. Cleans up the temporary directory
+
+Tests run **serially** (one engine instance at a time) to avoid port conflicts.
+
+#### CI Pipeline Guidance
+
+| Pipeline Stage | What to Run | Command |
+|---------------|-------------|---------|
+| Build | All targets | `cmake --build build` |
+| Unit Tests | All unit tests | `ctest --test-dir build -LE integration --output-on-failure` |
+| Integration Tests | Skip in CI | *(requires game data — not available in CI)* |
+
+To explicitly exclude integration tests in CI:
+
+```bash
+ctest --test-dir build -LE integration --output-on-failure
+```
+
+
+
 ## Porting Notes
 
 For details on the technical changes made during the porting process, see [README.porting](./README.porting). This codebase was refactored from the original 1999 Windows source code to support POSIX systems, address unaligned memory access on ARM64, and use modern C++ standards.
