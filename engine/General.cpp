@@ -1,0 +1,399 @@
+
+#include "General.h"
+#include "App.h"
+#include "Creature/Creature.h" // for MALE/FEMALE
+#include "Display/ErrorMessageHandler.h"
+
+#include "../common/Catalogue.h"
+#include "World.h"
+#include "md5.h"
+
+
+#include <stdarg.h>
+#include "unix/FileFuncs.h"
+
+#include <sstream>
+
+// Return an ascii filespec in the form xxxx.yyy, given fsp as a 4-char token
+// (eg 'NORN') and a 3 character string for the suffix. Eg.
+// BuildFsp(Tok('g','r','e','n'),"spr") returns "gren.spr" SubDir is a constant
+// referring to an optional path to the directory, eg.
+// BuildFsp(0x30303030,"tst",BODY_DATA_DIR) might return "C:\SFC\Body
+// Data\0000.tst"
+
+// changed behaviour to accomodate world directories
+// first check whether the file is in the local directory
+// *if* it is *there* then choose it over the main directory
+// otherwise *always* return the main directory version
+char *BuildFsp(uint32 fsp, char const *ext, int SubDir /* =-1 */,
+               bool isOverlay /* = false*/) {
+  // template for filespecs
+  static char ourlocalTemplate[MAX_PATH] = "####.###";
+
+  static char SFPath[MAX_PATH]; // temp buffer holding path	for caller
+  int i;
+
+  char *AscFsp = (char *)&fsp; // treat uint32 token as 4 chars
+  for (i = 0; i < 4; i++)      // copy chars into filespec from lo to hi
+    ourlocalTemplate[i] = *AscFsp++;
+
+  for (i = 0; i < 3; i++) // copy extension
+    ourlocalTemplate[5 + i] = ext[i];
+
+  if (SubDir != -1) // if a subdirectory is required
+  {
+    // first check whether the file is in the local directory
+    // if it is there then choose it over the main directory
+    // otherwise always return the main directory version
+    // also get the local catalogue files
+
+    std::string path;
+    if (theApp.GetWorldDirectoryVersion(SubDir, path)) {
+      strcpy(SFPath, path.data());
+
+      if (isOverlay)
+        strcat(SFPath, "over_");
+
+      strcat(SFPath, ourlocalTemplate);
+      if (FileExists(SFPath))
+        return SFPath;
+    }
+
+    theApp.GetDirectory(SubDir, SFPath); // copy it to start of path
+
+  } else
+    SFPath[0] = '\0'; // else path starts with nothing
+
+  if (isOverlay)
+    strcat(SFPath, "over_");
+
+  strcat(SFPath, ourlocalTemplate); // add filename to optional path
+
+  // If the file doesn't exist at the primary path, fall back to the
+  // auxiliary directory (e.g. ../Creatures 3/Sounds/) where C3 assets live.
+  if (SubDir != -1 && !FileExists(SFPath)) {
+    const char *auxDir = theApp.GetAuxiliaryDirectory(SubDir);
+    if (auxDir) {
+      static char AuxPath[MAX_PATH];
+      strcpy(AuxPath, auxDir);
+      if (isOverlay)
+        strcat(AuxPath, "over_");
+      strcat(AuxPath, ourlocalTemplate);
+      if (FileExists(AuxPath))
+        return AuxPath;
+    }
+  }
+
+  // Error handling info.
+  //	strcpy(dderr_extra, SFPath);
+
+  return SFPath;
+}
+
+// Find the most suitable available attachment or sprite file, given the
+// specification of the creature & part number. Return the MONIKER of this file
+// (not the path). If the explicit file is not found, try Variant 0. If still no
+// good, try the previous age.
+uint32 ValidFsp(int Part,  // part number
+               int Genus, // Genus (NORN, GRENDEL, ETTIN, SIDE)
+               int Sex,   // IDEAL Sex to look for (MALE/FEMALE)
+               int Age,   // IDEAL age & variant to look for
+               int Variant,
+               char *Ext, // file extension ("spr" or "att")
+               int Dir,   // subdirectory type, eg. BODY_DATA_DIR
+               bool isOverlay /*= false*/) {
+  int s, v, g, a;
+  uint32 Fsp;
+  Sex -= MALE; // cvt sex into range 0 to 1
+  std::string string;
+
+  for (s = 0; s < 2; s++) { // do ideal sex first, else opposite sex
+
+    if (s == 0)
+      g = Genus + Sex * 4; // 0123 = male norn/gren/ett/side 4567=female
+    else
+      g = Genus + (1 - Sex) * 4; // 2nd time through, look for opposite sex
+
+    for (v = Variant; v >= 0; v--) { // variant is next most important item
+
+      for (a = Age; a >= 0; a--) { // if can't find this age, use previous age
+
+        Fsp = (Part + 'A') | ((g + '0') << 8) | ((a + '0') << 16) |
+              ((v + 'a') << 24);
+
+        if (FindFile(string = BuildFsp(Fsp, Ext, Dir, isOverlay),
+                     1)) { // found a file? return its moniker
+          return Fsp;
+        }
+
+      } // else try previous age
+    } // and previous variant
+  } // and opposite sex
+
+  if (Genus != 0) {
+    uint32 nfsp = ValidFsp(Part, Genus - 1, Sex + MALE, Age, Variant, Ext, Dir,
+                          isOverlay);
+    return nfsp;
+  }
+  return 0;
+}
+
+// !!!!!!!!!!!! to do:
+// just look on the hard drive for now but sort it out later
+bool FindFile(std::string &filename, bool hardDriveOnly) {
+  return FileExists(filename.data());
+
+  return true; // return temporary full path to file
+}
+
+// IsValidTime, IsValidDate, IsValidGameTime moved to TimeFuncs.cpp - BenC
+
+#include <algorithm>
+#include <cstring>
+#include <dirent.h>
+#include <fnmatch.h>
+#include <sys/stat.h>
+
+bool GetFilesInDirectory(const std::string &path,
+                         std::vector<std::string> &files,
+                         const std::string &wildcard) {
+  DIR *dir;
+  struct dirent *ent;
+  if ((dir = opendir(path.c_str())) != NULL) {
+    while ((ent = readdir(dir)) != NULL) {
+      if (ent->d_type == DT_REG || ent->d_type == DT_UNKNOWN ||
+          ent->d_type == DT_LNK) {
+        if (wildcard == "*") {
+          files.push_back(ent->d_name);
+        } else {
+          // Use fnmatch for glob matching (handles *.ext, e*.gen, etc.)
+          // FNM_CASEFOLD for case-insensitive matching like Windows FindFirstFile
+          if (fnmatch(wildcard.c_str(), ent->d_name, FNM_CASEFOLD) == 0) {
+            files.push_back(ent->d_name);
+          }
+        }
+      }
+    }
+    closedir(dir);
+    return true;
+  }
+  return false;
+}
+
+bool GetDirsInDirectory(const std::string &path,
+                        std::vector<std::string> &dirs) {
+  DIR *dir;
+  struct dirent *ent;
+  if ((dir = opendir(path.c_str())) != NULL) {
+    while ((ent = readdir(dir)) != NULL) {
+      if (ent->d_type == DT_DIR || ent->d_type == DT_UNKNOWN ||
+          ent->d_type == DT_LNK) {
+        if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0)
+          dirs.push_back(ent->d_name);
+      }
+    }
+    closedir(dir);
+    return true;
+  }
+  return false;
+}
+
+bool GetMissingDirsInDirectory(
+    const std::string &path, const std::vector<std::string> &dirsToTestAgainst,
+    std::vector<std::string> &dirs) {
+  if (GetDirsInDirectory(path, dirs)) {
+    for (size_t i = 0; i < dirsToTestAgainst.size(); ++i) {
+      auto it = std::remove(dirs.begin(), dirs.end(), dirsToTestAgainst[i]);
+      if (it != dirs.end()) {
+        dirs.erase(it, dirs.end());
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+bool CopyDirectory(std::string const &source, std::string const &destination) {
+  // Create destination directory
+  mkdir(destination.c_str(), 0755);
+
+  DIR *dir = opendir(source.c_str());
+  if (!dir)
+    return false;
+
+  struct dirent *ent;
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+      continue;
+
+    std::string srcPath = source + "/" + ent->d_name;
+    std::string dstPath = destination + "/" + ent->d_name;
+
+    struct stat st;
+    if (stat(srcPath.c_str(), &st) != 0)
+      continue;
+
+    if (S_ISDIR(st.st_mode)) {
+      CopyDirectory(srcPath, dstPath);
+    } else {
+      CopyFile(srcPath.c_str(), dstPath.c_str(), false);
+    }
+  }
+  closedir(dir);
+  return true;
+}
+
+bool DeleteDirectory(std::string directory) {
+  DIR *dir = opendir(directory.c_str());
+  if (!dir)
+    return false;
+
+  struct dirent *ent;
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+      continue;
+
+    std::string path = directory + "/" + ent->d_name;
+
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0)
+      continue;
+
+    if (S_ISDIR(st.st_mode)) {
+      DeleteDirectory(path);
+    } else {
+      unlink(path.c_str());
+    }
+  }
+  closedir(dir);
+  rmdir(directory.c_str());
+  return true;
+}
+
+std::string GenerateUniqueIdentifier(std::string extraFood1,
+                                     std::string extraFood2) {
+  // Set up MD5
+  md5_state_t state;
+  md5_init(&state);
+
+  // Feed MD5 various data to be munged, to guarantee universal uniqueness ...
+
+  // ... time stamp
+  int timeStamp = GetTimeStamp();
+  md5_append(&state, (const md5_byte_t *)&timeStamp, sizeof(timeStamp));
+
+  // ... extra strings passed in (parent genomes, for monikers)
+  md5_append(&state, (const md5_byte_t *)extraFood1.data(), extraFood1.size());
+  md5_append(&state, (const md5_byte_t *)extraFood2.data(), extraFood2.size());
+
+  // ... error message header has date and user name in it
+  std::string errorHeader = ErrorMessageHandler::ErrorMessageFooter();
+  md5_append(&state, (const md5_byte_t *)errorHeader.data(),
+             errorHeader.size());
+
+  // ... number of agents in the world
+  AgentList aList;
+  theAgentManager.FindByFGS(aList, Classifier(0, 0, 0));
+  int agentCount = aList.size();
+  md5_append(&state, (const md5_byte_t *)&agentCount, sizeof(agentCount));
+
+  // ... system and world ticks
+  uint32 systemTick = theApp.GetSystemTick();
+  md5_append(&state, (const md5_byte_t *)&systemTick, sizeof(systemTick));
+  uint32 worldTick = theApp.GetWorld().GetWorldTick();
+  md5_append(&state, (const md5_byte_t *)&worldTick, sizeof(worldTick));
+
+  // ... mouse position and velocity
+  int mopX = theApp.GetInputManager().GetMouseX();
+  md5_append(&state, (const md5_byte_t *)&mopX, sizeof(mopX));
+  int mopY = theApp.GetInputManager().GetMouseY();
+  md5_append(&state, (const md5_byte_t *)&mopY, sizeof(mopY));
+  float movX = theApp.GetInputManager().GetMouseVX();
+  md5_append(&state, (const md5_byte_t *)&movX, sizeof(movX));
+  float movY = theApp.GetInputManager().GetMouseVY();
+  md5_append(&state, (const md5_byte_t *)&movY, sizeof(movY));
+
+  // ... current pace
+  float tickFactor = theApp.GetTickRateFactor();
+  md5_append(&state, (const md5_byte_t *)&tickFactor, sizeof(tickFactor));
+
+  // ... some stuff from our random number generator
+  for (int i = 0; i < Rnd(200, 300); ++i) {
+    md5_byte_t randomByte = Rnd(0, 255);
+    md5_append(&state, &randomByte, sizeof(randomByte));
+  }
+
+  // ... platform dependent information (hardware profiles etc.)
+#warning TODO: Extract some unique ID from the operating system
+
+  // ... high performance time stamp (later than time stamp, so more likely to
+  // be different)
+  int64 highTimeStamp = GetHighPerformanceTimeStamp();
+  md5_append(&state, (const md5_byte_t *)&highTimeStamp, sizeof(highTimeStamp));
+
+  // Retrieve our digest
+  md5_byte_t digest[16];
+  md5_finish(&state, digest);
+
+  unsigned int i1 =
+      digest[0] + (digest[1] << 8) + (digest[2] << 16) + (digest[3] << 24);
+  unsigned int i2 =
+      digest[4] + (digest[5] << 8) + (digest[6] << 16) + (digest[7] << 24);
+  unsigned int i3 =
+      digest[8] + (digest[9] << 8) + (digest[10] << 16) + (digest[11] << 24);
+  unsigned int i4 =
+      digest[12] + (digest[13] << 8) + (digest[14] << 16) + (digest[15] << 24);
+
+  std::string uniqueId;
+
+  // We need some way to extract 5 entries from this dictionary...
+
+  std::string dictionary =
+      "abcdefghjklmnpqrstuvwxyz23456789"; // Length is 32 :)
+
+  int loopy;
+  for (loopy = 0; loopy < 5; loopy++) {
+    uniqueId += dictionary.at(i1 % 31);
+    i1 >>= 5;
+  }
+  uniqueId += "-";
+  for (loopy = 0; loopy < 5; loopy++) {
+    uniqueId += dictionary.at(i2 % 31);
+    i2 >>= 5;
+  }
+  uniqueId += "-";
+  for (loopy = 0; loopy < 5; loopy++) {
+    uniqueId += dictionary.at(i3 % 31);
+    i3 >>= 5;
+  }
+  uniqueId += "-";
+  for (loopy = 0; loopy < 5; loopy++) {
+    uniqueId += dictionary.at(i4 % 31);
+    i4 >>= 5;
+  }
+
+  return uniqueId;
+}
+
+std::string WildSearch(int f, int g, int s, const std::string &tag_stub) {
+  std::string final_tag;
+
+  std::ostringstream out1;
+  out1 << tag_stub << " " << f << " " << g << " " << s;
+  if (theCatalogue.TagPresent(out1.str()))
+    final_tag = out1.str();
+  else {
+    std::ostringstream out2;
+    out2 << tag_stub << " " << f << " " << g << " 0";
+    if (theCatalogue.TagPresent(out2.str()))
+      final_tag = out2.str();
+    else {
+      std::ostringstream out3;
+      out3 << tag_stub << " " << f << " 0 0";
+      if (theCatalogue.TagPresent(out3.str()))
+        final_tag = out3.str();
+    }
+  }
+
+  return final_tag;
+}

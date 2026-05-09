@@ -1,0 +1,204 @@
+// -------------------------------------------------------------------------
+// Filename:	InputManager.cpp
+// Class:		InputManager
+// Purpose:		Provide an independant mechanism for handling input
+// devices. Description:
+//
+// Coming soon to a header file near you!
+//
+//
+// Usage:
+//
+//
+//
+// History:
+// 26Jan99		Creation	BenC
+// -------------------------------------------------------------------------
+
+
+#include "InputManager.h"
+#include "App.h"
+#include "C2eServices.h"
+#include "CreaturesArchive.h"
+
+
+// how many ticks we store mouse position for
+const int InputManager::ourRecentPositions = 3;
+// how many ticks ago velocity is measured from
+const int InputManager::ourVelocityAgo = 3;
+
+InputManager::InputManager() {
+  myEventPendingMask = 0;
+  myMouseX = 0;
+  myMouseY = 0;
+
+  ASSERT(ourVelocityAgo <= ourRecentPositions);
+  myRecentPos = 0;
+  myRecentMouseY.resize(ourRecentPositions);
+  myRecentMouseX.resize(ourRecentPositions);
+  for (int i = 0; i < ourRecentPositions; ++i) {
+    myRecentMouseX[i] = 0;
+    myRecentMouseY[i] = 0;
+  }
+
+  myTranslatedCharTarget = 0;
+  memset(myKeyStates, 0, sizeof(myKeyStates));
+}
+
+int InputManager::GetEventCount() { return myEventBuffer.size(); }
+
+int InputManager::GetPendingMask() { return myEventPendingMask; }
+
+const InputEvent &InputManager::GetEvent(int i) { return myEventBuffer[i]; }
+
+// system-framework access:
+void InputManager::SysFlushEventBuffer() {
+  // store mouse move information for velocity
+  myRecentPos++;
+  if (myRecentPos >= ourRecentPositions)
+    myRecentPos = 0;
+  myRecentMouseX[myRecentPos] = myMouseX;
+  myRecentMouseY[myRecentPos] = myMouseY;
+
+  myEventBuffer.clear();
+  myEventPendingMask = 0;
+}
+
+void InputManager::SysAddKeyDownEvent(int keycode) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventKeyDown;
+  ev.KeyData.keycode = keycode;
+  myEventBuffer.push_back(ev);
+
+  myEventPendingMask |= InputEvent::eventKeyDown;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = true;
+}
+
+void InputManager::SysAddKeyUpEvent(int keycode) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventKeyUp;
+  ev.KeyData.keycode = keycode;
+  myEventBuffer.push_back(ev);
+
+  myEventPendingMask |= InputEvent::eventKeyUp;
+  if (keycode >= 0 && keycode < 256)
+    myKeyStates[keycode] = false;
+}
+
+void InputManager::SysAddTranslatedCharEvent(int keycode) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventTranslatedChar;
+  ev.KeyData.keycode = keycode;
+  myEventBuffer.push_back(ev);
+
+  myEventPendingMask |= InputEvent::eventTranslatedChar;
+}
+
+void InputManager::SysAddMouseDownEvent(int mx, int my, int button) {
+  theFlightRecorder.Log(8, "[INPUT] MOUSEDOWN screen=(%d,%d) btn=%d", mx, my,
+                        button);
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventMouseDown;
+  ev.MouseButtonData.button = button;
+  ev.MouseButtonData.mx = mx;
+  ev.MouseButtonData.my = my;
+  myEventBuffer.push_back(ev);
+
+  myMouseX = mx;
+  myMouseY = my;
+
+  myEventPendingMask |= InputEvent::eventMouseDown;
+}
+
+void InputManager::SysAddMouseUpEvent(int mx, int my, int button) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventMouseUp;
+  ev.MouseButtonData.button = button;
+  ev.MouseButtonData.mx = mx;
+  ev.MouseButtonData.my = my;
+  myEventBuffer.push_back(ev);
+
+  myMouseX = mx;
+  myMouseY = my;
+  myEventPendingMask |= InputEvent::eventMouseUp;
+}
+
+void InputManager::SysAddMouseMoveEvent(int mx, int my) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventMouseMove;
+  ev.MouseMoveData.mx = mx;
+  ev.MouseMoveData.my = my;
+  myEventBuffer.push_back(ev);
+
+  myMouseX = mx;
+  myMouseY = my;
+  myEventPendingMask |= InputEvent::eventMouseMove;
+}
+
+void InputManager::SysAddMouseWheelEvent(int mx, int my, int deltaX, int deltaY) {
+  InputEvent ev;
+  ev.EventCode = InputEvent::eventMouseWheel;
+  ev.MouseWheelData.deltaX = deltaX;
+  ev.MouseWheelData.deltaY = deltaY;
+  ev.MouseWheelData.mx = mx;
+  ev.MouseWheelData.my = my;
+  myEventBuffer.push_back(ev);
+
+  myEventPendingMask |= InputEvent::eventMouseWheel;
+}
+
+bool InputManager::IsKeyDown(int keycode) {
+  if (keycode >= 0 && keycode < 256)
+    return myKeyStates[keycode];
+  return false;
+}
+
+void InputManager::SetMousePosition(int newX, int newY) {
+#warning "TODO: implement SetMousePosition() if possible"
+  myMouseX = newX;
+  myMouseY = newY;
+}
+
+float InputManager::GetMouseVX() {
+  int velo_pos = (myRecentPos + 1 - ourVelocityAgo + ourRecentPositions) %
+                 ourRecentPositions;
+  return (float)(myMouseX - myRecentMouseX[velo_pos]) / (float)ourVelocityAgo;
+}
+
+float InputManager::GetMouseVY() {
+  int velo_pos = (myRecentPos + 1 - ourVelocityAgo + ourRecentPositions) %
+                 ourRecentPositions;
+  return (float)(myMouseY - myRecentMouseY[velo_pos]) / (float)ourVelocityAgo;
+}
+
+TranslatedCharTarget *InputManager::GetTranslatedCharTarget() const {
+  return myTranslatedCharTarget;
+}
+
+void InputManager::SetTranslatedCharTarget(TranslatedCharTarget *target,
+                                           bool tellLoser) {
+  TranslatedCharTarget *oldTarget = myTranslatedCharTarget;
+  myTranslatedCharTarget = target;
+  if (tellLoser && oldTarget)
+    oldTarget->LoseFocus();
+  if (myTranslatedCharTarget)
+    myTranslatedCharTarget->GainFocus();
+}
+
+TranslatedCharTarget::~TranslatedCharTarget() {
+  InputManager &inputManager = theApp.GetInputManager();
+  if (inputManager.GetTranslatedCharTarget() == this)
+    inputManager.SetTranslatedCharTarget(NULL, false);
+}
+
+void TranslatedCharTarget::SaveFocusState(CreaturesArchive &archive) const {
+  archive << bool(theApp.GetInputManager().GetTranslatedCharTarget() == this);
+}
+
+void TranslatedCharTarget::RestoreFocusState(CreaturesArchive &archive) {
+  bool flag;
+  archive >> flag;
+  if (flag)
+    theApp.GetInputManager().SetTranslatedCharTarget(this, true);
+}

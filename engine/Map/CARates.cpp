@@ -1,0 +1,4 @@
+#include "CARates.h"
+
+
+CREATURES_IMPLEMENT_SERIAL(CARates)

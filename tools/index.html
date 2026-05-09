@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creatures 3 — Developer Tools</title>
+  <meta name="description" content="Developer tools for Creatures 3 engine: log monitor, CAOS console, and script inspector." />
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header id="header">
+    <div id="header-left">
+      <button id="btn-nav-toggle" class="engine-ctrl" title="Toggle Menu" style="margin-right: 16px;">☰</button>
+      <div id="logo">
+        <!-- Marathon-style geometric mark: bold orange square with a cross slit -->
+        <div id="logo-mark">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="18" height="18" fill="white" />
+            <rect x="9" y="1" width="2" height="18" fill="black" />
+            <rect x="1" y="9" width="18" height="2" fill="black" />
+          </svg>
+        </div>
+        <div>
+          <div id="logo-title">Creatures 3</div>
+          <div id="logo-sub">Developer Tools</div>
+        </div>
+      </div>
+      <div style="width:20px"></div>
+      <div id="status-pill" class="pill pill--disconnected">
+        <span class="pill-dot"></span>
+        <span id="status-text">Connecting</span>
+      </div>
+    </div>
+
+    <div id="header-center">
+    </div>
+
+    <div id="header-right">
+      <a href="https://www.linkedin.com/in/cyril-sadovsky-92907566/" target="_blank" class="creator-badge" id="creator-badge">
+        By Cyril Sadovsky
+      </a>
+      <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 8px;"></div>
+      <button id="btn-engine-play" class="engine-ctrl engine-ctrl--active" title="Play">▶</button>
+      <button id="btn-engine-pause" class="engine-ctrl" title="Pause">❚❚</button>
+    </div>
+  </header>
+
+  <!-- ── Left Navigation ───────────────────────────────────────────────────── -->
+  <nav id="left-nav">
+    <button class="tab-btn tab-btn--active" data-tab="creatures">Creatures</button>
+    <button class="tab-btn" data-tab="genetics">Genetics Kit</button>
+    <button class="tab-btn" data-tab="log">Log</button>
+    <button class="tab-btn" data-tab="console">Console</button>
+    <button class="tab-btn" data-tab="scripts">Scripts</button>
+    <button class="tab-btn" data-tab="debugger">Debugger</button>
+    <button class="tab-btn" data-tab="ide">CAOS IDE</button>
+    <button class="tab-btn" data-tab="docs">Docs</button>
+  </nav>
+
+  <!-- ── Toolbar: contextual controls per tab ──────────────────────────────── -->
+  <div id="toolbar">
+    <!-- Log tab controls -->
+    <div id="log-controls" class="tab-controls" hidden>
+      <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
+      <div class="toolbar-sep"></div>
+      <button id="btn-pause" class="btn">Pause</button>
+      <button id="btn-clear" class="btn">Clear</button>
+      <button id="btn-copy" class="btn">Copy</button>
+      <button id="btn-export" class="btn">Export</button>
+    </div>
+    <!-- Console tab controls -->
+    <div id="console-controls" class="tab-controls" hidden>
+      <button id="btn-console-clear" class="btn">Clear Output</button>
+    </div>
+    <!-- Scripts tab controls -->
+    <div id="scripts-controls" class="tab-controls" hidden>
+      <button id="btn-scripts-refresh" class="btn">Refresh</button>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-auto-refresh" checked /> Auto
+      </label>
+    </div>
+    <!-- Debugger tab controls -->
+    <div id="debugger-controls" class="tab-controls" hidden>
+      <button id="btn-dbg-focus" class="btn" disabled>Focus</button>
+      <div class="toolbar-sep"></div>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-dbg-follow" checked /> Follow
+      </label>
+      <div class="toolbar-sep"></div>
+      <button id="btn-dbg-continue" class="btn" disabled>Continue</button>
+      <button id="btn-dbg-step" class="btn" disabled>Step</button>
+      <button id="btn-dbg-stepover" class="btn" disabled>Step Over</button>
+    </div>
+    <!-- Creatures tab controls -->
+    <div id="creatures-controls" class="tab-controls">
+      <button id="btn-creatures-refresh" class="btn">Refresh</button>
+      <label class="opt-toggle toolbar-toggle">
+        <input type="checkbox" id="opt-creatures-auto" checked /> Auto (2s)
+      </label>
+      <div class="toolbar-sep"></div>
+      <button id="btn-creatures-focus" class="btn" disabled>Focus</button>
+    </div>
+    <!-- CAOS IDE tab controls -->
+    <div id="ide-controls" class="tab-controls" hidden>
+      <button id="btn-ide-run" class="btn btn-ide-run">▶ Run</button>
+      <button id="btn-ide-inject" class="btn">Inject</button>
+      <button id="btn-ide-remove" class="btn">Remove</button>
+      <div class="toolbar-sep"></div>
+      <button id="btn-ide-save" class="btn">Save .cos</button>
+      <button id="btn-ide-load" class="btn">Load .cos</button>
+      <input type="file" id="ide-file-input" accept=".cos,.txt,.caos" hidden />
+      <div class="toolbar-sep"></div>
+      <button id="btn-ide-refresh" class="btn">⟳ Scripts</button>
+      <button id="btn-ide-clear" class="btn">Clear Output</button>
+    </div>
+    <!-- Docs tab controls -->
+    <div id="docs-controls" class="tab-controls" hidden style="display: flex; align-items: center; width: 100%;">
+      <nav id="docs-sub-tabs" style="display:flex; gap:8px;">
+        <button class="btn docs-sub-btn active" data-docs-tab="wiki">Wiki</button>
+        <button class="btn docs-sub-btn" data-docs-tab="graph">Architecture Graph</button>
+      </nav>
+      <div id="docs-zoom-controls" style="display:none; align-items:center; gap:8px;" hidden>
+        <div class="toolbar-sep"></div>
+        <button id="btn-docs-zoom-out" class="btn" title="Zoom Out">−</button>
+        <button id="btn-docs-zoom-in" class="btn" title="Zoom In">+</button>
+        <button id="btn-docs-reset" class="btn" title="Reset View">⟲ Reset</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Tab: Log ──────────────────────────────────────────────────────────── -->
+  <div id="tab-log" class="tab-panel" hidden>
+    <!-- Category sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Categories</div>
+        <label class="cat-toggle" id="cat-all">
+          <input type="checkbox" checked data-mask="0xFFFFFFFF" /> All
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <label class="cat-toggle" style="--accent:#DD0000">
+          <input type="checkbox" checked data-mask="1" /> <span class="cat-dot"></span> Errors
+        </label>
+        <label class="cat-toggle" style="--accent:#FF5F00">
+          <input type="checkbox" checked data-mask="16" /> <span class="cat-dot"></span> Shutdown
+        </label>
+        <label class="cat-toggle" style="--accent:#0055FF">
+          <input type="checkbox" checked data-mask="2" /> <span class="cat-dot"></span> Network
+        </label>
+        <label class="cat-toggle" style="--accent:#008000">
+          <input type="checkbox" checked data-mask="4" /> <span class="cat-dot"></span> World
+        </label>
+        <label class="cat-toggle" style="--accent:#7700CC">
+          <input type="checkbox" checked data-mask="8" /> <span class="cat-dot"></span> CAOS
+        </label>
+        <label class="cat-toggle" style="--accent:#007799">
+          <input type="checkbox" checked data-mask="32" /> <span class="cat-dot"></span> Sound
+        </label>
+        <label class="cat-toggle" style="--accent:#FF00FF">
+          <input type="checkbox" checked data-mask="64" /> <span class="cat-dot"></span> Crash
+        </label>
+        <label class="cat-toggle" style="--accent:#555555">
+          <input type="checkbox" checked data-mask="0" /> <span class="cat-dot"></span> Other
+        </label>
+      </div>
+
+      <div class="sidebar-section sidebar-footer">
+        <div class="sidebar-title">Display</div>
+        <label class="opt-toggle"><input type="checkbox" id="opt-timestamps" checked /> Timestamps</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-autoscroll" checked /> Auto-scroll</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-compact" /> Compact rows</label>
+      </div>
+    </aside>
+
+    <!-- Log output -->
+    <main id="log-container">
+      <div id="log-inner">
+        <!-- rows injected by JS -->
+      </div>
+      <div id="scroll-anchor"></div>
+    </main>
+
+    <!-- Pause overlay -->
+    <div id="pause-overlay" hidden>
+      <div id="pause-badge">Paused — <span id="pause-buffered">0</span> buffered</div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Console ──────────────────────────────────────────────────────── -->
+  <div id="tab-console" class="tab-panel" hidden>
+    <div id="console-container">
+      <div id="console-output">
+        <div class="console-welcome">
+          <span class="console-welcome-title">CAOS Console</span>
+          <span class="console-welcome-hint">Type CAOS commands below. Press Enter to execute, Shift+Enter for multi-line. ↑/↓ for history.</span>
+        </div>
+      </div>
+      <div id="console-input-bar">
+        <span class="console-prompt">&gt;</span>
+        <textarea id="console-input" rows="1" placeholder="outs &quot;hello&quot;" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Scripts ──────────────────────────────────────────────────────── -->
+  <div id="tab-scripts" class="tab-panel" hidden>
+    <div id="scripts-container">
+      <table id="scripts-table">
+        <thead>
+          <tr>
+            <th>Agent ID</th>
+            <th>Classifier</th>
+            <th>State</th>
+            <th>IP</th>
+            <th>Current Source</th>
+          </tr>
+        </thead>
+        <tbody id="scripts-tbody">
+          <!-- populated by scripts.js -->
+        </tbody>
+      </table>
+      <div id="scripts-empty" hidden>
+        <span>No running scripts.</span>
+        <span class="scripts-empty-hint">Start a world to see active CAOS scripts.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Debugger ────────────────────────────────────────────────────────── -->
+  <div id="tab-debugger" class="tab-panel" hidden>
+    <div id="dbg-container">
+      <!-- Agent list panel (left sidebar) -->
+      <aside id="dbg-agent-panel">
+        <div class="dbg-agent-panel-header">Agents</div>
+        <div id="dbg-agent-search-wrap">
+          <input id="dbg-agent-search" type="text" placeholder="Filter by ID or name…" autocomplete="off" />
+        </div>
+        <div id="dbg-agent-list">
+          <div id="dbg-agent-empty" class="dbg-empty-hint">No running scripts. Start a world to see agents.</div>
+        </div>
+        <div id="dbg-agent-legend">
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--running"></span> Running</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--blocking"></span> Blocking</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--paused"></span> Paused</span>
+          <span class="dbg-legend-item"><span class="dbg-state-dot dbg-state-dot--finished"></span> Finished</span>
+        </div>
+      </aside>
+      <!-- Source panel (center) -->
+      <div id="dbg-source-panel">
+        <div id="dbg-source-header">
+          <span id="dbg-script-info">No agent selected</span>
+        </div>
+        <div id="dbg-source-view">
+          <div id="dbg-source-lines">
+            <!-- populated by debugger_view.js -->
+          </div>
+        </div>
+      </div>
+      <!-- Inspector panel (right) -->
+      <div id="dbg-inspector-panel">
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">Context</div>
+          <table id="dbg-context-table" class="dbg-var-table">
+            <tbody>
+              <tr><td class="dbg-var-key">OWNR</td><td id="dbg-ctx-ownr" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">TARG</td><td id="dbg-ctx-targ" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">FROM</td><td id="dbg-ctx-from" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">IT</td><td id="dbg-ctx-it" class="dbg-var-val">—</td></tr>
+              <tr><td class="dbg-var-key">IP</td><td id="dbg-ctx-ip" class="dbg-var-val">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">State</div>
+          <div id="dbg-state-badge" class="state-badge state-running">—</div>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">OV Variables</div>
+          <div id="dbg-ov-vars" class="dbg-vars-grid">
+            <span class="dbg-empty-hint">No non-zero OV variables</span>
+          </div>
+        </div>
+        <div class="dbg-inspector-section">
+          <div class="dbg-inspector-title">VA Variables</div>
+          <div id="dbg-va-vars" class="dbg-vars-grid">
+            <span class="dbg-empty-hint">No non-zero VA variables</span>
+          </div>
+        </div>
+        <div class="dbg-inspector-section dbg-inspector-flex">
+          <div class="dbg-inspector-title">Breakpoints</div>
+          <div id="dbg-breakpoint-list">
+            <span class="dbg-empty-hint">Click a line number to set a breakpoint</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Creatures ──────────────────────────────────────────────────── -->
+  <div id="tab-creatures" class="tab-panel tab-panel--active">
+    <div id="crt-container">
+      <!-- Creature list panel (left sidebar) -->
+      <aside id="crt-list-panel">
+        <div class="crt-list-header">Creatures</div>
+        <div id="crt-filter-wrap">
+          <input type="text" id="crt-filter-search" placeholder="Filter by name…" autocomplete="off" />
+        </div>
+        <div id="crt-filter-genus">
+          <button class="crt-genus-btn crt-genus-btn--active" data-genus="all">All</button>
+          <button class="crt-genus-btn" data-genus="1"><span class="crt-genus-emoji">🐣</span> Norns</button>
+          <button class="crt-genus-btn" data-genus="2"><span class="crt-genus-emoji">🦎</span> Grendels</button>
+          <button class="crt-genus-btn" data-genus="3"><span class="crt-genus-emoji">🔧</span> Ettins</button>
+        </div>
+        <div id="crt-list">
+          <div id="crt-list-empty" class="crt-empty-hint">No creatures in world. Import or hatch a Norn to begin.</div>
+        </div>
+      </aside>
+      <!-- Detail panel (center) -->
+      <div id="crt-detail-panel">
+        <div id="crt-detail-header">
+          <nav id="crt-sub-tabs">
+            <button class="crt-sub-btn crt-sub-btn--active" data-subtab="drives">Drives</button>
+            <button class="crt-sub-btn" data-subtab="chemistry">Chemistry</button>
+            <button class="crt-sub-btn" data-subtab="organs">Organs</button>
+            <button class="crt-sub-btn" data-subtab="brain">Brain</button>
+            <button class="crt-sub-btn" data-subtab="genome">Genome</button>
+          </nav>
+        </div>
+        <div id="crt-detail-content">
+          <!-- Drives sub-view -->
+          <div id="crt-drives" class="crt-subview crt-subview--active">
+            <div id="crt-drives-bars">
+              <div class="crt-empty-hint">Select a creature to view drives</div>
+            </div>
+          </div>
+          <!-- Chemistry sub-view -->
+          <div id="crt-chemistry" class="crt-subview" hidden>
+            <div class="crt-chem-header-wrap">
+              <nav id="crt-chem-sub-tabs" class="crt-internal-tabs">
+                <button class="crt-chem-tab-btn crt-chem-tab-btn--active" data-chem-tab="monitoring">Monitoring</button>
+                <button class="crt-chem-tab-btn" data-chem-tab="syringe">Syringe</button>
+              </nav>
+            </div>
+
+            <div id="crt-chem-monitoring-view" class="crt-chem-view crt-chem-view--active">
+              <div id="crt-chem-controls">
+                <label class="opt-toggle"><input type="checkbox" id="opt-chem-nonzero" checked /> Non-zero only</label>
+              </div>
+              <div id="crt-chem-bars">
+                <div class="crt-empty-hint">Select a creature to view chemistry</div>
+              </div>
+            </div>
+
+            <div id="crt-chem-syringe-view" class="crt-chem-view" hidden>
+              <div id="crt-syringe-search-wrap">
+                <input type="text" id="crt-syringe-search" placeholder="Search 256 chemicals…" autocomplete="off" />
+              </div>
+              <div id="crt-syringe-list">
+                <!-- populated by creatures.js -->
+              </div>
+              <div id="crt-syringe-action" hidden>
+                <div id="crt-syringe-selected-name">Selected: none</div>
+                <div class="crt-syringe-controls">
+                  <span class="crt-syringe-label">Dosage:</span>
+                  <input type="number" id="crt-syringe-amount" class="opt-select" step="0.1" min="-1.0" max="1.0" value="0.1" style="width: 80px;" />
+                  <button id="btn-syringe-inject" class="btn-light">Inject Payload</button>
+                  <span id="crt-syringe-feedback" style="font-size: 10px; font-weight: 600; margin-left: 8px; color: var(--orange); opacity: 0; transition: opacity 0.3s; white-space: nowrap;"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Organs sub-view -->
+          <div id="crt-organs" class="crt-subview" hidden>
+            <div id="crt-organs-content">
+              <div class="crt-empty-hint">Select a creature to view organs</div>
+            </div>
+          </div>
+          <!-- Brain sub-view -->
+          <div id="crt-brain" class="crt-subview" hidden>
+            <div id="crt-brain-layout">
+              <!-- Spatial brain canvas -->
+              <div id="crt-brain-viewport">
+                <div id="crt-brain-canvas">
+                  <div class="crt-empty-hint">Select a creature and click Brain</div>
+                </div>
+                <svg id="crt-brain-svg"></svg>
+                <svg id="crt-brain-dendrite-svg"></svg>
+              </div>
+              <!-- Info sidebar -->
+              <div id="crt-brain-info">
+                <div class="crt-brain-panel-title">Brain</div>
+                <div id="crt-brain-info-content">
+                  <div class="crt-empty-hint">Select a creature</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Genome sub-view -->
+          <div id="crt-genome" class="crt-subview" hidden>
+            <div id="crt-genome-controls">
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="all" checked /> All</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="brain" /> Brain</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="biochemistry" /> Biochemistry</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="creature" /> Creature</label>
+              <label class="opt-toggle"><input type="radio" name="gfilter" value="organ" /> Organ</label>
+              <div class="toolbar-sep"></div>
+              <input id="crt-genome-search" type="text" placeholder="Filter genes…" autocomplete="off" />
+              <select id="crt-genome-age" class="opt-select">
+                <option value="all">All Ages</option>
+                <option value="0">Baby</option>
+                <option value="1">Child</option>
+                <option value="2">Adolescent</option>
+                <option value="3">Youth</option>
+                <option value="4">Adult</option>
+                <option value="5">Old</option>
+                <option value="6">Senile</option>
+              </select>
+            </div>
+            <div id="crt-genome-content">
+              <div class="crt-empty-hint">Select a creature to view genome</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Summary card (right panel) -->
+      <aside id="crt-summary-panel">
+        <div class="crt-summary-header">Summary</div>
+        <div id="crt-summary-content">
+          <div class="crt-empty-hint">Select a creature</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ── Tab: CAOS IDE ──────────────────────────────────────────────────── -->
+  <div id="tab-ide" class="tab-panel" hidden>
+    <div id="ide-container">
+      <!-- Scriptorium browser sidebar -->
+      <aside id="ide-sidebar">
+        <div class="ide-sidebar-header">Scriptorium</div>
+        <div id="ide-search-wrap">
+          <input type="text" id="ide-search" placeholder="Search scripts…" />
+        </div>
+        <div id="ide-script-list">
+          <div class="ide-empty-hint">Switch to this tab to load scripts.</div>
+        </div>
+      </aside>
+      <!-- Editor area -->
+      <div id="ide-editor-area">
+        <div id="ide-editor-header">
+          <span class="ide-classifier-label">Classifier:</span>
+          <input id="ide-family" type="number" class="ide-classifier-input" placeholder="F" title="Family" min="0" value="0" />
+          <input id="ide-genus" type="number" class="ide-classifier-input" placeholder="G" title="Genus" min="0" value="0" />
+          <input id="ide-species" type="number" class="ide-classifier-input" placeholder="S" title="Species" min="0" value="0" />
+          <input id="ide-event" type="number" class="ide-classifier-input" placeholder="E" title="Event" min="0" value="0" />
+        </div>
+        <div id="ide-error-bar" hidden>
+          <span id="ide-error-msg"></span>
+          <button id="ide-error-dismiss" title="Dismiss">✕</button>
+        </div>
+        <div id="ide-bp-panel" hidden>
+          <div class="ide-bp-header">
+            <span class="ide-bp-title">Breakpoints</span>
+            <span id="ide-bp-count"></span>
+            <button id="ide-bp-clear-all" class="ide-bp-clear">Clear All</button>
+          </div>
+          <div id="ide-bp-list"></div>
+        </div>
+        <div id="ide-editor-wrap">
+          <pre id="ide-line-numbers" aria-hidden="true">1
+</pre>
+          <div id="ide-editor-layers">
+            <pre id="ide-highlight" aria-hidden="true"></pre>
+            <textarea id="ide-editor" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="* Write CAOS code here…
+* Click Run to execute, or Inject to install in the scriptorium."></textarea>
+            <div id="ide-autocomplete" hidden></div>
+            <div id="ide-help-popup" hidden>
+              <div id="ide-help-header">
+                <span id="ide-help-name"></span>
+                <span id="ide-help-type"></span>
+                <button id="ide-help-close" title="Close (Escape)">✕</button>
+              </div>
+              <div id="ide-help-params"></div>
+              <div id="ide-help-desc"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Output panel -->
+        <div id="ide-output-panel">
+          <div class="ide-output-header">Output</div>
+          <div id="ide-output"></div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Docs ──────────────────────────────────────────────────── -->
+  <div id="tab-docs" class="tab-panel" hidden>
+    <div id="docs-main-container" style="display:flex; flex-direction:column; height:100%;">
+      <div id="docs-wiki-view" class="docs-subview docs-subview--active" style="flex:1; display:flex; flex-direction:row; overflow:hidden;">
+        <!-- Left Sidebar: Wiki Navigation -->
+        <aside id="docs-wiki-sidebar" style="width:260px; border-right:2px solid var(--black); background:var(--white); display:flex; flex-direction:column; flex-shrink:0;">
+          <div class="crt-list-header">Wiki Pages</div>
+          <div id="docs-wiki-list" style="flex:1; overflow-y:auto; padding-top:4px;">
+            <!-- Populated by JS -->
+          </div>
+        </aside>
+        <!-- Center Pane: Markdown Content -->
+        <div id="docs-wiki-content" class="markdown-body" style="flex:1; overflow-y:auto; padding:32px 48px; background:var(--white);">
+           <div class="crt-empty-hint">Select a page to read</div>
+        </div>
+        <!-- Right Sidebar: Table of Contents -->
+        <aside id="docs-wiki-toc-panel" style="width:260px; border-left:2px solid var(--black); background:var(--white); display:flex; flex-direction:column; flex-shrink:0;">
+          <div class="crt-summary-header">On This Page</div>
+          <div id="docs-wiki-toc" style="flex:1; overflow-y:auto; padding:16px;">
+            <!-- Populated by JS -->
+          </div>
+        </aside>
+      </div>
+
+      <div id="docs-graph-view" class="docs-subview" hidden style="flex:1; display:none; flex-direction:row; overflow:hidden;">
+        <div id="docs-viewport">
+          <!-- The actual zoomable container -->
+          <div id="docs-graph-wrap">
+            <svg id="docs-edges-svg"></svg>
+            <div id="docs-nodes-container"></div>
+          </div>
+          <!-- Legend -->
+          <div id="docs-legend">
+            <div class="docs-legend-title">Layers</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#000000"></span> Core</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#0055FF"></span> Logic</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#008000"></span> Entities</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#7700CC"></span> VM</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#FF5F00"></span> Simulation</div>
+            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#555555"></span> Data</div>
+            
+            <div class="docs-legend-title" style="margin-top: 8px;">Connections</div>
+            <div class="docs-legend-item">
+              <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2"></line></svg> Strong / Inherits
+            </div>
+            <div class="docs-legend-item">
+              <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2" stroke-dasharray="2 2"></line></svg> Weak / Spawns
+            </div>
+          </div>
+        </div>
+        <!-- Detail panel (right) -->
+        <aside id="docs-detail-panel">
+          <div class="docs-detail-header">Class Inspector</div>
+          <div id="docs-detail-content">
+            <div class="docs-empty-hint">Click a class node to see its description</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Genetics Kit ──────────────────────────────────────────────── -->
+  <div id="tab-genetics" class="tab-panel" hidden>
+    <div id="genetics-container" style="display:flex; flex-direction:row; height:100%;">
+      <!-- Kit controls area (Syringe style) -->
+      <div id="genetics-top-wrap" style="display:flex; flex-direction:column; width:260px; border-right:2px solid var(--black); background:var(--white); flex-shrink:0;">
+        <div id="genetics-file-search-wrap" style="display:flex; gap:8px; padding:12px; border-bottom:1px solid var(--black);">
+          <input type="text" id="genetics-file-search" placeholder="Search .gen files..." autocomplete="off" style="flex:1; width:0;" />
+          <button id="btn-genetics-refresh" class="btn-light" title="Refresh">⟳</button>
+        </div>
+        <div style="display:flex; gap:8px; padding:8px 12px; border-bottom:1px solid var(--black); background:var(--slate);">
+          <button id="btn-genetics-new" class="btn-light" style="flex:1;" title="Create a new blank genome">New</button>
+          <button id="btn-genetics-import" class="btn-light" style="flex:1;" title="Import from JSON">Import</button>
+          <button id="btn-genetics-crossover" class="btn-light" style="flex:1;" title="Cross two genomes">Cross</button>
+          <input type="file" id="genetics-import-file" accept=".json" style="display:none;" />
+        </div>
+        <div id="genetics-file-list" style="flex:1; overflow-y:auto; padding:0;">
+          <!-- populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Gene data section -->
+      <div id="genetics-genes-wrap" style="flex:1; display: flex; flex-direction: column; overflow: hidden; background: var(--off-white);">
+        
+        <div id="genetics-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; color:rgba(0,0,0,0.3); padding:40px; text-align:center;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:16px; opacity:0.5;"><path d="M4 22L20 2"></path><path d="M4 2L20 22"></path><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="18" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+          <h2 style="font-size:16px; font-weight:800; letter-spacing:1px; color:var(--black); margin-bottom:8px;">GENETICS INSPECTOR</h2>
+          <p style="font-size:12px; max-width:280px; line-height:1.5;">Select a genome from the library to inspect and edit its genes, or click New to start from scratch.</p>
+        </div>
+
+        <div id="genetics-inspector-content" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+          <div id="genetics-file-action" style="display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid var(--black); background:var(--white);">
+            <div id="genetics-selected-name" style="flex:1; font-size:12px; font-weight:600;">Selected: none</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
+              <button id="btn-genetics-export" class="btn-light" title="Export current genome as JSON">Export</button>
+              <button id="btn-genetics-save" class="btn-light" title="Save back to a .gen file">Save</button>
+              <select id="genetics-inject-mode" class="opt-select" style="margin-left:8px;">
+                <option value="creature">Inject as Hatched Creature</option>
+                <option value="egg">Inject as Egg</option>
+              </select>
+              <select id="genetics-inject-gender" class="opt-select" style="margin-left:4px;">
+                <option value="0">Random ♂♀</option>
+                <option value="1">Male ♂</option>
+                <option value="2">Female ♀</option>
+              </select>
+              <button id="btn-genetics-inject" class="btn-light" style="background:var(--orange); color:var(--white); border-color:var(--orange);">Inject to Engine</button>
+            </div>
+          </div>
+
+          <div id="genetics-genome-controls" style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.1); flex-wrap: wrap;">
+            <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="all" checked /> All</label>
+            <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="brain" /> Brain</label>
+            <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="biochemistry" /> Biochemistry</label>
+            <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="creature" /> Creature</label>
+            <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="organ" /> Organ</label>
+            <div class="toolbar-sep"></div>
+            <input id="genetics-genome-search" type="text" placeholder="Filter genes…" autocomplete="off" style="flex: 1; min-width: 120px;" />
+            <select id="genetics-genome-age" class="opt-select">
+              <option value="all">All Ages</option>
+              <option value="0">Baby</option>
+              <option value="1">Child</option>
+              <option value="2">Adolescent</option>
+              <option value="3">Youth</option>
+              <option value="4">Adult</option>
+              <option value="5">Old</option>
+              <option value="6">Senile</option>
+            </select>
+            <div class="toolbar-sep"></div>
+            <select id="genetics-add-gene-type" class="opt-select" style="max-width: 120px;">
+              <option value="0/0">Brain Lobe</option>
+              <option value="0/1">Brain Organ</option>
+              <option value="0/2">Brain Tract</option>
+              <option value="1/0">Receptor</option>
+              <option value="1/1">Emitter</option>
+              <option value="1/2">Reaction</option>
+              <option value="1/3" disabled>Half-lives (Max 1)</option>
+              <option value="1/4">InitConc</option>
+              <option value="1/5">Neuroemitter</option>
+              <option value="2/0">Stimulus</option>
+              <option value="2/1" disabled>Genus (Max 1)</option>
+              <option value="2/2">Appearance</option>
+              <option value="2/3">Pose</option>
+              <option value="2/4">Gait</option>
+              <option value="2/5">Instinct</option>
+              <option value="2/6">Pigment</option>
+              <option value="2/7">Pigment Bleed</option>
+              <option value="2/8">Expression</option>
+              <option value="3/0">Organ</option>
+            </select>
+            <button id="btn-genetics-add-gene" class="btn-light" style="padding: 2px 6px;">➕ Add</button>
+          </div>
+          <div id="genetics-modified-section" style="display:none; flex-direction:column; background: var(--off-white); border-bottom: 2px solid rgba(0,0,0,0.1); padding: 12px 16px;">
+             <div style="font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-bottom: 8px; color: var(--orange);">MODIFIED GENES</div>
+             <div id="genetics-modified-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+          </div>
+          <div id="genetics-genes-content" style="flex: 1; overflow-y: auto; padding: 16px;">
+            <!-- populated dynamically -->
+          </div>
+        </div>
+  </div>
+
+    <!-- Crossover Modal -->
+    <div id="modal-crossover" hidden>
+      <div class="modal-crossover-backdrop"></div>
+      <div class="modal-crossover-content">
+        <h3 style="margin:0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">Crossover / Splicing</h3>
+        <p style="color:rgba(0,0,0,0.45); font-size:11px; margin:0 0 16px;">Select another genome to cross with Parent A.</p>
+        <div class="modal-row">
+          <span class="modal-label">Parent A:</span>
+          <strong id="cross-parent-a-lbl"></strong>
+        </div>
+        <div class="modal-row" style="margin-bottom: 4px; flex-direction:column; align-items:stretch;">
+          <span class="modal-label" style="margin-bottom:4px;">Parent B:</span>
+          <div id="cross-parent-b-search-wrap">
+            <input type="text" id="cross-parent-b-search" placeholder="Search .gen files..." autocomplete="off" style="width: 100%;" />
+          </div>
+          <div id="cross-parent-b-list" class="genetics-file-list" style="max-height:120px; border:1px solid rgba(0,0,0,0.08); overflow-y:auto; margin-top:8px;"></div>
+        </div>
+        <div class="modal-row">
+          <span class="modal-label">Child Name:</span>
+          <input type="text" id="cross-child-name" value="ChildGen" style="flex:1;" />
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+          <button id="btn-cross-cancel" class="btn-light">Cancel</button>
+          <button id="btn-cross-run" class="btn-light" style="border-color:var(--orange);color:var(--orange);">Cross</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+
+  <script src="marked.min.js"></script>
+  <script src="caos_format.js"></script>
+  <script src="tooltips.js"></script>
+  <script src="app.js"></script>
+  <script src="debugger.js"></script>
+  <script src="scripts.js"></script>
+  <script src="debugger_view.js"></script>
+  <script src="creatures.js"></script>
+  <script src="svrule.js"></script>
+  <script src="brain.js"></script>
+  <script src="organs.js"></script>
+  <script src="gene_renderer.js"></script>
+  <script src="genome.js"></script>
+  <script src="caos_ide.js"></script>
+  <script src="docs.js"></script>
+  <script src="genetics.js"></script>
+</body>
+
+</html>
