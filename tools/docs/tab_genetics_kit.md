@@ -1,0 +1,120 @@
+# Genetics Kit Tab
+
+The **Genetics Kit** tab is a standalone, powerful tool for manipulating, cross-breeding, and injecting genomes directly into the engine, bypassing the normal biological reproduction cycle. 
+
+It is ideal for instantly drafting new creatures or orchestrating precise genetic crosses without waiting for in-game life cycles.
+
+![Genetics Kit Tab](/docs/media/tab_genetics_kit.png)
+
+## Basic Concepts
+
+* **Moniker:** Every genome in the game has a unique hash called a "moniker" (e.g., `985-haze-kszy7-dqh74...`). This designates the `.gen` file located in the game's *Genetics* directory.
+* **Cross-Breeding:** The engine uses a native crossover algorithm to shuffle genes from two parent genomes using biological inheritance and mutation rules to produce a unique child.
+
+---
+
+## Interface & Workflow
+
+The Genetics Kit uses a split-pane layout to maximize vertical space (the global developer toolbar is hidden).
+
+### 1. Genome Library (Left Sidebar)
+Lists all `.gen` files in the world's `Genetics/` directory.
+* Core engine genetics are protected and marked with a `CORE` badge.
+* Hover over non-core files to access inline **Rename** (✏️) and **Delete** (🗑️) actions.
+* Global actions allow you to create a **New** genome, **Import** from JSON, or **Cross** two parent genomes.
+
+### 2. Inspect & Search (Right Panel)
+Selecting a genome loads it into the inspector.
+* Genes are categorized (Brain / Biochemistry / Creature / Organ).
+* Use the search filter to deeply search through genetic literal structures (e.g., search for chemical ID `148`).
+
+### 3. Inline Property Editing
+All gene properties are natively editable.
+* Toggle mutability flags and activation states.
+* Tune biochemical thresholds, brain coordinates, clock rates, and reactions.
+* *(Editing is disabled for `CORE` files to protect the engine).*
+* A **Modified Genes** summary tracks all edits. Click a badge to scroll to the modified gene. Click **Save** to commit changes to disk.
+
+### 4. Structural Chromosome Modifiers
+Dynamically groom the DNA strand without hex editing.
+* **Duplicate**, **Delete**, or **Move** genes up or down the chromosome sequence.
+* Add a completely blank gene of any subtype at the end of the genome.
+
+### 5. Editing Complex SV Rules
+Brain Lobe and Neural Tract genes use State Variable Rules (SVRules) to define neuron logic.
+* Edited through a **16-row visual grid editor**.
+* **Opcode:** Searchable combobox (e.g., `store`, `load`, `if=0`).
+* **Operand:** Abstractions like `acc`, `neuron`, `chem`.
+* **Value:** Numeric inputs or chemical comboboxes.
+* The human-readable pseudo-code (e.g., `store neuron[0] -> stop`) updates in **real-time** as you change values.
+
+---
+
+## Operations
+
+### Crossover Algorithm (`Genome::Cross`)
+
+When the **Cross** button is clicked, the REST API reads both parent `.gen` files into `Genome` objects and calls `Genome::Cross()`. The crossover algorithm (`CrossLoop()` in `Genome.cpp`) simulates biological meiosis:
+
+1. **Initialization:** A parent strand (`src`) is chosen randomly (50/50 mum or dad). Both parent genomes are reset to their first gene.
+2. **Gene copying:** Genes are copied from `src` to the child genome sequentially. The gene's data codons may undergo point mutations:
+   * **Mutation probability:** `1 / (MUTATIONRATE × (256 − Mutability) / 256 × (256 − ParentChanceOfMutation) / 256)` per codon (base rate is `1/4800`).
+   * **Mutation magnitude:** Controlled by `ParentDegreeOfMutation`. Higher values produce wider bit-flips via `pow(random, degree)` shaping.
+3. **Crossover points:** After copying a block of genes (randomly between 10 and `LINKAGE×2`, where `LINKAGE=50`), the algorithm attempts to swap strands. It only crosses over when both strands are synchronized (the alternate parent has a gene with the same `GeneID`). This ensures genes near each other on the chromosome tend to stay together.
+4. **Cutting errors:** At each crossover point, there is a `1/CUTERRORRATE` (1/80) chance of a structural error:
+   * **Duplication (50%):** The gene from the previous strand is copied *again* before continuing on the new strand. Only occurs if the gene's `DUP` flag is set.
+   * **Deletion (50%):** One gene on the new strand is skipped entirely. Only occurs if the gene's `CUT` flag is set.
+5. **Termination:** When the end-of-genome marker (`gend`) is reached on the source strand, the child genome is terminated, and both parent monikers are written into the child's Genus gene header.
+
+### Injection Pipeline (CAOS Macro)
+
+Select your mode ("Hatched Creature" or "Egg"), choose the **gender** (Random ♂♀, Male ♂, or Female ♀), and click **Inject to Engine**. 
+
+**Step 1: Binary Serialization**
+The frontend sends the full genome JSON (including any edits, the selected inject mode, and gender) to `POST /api/genetics/inject`. The server re-serializes the gene array back into a `dna3` binary file. Genes with `active: false` are omitted. A fresh moniker is generated by appending `_<random>` to the input moniker, and the `.gen` file is written to the world's Genetics directory.
+
+**Step 2: CAOS Execution**
+The server constructs and executes a CAOS macro on the main thread. 
+
+```caos
+new: simp 1 1 1 "blnk" 1 0 0      \ Create temporary "blank" agent
+gene load targ 1 "<moniker>"        \ Load the .gen file into genome slot 1
+setv va00 unid                      \ Store temp agent's unique ID in va00
+new: crea 4 targ 1 <sex> 0          \ Hatch creature from genome slot 1 (Family 4 = Norn)
+                                     \ -> AgentManager::CreateCreature()
+born                                 \ Register birth in HistoryStore (fires LifeEvent::typeBorn)
+accg game "c3_creature_accg"         \ Set gravitational acceleration (default: 5.0)
+attr game "c3_creature_attr"         \ Set agent attributes (default: 198)
+bhvr game "c3_creature_bhvr"         \ Set click behaviours (default: 15)
+perm game "c3_creature_perm"         \ Set wall permeability (default: 100)
+setv va01 unid                       \ Store new creature's unique ID in va01
+targ agnt va00                       \ Re-select the temporary blank agent
+kill targ                            \ Destroy the temporary agent
+targ agnt va01                       \ Re-select the newly hatched creature
+mvsf 1000 8900                       \ Move to safe floor position in Norn Meso
+```
+
+**Why the temporary agent?** 
+The `GENE LOAD` CAOS command (`SubCommand_GENE_LOAD`) calls `GenomeStore::LoadEngineeredFile()`, which requires an existing agent to hold the genome slot. The temporary `blnk` agent serves as a genome carrier. When `NEW: CREA` executes, `AgentManager::CreateCreature()` reads the genome from the carrier, constructs the full `Creature` object (brain, biochemistry, skeleton, body parts), and adds it to the world. After hatching, the temp agent is cleanly destroyed.
+
+**Step 3: History Registration**
+The `BORN` command explicitly calls `LifeFaculty::SetProperlyBorn()`, which enables tick aging and registers the `LifeEvent::typeBorn` in the `CreatureHistory` singleton. This ensures the injected creature is properly tracked by the in-game UI.
+
+---
+
+## Technical Architecture
+
+The Genetics Kit operates across four layers:
+1. **Frontend (`genetics.js`):** Browser UI, editing, and crossover logic.
+2. **REST API (`DebugServer.cpp`):** HTTP endpoints (`/api/genetics/*`) dispatching work to the main thread.
+3. **Engine Core (`Genome.cpp`):** Handles binary file I/O, `Genome::Cross`, and gene expression.
+4. **CAOS VM:** Executes the injection macros (`NEW: SIMP`, `GENE LOAD`, `NEW: CREA`).
+
+> **⚠️ MAINTENANCE WARNING:** The tool uses parallel binary codecs in `DebugServer.cpp` (one for parsing to JSON, one for serializing back to binary) that must remain perfectly mirrored with `Genome.cpp`. Any structural changes to gene layouts in the engine must be updated in all three locations.
+
+---
+
+## See Also
+
+* **[Creatures](tab_creatures.md)** — After injecting a genome, use the Creatures tab to inspect your new creature's drives, chemistry, organs, and brain in real time.
+* **[API Reference](api_reference.md)** — Endpoint documentation for all `/api/genetics/*` routes.

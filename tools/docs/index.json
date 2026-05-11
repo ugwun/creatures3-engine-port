@@ -2,5 +2,41 @@
   {
     "title": "Welcome to the Wiki",
     "file": "intro.md"
+  },
+  {
+    "title": "Developer Tools Overview",
+    "file": "tools_overview.md"
+  },
+  {
+    "title": "Log Tab",
+    "file": "tab_log.md"
+  },
+  {
+    "title": "Console Tab",
+    "file": "tab_console.md"
+  },
+  {
+    "title": "Scripts Tab",
+    "file": "tab_scripts.md"
+  },
+  {
+    "title": "Debugger Tab",
+    "file": "tab_debugger.md"
+  },
+  {
+    "title": "Creatures Tab",
+    "file": "tab_creatures.md"
+  },
+  {
+    "title": "Genetics Kit Tab",
+    "file": "tab_genetics_kit.md"
+  },
+  {
+    "title": "CAOS IDE Tab",
+    "file": "tab_caos_ide.md"
+  },
+  {
+    "title": "API Reference",
+    "file": "api_reference.md"
   }
 ]

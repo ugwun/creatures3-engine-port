@@ -439,12 +439,25 @@ async function loadWikiIndex() {
     }
 }
 
+const docsWikiSearch = document.getElementById("docs-wiki-search");
+
+docsWikiSearch.addEventListener("input", () => {
+    renderWikiSidebar();
+});
+
 function renderWikiSidebar() {
+    const filter = docsWikiSearch.value.toLowerCase().trim();
     docsWikiList.innerHTML = "";
     wikiIndex.forEach(item => {
+        if (filter && !item.title.toLowerCase().includes(filter) && !item.file.toLowerCase().includes(filter)) {
+            return;
+        }
         const el = document.createElement("div");
         el.className = "docs-wiki-item";
         el.textContent = item.title;
+        if (item.file === currentWikiFile) {
+            el.classList.add("docs-wiki-item--active");
+        }
         el.dataset.file = item.file;
         el.addEventListener("click", () => loadWikiPage(item.file));
         docsWikiList.appendChild(el);

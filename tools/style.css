@@ -2007,7 +2007,7 @@ body.no-toolbar .tab-panel {
   margin-bottom: 10px;
 }
 
-#genetics-file-search, #cross-parent-b-search {
+#genetics-file-search, #cross-parent-b-search, #docs-wiki-search {
   padding: 6px 12px;
   background: var(--white);
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -2017,7 +2017,7 @@ body.no-toolbar .tab-panel {
   outline: none;
   transition: border-color .2s;
 }
-#genetics-file-search:focus, #cross-parent-b-search:focus {
+#genetics-file-search:focus, #cross-parent-b-search:focus, #docs-wiki-search:focus {
   border-color: var(--orange);
 }
 
