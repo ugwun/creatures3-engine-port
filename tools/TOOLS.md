@@ -655,9 +655,11 @@ The **Docs** tab acts as the built-in knowledge base for the project, featuring 
 **Developer Wiki:**
 - **Markdown Rendering:** A fully client-side Wiki engine using `marked.min.js`. It fetches, parses, and renders Markdown documents (`.md`) dynamically into a sleek, high-contrast reading pane.
 - **Dynamic File Loading:** Page content is defined by `tools/docs/index.json`. Clicking items in the left-hand page list fetches the corresponding file from the `tools/docs/` directory without a page reload.
-- **Table of Contents:** An auto-generated right-hand sidebar scans the active Markdown document for headers (`<h2>`, `<h3>`), building a clickable Table of Contents that scrolls the reading pane directly to the selected section.
+- **Table of Contents:** An auto-generated right-hand sidebar scans the active Markdown document for headers (`<h2>`, `<h3>`), building a clickable Table of Contents that scrolls the reading pane directly to the selected section. Heading IDs are generated as URL-safe slugs from the heading text (e.g. `## Brain Sub-Tab` → `id="brain-sub-tab"`).
 - **Internal Routing:** Internal Markdown links (e.g., `[Link](file.md)`) are intercepted by the client router to seamlessly transition between Wiki pages.
 - **Image Scaling:** All inline Markdown images are automatically responsive and scaled to fit the reading pane, preventing overflow.
+- **Search:** A full-text search box above the page list filters wiki pages by title as you type, matching the searchable dropdown pattern used throughout the tools.
+- **Deep-Link URLs:** The wiki supports hash-based deep-links in the format `http://localhost:9980/#docs/filename.md` or `http://localhost:9980/#docs/filename.md:section-slug`. When the page loads with such a hash, it automatically switches to the Docs tab → Wiki sub-tab, loads the specified page, and (if a section is given) smooth-scrolls to the corresponding heading. The hash is cleared from the URL after navigation.
 
 **Architecture Graph:**
 - Displays an interactive, fully client-side architecture node graph of the primary C++ engine classes utilizing an SVG overlay system on a 2D DOM pane.
@@ -666,6 +668,55 @@ The **Docs** tab acts as the built-in knowledge base for the project, featuring 
 - **Node Highlight:** You can hover edge paths, which will visually highlight the associated connecting classes in a bright orange tint. 
 - **Zoom / Pan Constraints:** Includes full spatial zooming with independent control bindings (`+`, `-`, and viewport Ctrl+Scroll wheel integrations). Reset easily back to 100% bounds using the toolbar reset module.
 - **Class Context:** Side panel reflects the class description, purpose and system alignment layer when any node is clicked globally.  
+
+### Contextual Tooltips & Documentation Links
+
+The developer tools include a **global contextual tooltip system** that shows descriptive help text when hovering any interactive element. Tooltips with associated documentation go one step further — they provide a direct **"📖 Read docs"** link that opens the relevant wiki page in a new browser tab.
+
+**Basic Usage:**
+
+Hover over any interactive element (buttons, tabs, panels) for 500ms and a tooltip appears with a description. The tooltip disappears when the cursor moves away.
+
+**Interactive Documentation Links:**
+
+Some tooltips include a documentation link that bridges to the Developer Wiki. These tooltips show:
+1. The descriptive help text (same as always)
+2. A small *"press Tab to pin"* hint
+3. A clickable **"📖 Read docs"** link
+
+**Pin-to-Read Workflow:**
+
+Because tooltips normally dismiss when the cursor moves away, a **pin mechanism** lets users lock a tooltip in place:
+
+1. **Hover** an element with a doc link — tooltip appears after 500ms
+2. **Press `Tab`** while the tooltip is showing — the tooltip **pins** in place (visual indicator: white left border + orange glow, the hint text disappears)
+3. **Move the cursor freely** — the pinned tooltip remains visible regardless of mouse position
+4. **Click "📖 Read docs"** — opens the wiki page in a **new browser tab** (the user doesn't lose their current context)
+5. **Dismiss:** click anywhere outside the pinned tooltip, or press `Escape`
+
+Clicking the target element itself (e.g., the tab button) still works normally — pinning is triggered **only** by the `Tab` key.
+
+**Section-Level Navigation:**
+
+Documentation links can point to a specific section within a page. For example, hovering the "Brain" sub-tab and clicking "Read docs" opens `tab_creatures.md` scrolled directly to the **Brain Sub-Tab** heading, not just the top of the page.
+
+**Current Tooltips with Doc Links:**
+
+| Element | Wiki Page | Section |
+|---|---|---|
+| Logo | `tools_overview.md` | — |
+| Status Pill | `api_reference.md` | — |
+| All 8 navigation tabs | Respective tab page | — |
+| Console input field | `tab_console.md` | — |
+| Debugger source view | `tab_debugger.md` | Source View |
+| Debugger context table | `tab_debugger.md` | Inspector Panel |
+| Creatures sub-tabs (Drives, Chemistry, Organs, Brain, Genome) | `tab_creatures.md` | Respective section |
+| Syringe button | `tab_creatures.md` | Syringe Mode |
+| Brain viewport | `tab_creatures.md` | Spatial Heatmap |
+| IDE scriptorium header | `tab_caos_ide.md` | Scriptorium Browser |
+| IDE code editor | `tab_caos_ide.md` | Code Editor |
+| Genetics crossover button | `tab_genetics_kit.md` | Crossover Algorithm |
+| Genetics inject button | `tab_genetics_kit.md` | Injection Pipeline |
 
 ---
 

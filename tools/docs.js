@@ -431,7 +431,23 @@ async function loadWikiIndex() {
         if (!res.ok) throw new Error("Index not found");
         wikiIndex = await res.json();
         renderWikiSidebar();
-        if (wikiIndex.length > 0) {
+
+        // Deep-link: if URL contains #docs/filename.md or #docs/filename.md:section
+        const hash = window.location.hash;
+        if (hash.startsWith('#docs/')) {
+            const fragment = hash.substring(6);
+            const colonIdx = fragment.indexOf(':');
+            const file = colonIdx >= 0 ? fragment.substring(0, colonIdx) : fragment;
+            const section = colonIdx >= 0 ? fragment.substring(colonIdx + 1) : null;
+            // Auto-switch to Docs tab and Wiki sub-tab
+            const docsBtn = document.querySelector('.tab-btn[data-tab="docs"]');
+            if (docsBtn) docsBtn.click();
+            const wikiBtn = document.querySelector('.docs-sub-btn[data-docs-tab="wiki"]');
+            if (wikiBtn) wikiBtn.click();
+            loadWikiPage(file, section);
+            // Clear the hash to avoid re-triggering on refresh
+            history.replaceState(null, '', window.location.pathname);
+        } else if (wikiIndex.length > 0) {
             loadWikiPage(wikiIndex[0].file);
         }
     } catch (err) {
@@ -464,7 +480,7 @@ function renderWikiSidebar() {
     });
 }
 
-async function loadWikiPage(filename) {
+async function loadWikiPage(filename, section) {
     currentWikiFile = filename;
     
     // Update active state in sidebar
@@ -480,6 +496,16 @@ async function loadWikiPage(filename) {
         docsWikiContent.innerHTML = marked.parse(text);
         generateWikiTOC();
         interceptWikiLinks();
+
+        // Scroll to a specific section if requested
+        if (section) {
+            requestAnimationFrame(() => {
+                const target = document.getElementById(section);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
     } catch (err) {
         docsWikiContent.innerHTML = `<div class="crt-empty-hint">Error: ${err.message}</div>`;
         docsWikiToc.innerHTML = "";
@@ -496,7 +522,17 @@ function generateWikiTOC() {
     }
 
     headers.forEach((h, i) => {
-        if (!h.id) h.id = `wiki-h-${i}`;
+        // Generate slug-based ID from heading text (e.g. "Brain Sub-Tab" → "brain-sub-tab")
+        if (!h.id) {
+            const slug = h.textContent
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')   // strip non-word chars (except spaces and hyphens)
+                .replace(/\s+/g, '-');       // spaces → hyphens
+            // Avoid duplicate IDs by appending a suffix if needed
+            const existing = document.getElementById(slug);
+            h.id = existing ? `${slug}-${i}` : slug;
+        }
         
         const link = document.createElement("a");
         link.className = `docs-toc-item docs-toc-${h.tagName.toLowerCase()}`;
@@ -532,5 +568,8 @@ docsControls.hidden = true;
 
 // Kick off wiki load
 loadWikiIndex();
+
+// Expose for external navigation (used by tooltip doc links)
+window.DocsWiki = { loadWikiPage };
 
 })();

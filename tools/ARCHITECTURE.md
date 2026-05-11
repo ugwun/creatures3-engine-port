@@ -136,7 +136,7 @@ Log streaming works differently — it doesn't use the work queue:
 |---|---|
 | [`tools/index.html`](index.html) | UI shell — tab navigation, panel containers, sidebar |
 | [`tools/utils.js`](utils.js) | Shared utilities: `escHtml()` function + `DevToolsEvents` pub/sub event bus |
-| [`tools/tooltips.js`](tooltips.js) | Global contextual tooltip system: hover event management, positioning, and native title suppression |
+| [`tools/tooltips.js`](tooltips.js) | Global contextual tooltip system: hover event management, positioning, native title suppression, interactive doc-linking with pin-to-read, and `window.DocsWiki` bridge |
 | [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching + lifecycle events |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
 | [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
@@ -144,8 +144,8 @@ Log streaming works differently — it doesn't use the work queue:
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
 | [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
 | [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
-| [`tools/docs.js`](docs.js) | Docs tab: Markdown-powered Developer Wiki viewer, internal document routing, and interactive Architecture Graph |
-| [`tools/marked.min.js`](marked.min.js) | Vendored Markdown parser used by the Developer Wiki |
+| [`tools/docs.js`](docs.js) | Docs tab: Markdown-powered Developer Wiki viewer, internal document routing, hash-based deep-linking with section scroll, and interactive Architecture Graph |
+| [`tools/marked.min.js`](marked.min.js) | Vendored Markdown parser (v15) used by the Developer Wiki |
 | [`tools/genetics.js`](genetics.js) | Genetics Kit tab: genome browser, structural modifiers, inline editor, SV Rule bytecodes, crossover, injection, file ops |
 | [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit DOM factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs, SVRule visual grid editor with searchable comboboxes, and client-side byte↔entry parsing |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
@@ -174,8 +174,135 @@ Script tags in `index.html` load in this order:
 6. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
 7. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
 8. `gene_renderer.js`, `genetics.js` — Genetics Kit tab and DOM renderers
+9. `docs.js` — Developer Wiki + Architecture Graph (must load after `marked.min.js`; exposes `window.DocsWiki`)
 
 All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`, `DevToolsTooltips`) or communicated via the event bus.
+
+### Tooltip → Documentation Bridge
+
+The tooltip system in `tooltips.js` provides an interactive link from UI elements to the Developer Wiki in `docs.js`. This bridge uses three mechanisms:
+
+#### 1. TIPS Registry — `doc` Property
+
+Each entry in the `TIPS` array can include an optional `doc` string. The format is:
+
+```
+doc: 'filename.md'                    // links to the page (scrolls to top)
+doc: 'filename.md:section-slug'       // links to a specific heading within the page
+```
+
+The section slug is the heading text converted to a URL-safe ID: lowercased, spaces replaced with hyphens, special characters stripped. For example, the markdown heading `## Brain Sub-Tab` produces the slug `brain-sub-tab`.
+
+**Adding a new doc link to a tooltip:**
+
+```javascript
+// In tooltips.js TIPS array:
+
+// Page-level link (scrolls to top of page)
+{ selector: '#my-button', text: 'Does something useful', doc: 'my_page.md' },
+
+// Section-level link (scrolls directly to a specific heading)
+{ selector: '#my-panel', text: 'A complex panel', doc: 'my_page.md:my-section-heading' },
+```
+
+To determine the correct section slug for a heading:
+1. Take the heading text (e.g. `## Inspector Panel`)
+2. Convert to lowercase: `inspector panel`
+3. Replace spaces with hyphens: `inspector-panel`
+4. Strip special characters: no change → `inspector-panel`
+
+#### 2. Pin Mechanism — `Tab` Key
+
+Tooltips with a `doc` property are rendered with `pointer-events: auto` (normal tooltips use `none`) and include a "📖 Read docs" link. Since the user cannot easily move their cursor from the target element to the tooltip without triggering other tooltips on adjacent elements, a keyboard-based pin mechanism is used:
+
+**State management:**
+
+```
+let pinned = false;  // tracks whether the current tooltip is pinned
+```
+
+**Key bindings:**
+- **`Tab`** — when a doc-linked tooltip is visible and not pinned, sets `pinned = true` and adds the CSS class `tooltip-pinned`. `e.preventDefault()` suppresses browser focus cycling.
+- **`Escape`** (or any other key) — calls `hideTooltip()` which resets `pinned = false`.
+
+**Mouse event guards:** When `pinned` is `true`, `onMouseOver`, `onMouseOut`, `onScroll`, and `scheduleHide` are all short-circuited (they return immediately). This prevents any mouse movement from dismissing the pinned tooltip.
+
+**Unpin click handler:** A regular-phase `document.addEventListener('click', ...)` dismisses pinned tooltips when clicking outside. Clicks **inside** the tooltip (e.g. the doc link) pass through normally.
+
+**Visual feedback (CSS):**
+
+```css
+.tooltip-pinned {
+    border-left-color: #fff;
+    box-shadow: 0 4px 24px rgba(255, 95, 0, 0.3);
+}
+.tooltip-pin-hint {
+    /* Italic grey text "press Tab to pin" — hidden when pinned */
+}
+```
+
+#### 3. Deep-Link Hash Routing — `docs.js`
+
+When the "Read docs" link is clicked, it opens a new browser tab using `window.open()` with a hash-based URL:
+
+```
+http://localhost:9980/#docs/tab_creatures.md:brain-sub-tab
+```
+
+On the receiving end, `loadWikiIndex()` in `docs.js` checks `window.location.hash` on page load:
+
+```javascript
+const hash = window.location.hash;     // e.g. '#docs/tab_creatures.md:brain-sub-tab'
+if (hash.startsWith('#docs/')) {
+    const fragment = hash.substring(6);         // 'tab_creatures.md:brain-sub-tab'
+    const colonIdx = fragment.indexOf(':');
+    const file = colonIdx >= 0 ? ... : ...;     // 'tab_creatures.md'
+    const section = colonIdx >= 0 ? ... : null; // 'brain-sub-tab'
+    // Switch tabs, load page, scroll to section
+    loadWikiPage(file, section);
+    history.replaceState(null, '', window.location.pathname);  // clear hash
+}
+```
+
+**`loadWikiPage(filename, section)`** fetches the markdown, renders it with `marked.parse()`, generates the TOC, then (if `section` is provided) uses `requestAnimationFrame` to scroll to the heading element via `document.getElementById(section).scrollIntoView()`.
+
+**Heading ID generation** is performed in `generateWikiTOC()`:
+
+```javascript
+const slug = h.textContent
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')   // strip special chars
+    .replace(/\s+/g, '-');       // spaces → hyphens
+h.id = slug;
+```
+
+This is necessary because `marked v15` does **not** auto-generate heading IDs. The slug format matches the `doc` property convention used in the TIPS registry.
+
+#### 4. Global API — `window.DocsWiki`
+
+`docs.js` exposes the `loadWikiPage` function globally for cross-module access:
+
+```javascript
+window.DocsWiki = { loadWikiPage };
+```
+
+This can be called from any module to programmatically navigate the wiki:
+
+```javascript
+window.DocsWiki.loadWikiPage('tab_console.md');              // load page
+window.DocsWiki.loadWikiPage('tab_creatures.md', 'brain-sub-tab');  // load page + scroll
+```
+
+#### Adding a New Doc-Linked Tooltip (Checklist)
+
+1. **Ensure the wiki page exists** in `tools/docs/` and is registered in `tools/docs/index.json`
+2. **Identify the heading slug** for section-level links (see slug rules above)
+3. **Add the `doc` property** to the TIPS entry in `tooltips.js`:
+   ```javascript
+   { selector: '#my-element', text: 'Description', doc: 'page.md:section-slug' },
+   ```
+4. **Test:** Hover the element, press `Tab` to pin, click "📖 Read docs", verify it opens the correct page and scrolls to the correct section
 
 ### DevToolsEvents — Cross-Module Communication
 
@@ -442,81 +569,3 @@ When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished)
 
 **Data Integrity & Security**: `CORE` genome files are strictly immutable in the API and UI to prevent engine corruption. For user-modifiable files, the frontend implements non-destructive in-memory state snapshotting (`_originalStr`) to track and visualise uncommitted edits dynamically via the "Modified Genes" UI.
 
----
-
-## Future Phases
-
-### ~~Phase 2 — Breakpoints & Stepping~~ ✅ Implemented
-
-See [Breakpoint Mechanism](#breakpoint-mechanism) above.
-
-### ~~Phase 3 — Agent Inspector~~ (Partially Implemented)
-
-- ✅ Agent list panel with classifier grouping, search, gallery names, state dots
-- ✅ Camera focus on selected agent (`cmrp`)
-- ✅ OV00–OV99 agent variable display
-- ✅ VA00–VA99 local variable display (when paused)
-- ✅ CAOS syntax highlighting in source view
-- [ ] Full agent property browser: position, sprite frame, attributes, timer, velocity
-
-### ~~Phase 3.5 — Creature Inspector~~ ✅ Implemented
-
-- ✅ Creature list with species icons, names, life state badges, health bars
-- ✅ Drive levels visualization (20 colour-graded horizontal bars)
-- ✅ Chemistry view (256 chemicals, sorted bars, ~50 named, non-zero filter)
-- ✅ Summary card (moniker, age, sex, health, organs, highest drive)
-- ✅ Creature name display (from LinguisticFaculty)
-- ✅ 2-second auto-refresh polling
-- ✅ Brain spatial heatmap — all lobes positioned at genome coordinates, neurons as coloured cells
-- ✅ Lobe labels with darkened genome colours (RGB→HSL, lightness capped at 35%)
-- ✅ Winning neuron highlight (orange border + glow)
-- ✅ Semantic neuron labels — drive names (`driv`), action names (`verb`/`decn`), category names (`noun`/`attn`/`stim`/`visn`) from `SensoryFaculty`, `CreatureConstants.h`, `BrainScriptFunctions.h`
-- ✅ SVG tract connection lines between lobes (thickness/opacity ∝ dendrite count)
-- ✅ Click-on-tract dendrite inspection — magenta neuron-to-neuron lines with weight-based opacity
-- ✅ Click-on-neuron connection view — shows all incoming/outgoing dendrites across all tracts
-- ✅ Info sidebar — lobe winners, tract summary, selected tract/neuron detail
-- ✅ Zoom controls — +/−/reset buttons, Ctrl+scroll, 40–300% range
-- ✅ Three brain API endpoints: `/brain` (overview), `/brain/lobe/:idx` (neuron states), `/brain/tract/:idx` (dendrites, capped at 1000)
-
-### Phase 4 — CAOS Profiler
-
-- Surface `DBG: PROF` data with browser visualizations
-- Flame charts by agent classifier
-- Script execution time heatmaps
-
-### ~~Phase 5 — CAOS IDE~~ ✅ Implemented
-
-- ✅ Scriptorium browser sidebar with classifier grouping and human-readable event labels (~30 standard events)
-- ✅ Agent name resolution — sidebar groups show human-readable names from `"Agent Help F G S"` catalogue tags via `GET /api/agent-names`
-- ✅ Search/filter by classifier number, event number, event name, or agent name (multi-word)
-- ✅ Code editor with syntax highlighting overlay (custom textarea + pre, no external dependencies)
-- ✅ Line numbers, tab insertion, Ctrl/Cmd+Enter run shortcut
-- ✅ Shared `highlightCAOS()` function in `caos_format.js` (keywords, flow control, commands, variables, strings, numbers, comments)
-- ✅ Run via `/api/execute` — fresh VM, output displayed in console panel
-- ✅ Inject via dedicated `POST /api/scriptorium/inject` — compiles with `OrderFromCAOS`, installs with `InstallScript`
-- ✅ Remove via `rscr` CAOS command
-- ✅ Save/Load `.cos` files
-- ✅ `GET /api/scriptorium/:f/:g/:s/:e` endpoint for fetching individual script source
-- ✅ Classifier header fields auto-populated from loaded scripts
-- ✅ Output console with colour-coded results, errors, and info messages
-
-### ~~Phase 6 — Genetics Editor~~ ✅ Implemented
-
-- ✅ Fetch and parse `.gen` files directly from disk to JSON
-- ✅ Browse `.gen` library with string-based moniker search filtering
-- ✅ Real-time structural chromosome editing (Move Up, Move Down, Add, Duplicate, Delete)
-- ✅ Inline property editing for thresholds, clock rates, coordinates, parameters, and flags, including custom searchable comboboxes for engine-synchronized chemical selections
-- ✅ Visual 16-row SVRule grid editor with searchable Bright-Fi comboboxes for opcodes, operands, and chemical values, with real-time human-readable display sync
-- ✅ Deep-search text filtering matching numerical properties housed inside DOM inputs
-- ✅ File lifecycle management (New template, Save to engine, Export to browser, Import from browser)
-- ✅ Engine cross-breeding algorithms directly wired to the API
-- ✅ Full creature injection pipeline integrated to standard CAOS hatching macros
-
-### ~~Phase 7 — Developer Documentation~~ ✅ Implemented
-
-- ✅ Internal Developer Wiki using `marked.min.js` to render Markdown documents dynamically
-- ✅ Zero-reload client-side routing and file fetching from `tools/docs/index.json`
-- ✅ Auto-generated, scrollable Table of Contents synced to current page headers
-- ✅ Internal Markdown link interception mapping file paths into Wiki page loads
-- ✅ Sub-view architecture splitting Wiki documentation and interactive C++ Architecture Graph
-- ✅ Image constraint and custom styling to maintain "Bright-Fi" high-contrast aesthetic

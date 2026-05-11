@@ -11,22 +11,22 @@ const TIPS = [
 
     // ── Header ────────────────────────────────────────────────────────────
     { selector: '#btn-nav-toggle', text: 'Toggle the left navigation sidebar on/off' },
-    { selector: '#logo', text: 'Creatures 3 Developer Tools — macOS engine port' },
-    { selector: '#status-pill', text: 'Engine connection status. Green = connected via SSE, red = disconnected' },
+    { selector: '#logo', text: 'Creatures 3 Developer Tools — macOS engine port', doc: 'tools_overview.md' },
+    { selector: '#status-pill', text: 'Engine connection status. Green = connected via SSE, red = disconnected', doc: 'api_reference.md' },
     { selector: '#creator-badge', text: 'Created by Cyril Sadovsky — view LinkedIn profile' },
     { selector: '#btn-engine-play', text: 'Resume engine simulation — the game world continues running' },
     { selector: '#btn-engine-pause', text: 'Pause engine simulation — freezes the world but the API stays responsive' },
     { selector: '#opt-tooltips', text: 'Enable or disable these contextual help tooltips. Preference is saved in localStorage' },
 
     // ── Navigation Tabs ──────────────────────────────────────────────────
-    { selector: '.tab-btn[data-tab="creatures"]', text: 'Creature Inspector — view drives, chemistry, organs, and neural brain activity' },
-    { selector: '.tab-btn[data-tab="log"]', text: 'Engine Log — real-time log stream from the Flight Recorder with category filtering' },
-    { selector: '.tab-btn[data-tab="console"]', text: 'CAOS Console — interactive REPL to execute CAOS commands on the engine' },
-    { selector: '.tab-btn[data-tab="scripts"]', text: 'Running Scripts — live table of all CAOS scripts currently executing across all agents' },
-    { selector: '.tab-btn[data-tab="debugger"]', text: 'CAOS Debugger — source-level debugger with breakpoints, stepping, and variable inspection' },
-    { selector: '.tab-btn[data-tab="ide"]', text: 'CAOS IDE — code editor with syntax highlighting, autocomplete, scriptorium browser, and breakpoints' },
-    { selector: '.tab-btn[data-tab="docs"]', text: 'Developer Documentation — internal Wiki and interactive engine Architecture Graph' },
-    { selector: '.tab-btn[data-tab="genetics"]', text: 'Genetics Kit — manipulate, cross-breed, and inject custom creature genomes directly into the world' },
+    { selector: '.tab-btn[data-tab="creatures"]', text: 'Creature Inspector — view drives, chemistry, organs, and neural brain activity', doc: 'tab_creatures.md' },
+    { selector: '.tab-btn[data-tab="log"]', text: 'Engine Log — real-time log stream from the Flight Recorder with category filtering', doc: 'tab_log.md' },
+    { selector: '.tab-btn[data-tab="console"]', text: 'CAOS Console — interactive REPL to execute CAOS commands on the engine', doc: 'tab_console.md' },
+    { selector: '.tab-btn[data-tab="scripts"]', text: 'Running Scripts — live table of all CAOS scripts currently executing across all agents', doc: 'tab_scripts.md' },
+    { selector: '.tab-btn[data-tab="debugger"]', text: 'CAOS Debugger — source-level debugger with breakpoints, stepping, and variable inspection', doc: 'tab_debugger.md' },
+    { selector: '.tab-btn[data-tab="ide"]', text: 'CAOS IDE — code editor with syntax highlighting, autocomplete, scriptorium browser, and breakpoints', doc: 'tab_caos_ide.md' },
+    { selector: '.tab-btn[data-tab="docs"]', text: 'Developer Documentation — internal Wiki and interactive engine Architecture Graph', doc: 'tools_overview.md' },
+    { selector: '.tab-btn[data-tab="genetics"]', text: 'Genetics Kit — manipulate, cross-breed, and inject custom creature genomes directly into the world', doc: 'tab_genetics_kit.md' },
 
     // ── Log Tab ───────────────────────────────────────────────────────────
     { selector: '#search', text: 'Filter log messages by text — only matching rows are shown' },
@@ -55,7 +55,7 @@ const TIPS = [
 
     // ── Console Tab ──────────────────────────────────────────────────────
     { selector: '#btn-console-clear', text: 'Clear the console output history' },
-    { selector: '#console-input', text: 'Type CAOS commands here. Enter to execute, Shift+Enter for multi-line. ↑/↓ for history' },
+    { selector: '#console-input', text: 'Type CAOS commands here. Enter to execute, Shift+Enter for multi-line. ↑/↓ for history', doc: 'tab_console.md' },
     { selector: '.console-prompt', text: 'CAOS command prompt — type a command and press Enter' },
     { selector: '.console-welcome', text: 'Welcome to the CAOS console. Commands are sent directly to the running engine' },
 
@@ -73,11 +73,11 @@ const TIPS = [
     { selector: '#dbg-agent-search', text: 'Filter agents by ID, classifier, or gallery name' },
     { selector: '#dbg-agent-panel .dbg-agent-panel-header', text: 'List of all agents with running or paused scripts. Click an agent to inspect it' },
     { selector: '#dbg-source-header', text: 'Displays the classifier and event of the currently selected agent\'s script' },
-    { selector: '#dbg-source-view', text: 'CAOS source code view — click line numbers in the gutter to set breakpoints' },
+    { selector: '#dbg-source-view', text: 'CAOS source code view — click line numbers in the gutter to set breakpoints', doc: 'tab_debugger.md:source-view' },
     { selector: '#dbg-agent-empty', text: 'No agents are running scripts. Start a world to see active agents' },
 
     // Debugger — Inspector panels
-    { selector: '#dbg-context-table', text: 'CAOS VM context handles — OWNR (script owner), TARG (current target), FROM (message sender), IT (iterator)' },
+    { selector: '#dbg-context-table', text: 'CAOS VM context handles — OWNR (script owner), TARG (current target), FROM (message sender), IT (iterator)', doc: 'tab_debugger.md:inspector-panel' },
     { selector: '#dbg-state-badge', text: 'Current execution state of the selected agent\'s CAOS VM' },
     { selector: '#dbg-ov-vars', text: 'OV variables (OV00–OV99) — per-agent persistent variables, showing only non-zero values' },
     { selector: '#dbg-va-vars', text: 'VA variables (VA00–VA99) — local (stack-frame) variables for the current script' },
@@ -104,14 +104,14 @@ const TIPS = [
     { selector: '#crt-list-empty', text: 'No creatures in the world yet. Hatch an egg or import a creature to begin' },
 
     // Creatures — sub-tabs
-    { selector: '.crt-sub-btn[data-subtab="drives"]', text: 'Drive levels — the 20 biological drives (hunger, tiredness, boredom, etc.) that motivate creature behaviour' },
-    { selector: '.crt-sub-btn[data-subtab="chemistry"]', text: 'Biochemistry — all 256 chemical concentrations in the creature\'s bloodstream' },
-    { selector: '.crt-sub-btn[data-subtab="organs"]', text: 'Organs — biological organs with their reactions, receptors, emitters, and health status' },
-    { selector: '.crt-sub-btn[data-subtab="brain"]', text: 'Brain Monitor — spatial neural network visualization with lobe heatmaps, tract connections, and dendrite weights' },
+    { selector: '.crt-sub-btn[data-subtab="drives"]', text: 'Drive levels — the 20 biological drives (hunger, tiredness, boredom, etc.) that motivate creature behaviour', doc: 'tab_creatures.md:drives-sub-tab' },
+    { selector: '.crt-sub-btn[data-subtab="chemistry"]', text: 'Biochemistry — all 256 chemical concentrations in the creature\'s bloodstream', doc: 'tab_creatures.md:chemistry-sub-tabs' },
+    { selector: '.crt-sub-btn[data-subtab="organs"]', text: 'Organs — biological organs with their reactions, receptors, emitters, and health status', doc: 'tab_creatures.md:organs-sub-tab' },
+    { selector: '.crt-sub-btn[data-subtab="brain"]', text: 'Brain Monitor — spatial neural network visualization with lobe heatmaps, tract connections, and dendrite weights', doc: 'tab_creatures.md:brain-sub-tab' },
 
     // Creatures — chemistry controls
     { selector: '.crt-chem-tab-btn[data-chem-tab="monitoring"]', text: 'Monitoring — view all chemical levels and track non-zero concentrations' },
-    { selector: '.crt-chem-tab-btn[data-chem-tab="syringe"]', text: 'Syringe — search and inject specific chemicals into the creature\'s bloodstream' },
+    { selector: '.crt-chem-tab-btn[data-chem-tab="syringe"]', text: 'Syringe — search and inject specific chemicals into the creature\'s bloodstream', doc: 'tab_creatures.md:syringe-mode' },
     { selector: '#crt-syringe-search', text: 'Search for a specific chemical by name or ID among the 256 available chemicals' },
     { selector: '#crt-syringe-amount', text: 'Dosage amount to inject. Positive adds, negative removes. Range runs from -1.0 to 1.0' },
     { selector: '#btn-syringe-inject', text: 'Inject the specified dosage of the selected chemical into the creature' },
@@ -127,7 +127,7 @@ const TIPS = [
 
     // Creatures — Brain sub-view
     { selector: '.crt-brain-panel-title', text: 'Neural network inspector — lobes, tracts, and neuron activation states' },
-    { selector: '#crt-brain-viewport', text: 'Spatial brain view — scroll to pan, click neurons to inspect connections, click tracts to see dendrites' },
+    { selector: '#crt-brain-viewport', text: 'Spatial brain view — scroll to pan, click neurons to inspect connections, click tracts to see dendrites', doc: 'tab_creatures.md:spatial-heatmap' },
     { selector: '#crt-brain-info', text: 'Brain info sidebar — shows selected neuron/tract details, lobe list, and connection weights' },
 
     // Creatures — Organs sub-view (dynamically generated elements)
@@ -141,7 +141,7 @@ const TIPS = [
     { selector: '.org-rxn-rate', text: 'Reaction rate — 0% is fastest (instant), 100% is slowest (never reacts)' },
 
     // Creatures — Genome sub-view
-    { selector: '.crt-sub-btn[data-subtab="genome"]', text: 'Genome Inspector — structural view of all genes inside this creature\'s DNA with details on biology and brain setup' },
+    { selector: '.crt-sub-btn[data-subtab="genome"]', text: 'Genome Inspector — structural view of all genes inside this creature\'s DNA with details on biology and brain setup', doc: 'tab_creatures.md:genome-sub-tab' },
     { selector: '#crt-genome-search, #genetics-genome-search', text: 'Filter genes by searching for text (e.g. "Hunger", "Chem 213")' },
     { selector: '#crt-genome-age, #genetics-genome-age', text: 'Filter genes by their switch-on age (Baby, Child, Adult, etc.)' },
     { selector: '.crt-gene-badge-mut', text: 'Gene mutation flags (M=Mutable, D=Duplicatable, C=Cuttable)' },
@@ -166,7 +166,7 @@ const TIPS = [
     { selector: '#btn-ide-refresh', text: 'Reload the scriptorium list from the engine' },
     { selector: '#btn-ide-clear', text: 'Clear the output panel below the editor' },
     { selector: '#ide-search', text: 'Search through installed scriptorium scripts by classifier, event number, or agent name' },
-    { selector: '.ide-sidebar-header', text: 'Browse all scripts installed in the engine\'s scriptorium' },
+    { selector: '.ide-sidebar-header', text: 'Browse all scripts installed in the engine\'s scriptorium', doc: 'tab_caos_ide.md:scriptorium-browser' },
     { selector: '.ide-classifier-label', text: 'Script classifier: Family, Genus, Species, Event — identifies which agent type and event this script handles' },
     { selector: '#ide-family', text: 'Family — broad agent category (e.g. 2=Compound, 3=Simple, 4=Creature)' },
     { selector: '#ide-genus', text: 'Genus — agent group within a family' },
@@ -174,7 +174,7 @@ const TIPS = [
     { selector: '#ide-event', text: 'Event number — which event triggers this script (e.g. 1=Push, 2=Pull, 3=Hit, 9=Timer)' },
     { selector: '.ide-output-header', text: 'Output from Run commands and inject/remove operations' },
     { selector: '.ide-bp-title', text: 'IDE breakpoints — click line numbers in the gutter to set breakpoints, then bind them to running agents' },
-    { selector: '#ide-editor', text: 'CAOS editor — Tab to indent, Ctrl+Space for autocomplete, F1 for command help, Ctrl/Cmd+Enter to run' },
+    { selector: '#ide-editor', text: 'CAOS editor — Tab to indent, Ctrl+Space for autocomplete, F1 for command help, Ctrl/Cmd+Enter to run', doc: 'tab_caos_ide.md:code-editor' },
     { selector: '#ide-error-bar', text: 'Syntax validation error — the CAOS compiler found an issue in your code' },
     { selector: '#ide-bp-clear-all', text: 'Remove all breakpoints from the editor and unbind them from all agents' },
     { selector: '.ide-group-header', text: 'Agent script group — click to expand/collapse. Shows all event scripts for this classifier' },
@@ -207,10 +207,10 @@ const TIPS = [
     { selector: '.btn-genetics-delete-inline', text: 'Delete this genome file from the disk (disabled for core genomes)' },
     { selector: '#btn-genetics-export', text: 'Export the currently inspected genome as a JSON file' },
     { selector: '#btn-genetics-save', text: 'Save the inspected genome back to the Genetics folder as a .gen file' },
-    { selector: '#btn-genetics-crossover', text: 'Cross-breed two parent genomes to generate a brand new child genome' },
+    { selector: '#btn-genetics-crossover', text: 'Cross-breed two parent genomes to generate a brand new child genome', doc: 'tab_genetics_kit.md:crossover-algorithm-genomecross' },
     { selector: '#genetics-inject-mode', text: 'Select whether to inject the genome as an incubating egg or as a fully hatched baby creature' },
     { selector: '#genetics-inject-gender', text: 'Choose the sex of the injected creature — Random lets the engine decide, or force Male / Female' },
-    { selector: '#btn-genetics-inject', text: 'Inject the inspected genome directly into the world. The creature or egg will be spawned on the top floor of the Norn Meso room.' },
+    { selector: '#btn-genetics-inject', text: 'Inject the inspected genome directly into the world. The creature or egg will be spawned on the top floor of the Norn Meso room.', doc: 'tab_genetics_kit.md:injection-pipeline-caos-macro' },
     { selector: '.crt-gene-badge-active', text: 'Active — toggle whether this gene will be included when injecting into the engine' },
     { selector: 'label.crt-gene-badge-mut:has(.g-mut)', text: 'Mutable — toggle whether this gene is allowed to mutate during crossovers' },
     { selector: 'label.crt-gene-badge-mut:has(.g-dup)', text: 'Duplicatable — toggle whether this gene can be duplicated during crossovers' },
@@ -246,6 +246,9 @@ let tooltipEl = null;     // the floating tooltip element
 let hoverTimer = null;    // delay timer
 let currentTarget = null; // element we're hovering
 let savedTitles = [];     // { element, title } pairs suppressed to avoid native tooltip
+let hideTimer = null;     // delayed hide timer for interactive tooltips
+let currentDoc = null;    // doc filename if tooltip has a doc link
+let pinned = false;       // whether the tooltip is pinned (click-locked) in place
 
 const DELAY_MS = 500;     // hover delay before showing
 const FADE_MS = 120;      // fade-in animation duration
@@ -298,6 +301,15 @@ function createTooltipElement() {
         transition: opacity ${FADE_MS}ms ease;
         word-wrap: break-word;
     `;
+    // Interactive tooltip: cancel hide when user hovers the tooltip itself
+    el.addEventListener('mouseenter', () => {
+        cancelScheduledHide();
+    });
+    el.addEventListener('mouseleave', () => {
+        cancelPending();
+        hideTooltip();
+    });
+
     document.body.appendChild(el);
     return el;
 }
@@ -331,10 +343,35 @@ function positionTooltip(target) {
 }
 
 // ── Show / hide ───────────────────────────────────────────────────────────
-function showTooltip(target, text) {
+function showTooltip(target, text, doc) {
     if (!tooltipEl) tooltipEl = createTooltipElement();
     suppressNativeTitles(target);
     tooltipEl.textContent = text;
+    currentDoc = doc || null;
+
+    if (doc) {
+        const hint = document.createElement('span');
+        hint.className = 'tooltip-pin-hint';
+        hint.textContent = 'press Tab to pin';
+        tooltipEl.appendChild(hint);
+
+        const link = document.createElement('a');
+        link.className = 'tooltip-doc-link';
+        link.textContent = '\u{1F4D6} Read docs';
+        link.href = '#';
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            hideTooltip();
+            // Open docs in a new browser tab via deep-link hash
+            window.open(window.location.origin + window.location.pathname + '#docs/' + doc, '_blank');
+        });
+        tooltipEl.appendChild(link);
+        tooltipEl.style.pointerEvents = 'auto';
+    } else {
+        tooltipEl.style.pointerEvents = 'none';
+    }
+
     tooltipEl.style.opacity = '0';
     tooltipEl.style.display = 'block';
 
@@ -347,20 +384,43 @@ function showTooltip(target, text) {
 }
 
 function hideTooltip() {
+    cancelScheduledHide();
+    pinned = false;
     restoreNativeTitles();
     if (tooltipEl) {
+        tooltipEl.classList.remove('tooltip-pinned');
         tooltipEl.style.opacity = '0';
+        tooltipEl.style.pointerEvents = 'none';
         setTimeout(() => {
             if (tooltipEl) tooltipEl.style.display = 'none';
         }, FADE_MS);
     }
     currentTarget = null;
+    currentDoc = null;
 }
 
 function cancelPending() {
     if (hoverTimer) {
         clearTimeout(hoverTimer);
         hoverTimer = null;
+    }
+}
+
+function scheduleHide() {
+    if (pinned) return;
+    cancelScheduledHide();
+    if (currentDoc) {
+        // Delay so the user can move their cursor to the interactive tooltip
+        hideTimer = setTimeout(() => hideTooltip(), 300);
+    } else {
+        hideTooltip();
+    }
+}
+
+function cancelScheduledHide() {
+    if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
     }
 }
 
@@ -375,7 +435,7 @@ function findTip(el) {
         // Check context if specified
         if (tip.context && !el.closest(tip.context)) continue;
 
-        return tip.text;
+        return { text: tip.text, doc: tip.doc || null };
     }
     return null;
 }
@@ -385,8 +445,8 @@ function findTipTarget(el) {
     let node = el;
     // Walk up max 5 levels to find a match
     for (let i = 0; i < 5 && node && node !== document.body; i++) {
-        const text = findTip(node);
-        if (text) return { element: node, text };
+        const match = findTip(node);
+        if (match) return { element: node, text: match.text, doc: match.doc };
         node = node.parentElement;
     }
     return null;
@@ -395,13 +455,20 @@ function findTipTarget(el) {
 // ── Global event listeners ────────────────────────────────────────────────
 function onMouseOver(e) {
     if (!enabled) return;
+    if (pinned) return;
+
+    // If hovering the tooltip itself, keep it alive
+    if (tooltipEl && (e.target === tooltipEl || tooltipEl.contains(e.target))) {
+        cancelScheduledHide();
+        return;
+    }
 
     const match = findTipTarget(e.target);
     if (!match) {
         // If we're hovering away from any tip target, hide
         if (currentTarget) {
             cancelPending();
-            hideTooltip();
+            scheduleHide();
         }
         return;
     }
@@ -411,6 +478,7 @@ function onMouseOver(e) {
 
     // New target
     cancelPending();
+    cancelScheduledHide();
     hideTooltip();
 
     // Suppress native title immediately (before the delay) so the browser's
@@ -418,25 +486,38 @@ function onMouseOver(e) {
     suppressNativeTitles(match.element);
 
     hoverTimer = setTimeout(() => {
-        showTooltip(match.element, match.text);
+        showTooltip(match.element, match.text, match.doc);
     }, DELAY_MS);
 }
 
 function onMouseOut(e) {
+    if (pinned) return;
     // Only hide if we're actually leaving the tip target
     const match = findTipTarget(e.relatedTarget);
     if (match && match.element === currentTarget) return;
 
+    // If moving to the tooltip element, don't hide
+    if (tooltipEl && (e.relatedTarget === tooltipEl || (e.relatedTarget && tooltipEl.contains(e.relatedTarget)))) return;
+
     cancelPending();
-    hideTooltip();
+    scheduleHide();
 }
 
 function onScroll() {
+    if (pinned) return;
     cancelPending();
     hideTooltip();
 }
 
-function onKeyDown() {
+function onKeyDown(e) {
+    // Tab key pins the tooltip when a doc link is present
+    if (e.key === 'Tab' && currentTarget && currentDoc && tooltipEl && !pinned) {
+        e.preventDefault();
+        pinned = true;
+        tooltipEl.classList.add('tooltip-pinned');
+        return;
+    }
+    // Any other key dismisses
     cancelPending();
     hideTooltip();
 }
@@ -446,7 +527,16 @@ function install() {
     document.addEventListener('mouseover', onMouseOver, { passive: true });
     document.addEventListener('mouseout', onMouseOut, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    document.addEventListener('keydown', onKeyDown, { passive: true });
+    document.addEventListener('keydown', onKeyDown);
+
+    // Dismiss pinned tooltip when clicking outside of it
+    document.addEventListener('click', (e) => {
+        if (!pinned || !tooltipEl) return;
+        // Clicking inside the tooltip (e.g. the doc link) — let it through
+        if (e.target === tooltipEl || tooltipEl.contains(e.target)) return;
+        // Clicking anywhere else — unpin and hide
+        hideTooltip();
+    });
 }
 
 function setEnabled(val) {

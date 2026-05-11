@@ -4587,3 +4587,40 @@ label.crt-gene-badge input[type="checkbox"] {
 .docs-toc-h2 { margin-left: 8px; }
 .docs-toc-h3 { margin-left: 16px; font-size: 11px; }
 
+/* ── Tooltip Doc Links ─────────────────────────────────────────────────── */
+.tooltip-doc-link {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--orange);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tooltip-doc-link:hover {
+  color: #fff;
+}
+
+/* Pin hint shown on tooltips with doc links */
+.tooltip-pin-hint {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 9px;
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
+
+/* Pinned tooltip state */
+.tooltip-pinned {
+  border-left-color: #fff;
+  box-shadow: 0 4px 24px rgba(255, 95, 0, 0.3);
+}
+.tooltip-pinned .tooltip-pin-hint {
+  display: none;
+}
+
