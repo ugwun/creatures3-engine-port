@@ -74,6 +74,7 @@ When you click a line in the IDE's gutter:
 
 ## See Also
 
+* **[CAOS Command Reference](caos_overview.md)** — Complete glossary of all CAOS commands with syntax, descriptions, and examples. Essential reading for anyone writing CAOS scripts.
 * **[Debugger](tab_debugger.md)** — Step through paused agents and inspect VM state after a breakpoint is hit.
 * **[Scripts](tab_scripts.md)** — See all currently running scripts at a glance to identify targets for debugging.
 * **[Console](tab_console.md)** — For quick one-off CAOS command execution without needing the full IDE.

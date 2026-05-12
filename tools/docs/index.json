@@ -38,5 +38,101 @@
   {
     "title": "API Reference",
     "file": "api_reference.md"
+  },
+  {
+    "title": "── CAOS Reference ──",
+    "file": "caos_overview.md"
+  },
+  {
+    "title": "CAOS: Flow Control",
+    "file": "caos_flow.md"
+  },
+  {
+    "title": "CAOS: Variables & Math",
+    "file": "caos_variables.md"
+  },
+  {
+    "title": "CAOS: Agents",
+    "file": "caos_agents.md"
+  },
+  {
+    "title": "CAOS: Motion & Physics",
+    "file": "caos_motion.md"
+  },
+  {
+    "title": "CAOS: Scripts & Execution",
+    "file": "caos_scripts.md"
+  },
+  {
+    "title": "CAOS: Camera & Display",
+    "file": "caos_camera.md"
+  },
+  {
+    "title": "CAOS: Map & Rooms",
+    "file": "caos_map.md"
+  },
+  {
+    "title": "CAOS: Creatures",
+    "file": "caos_creatures.md"
+  },
+  {
+    "title": "CAOS: Brain",
+    "file": "caos_brain.md"
+  },
+  {
+    "title": "CAOS: Compounds & Parts",
+    "file": "caos_compounds.md"
+  },
+  {
+    "title": "CAOS: Vehicles",
+    "file": "caos_vehicles.md"
+  },
+  {
+    "title": "CAOS: Input & Pointer",
+    "file": "caos_input.md"
+  },
+  {
+    "title": "CAOS: Sounds & Music",
+    "file": "caos_sounds.md"
+  },
+  {
+    "title": "CAOS: Files & I/O",
+    "file": "caos_files.md"
+  },
+  {
+    "title": "CAOS: Time & World",
+    "file": "caos_time.md"
+  },
+  {
+    "title": "CAOS: History",
+    "file": "caos_history.md"
+  },
+  {
+    "title": "CAOS: Genetics",
+    "file": "caos_genetics.md"
+  },
+  {
+    "title": "CAOS: Resources (PRAY)",
+    "file": "caos_resources.md"
+  },
+  {
+    "title": "CAOS: Ports",
+    "file": "caos_ports.md"
+  },
+  {
+    "title": "CAOS: Messages & Stimuli",
+    "file": "caos_messages.md"
+  },
+  {
+    "title": "CAOS: Debug",
+    "file": "caos_debug.md"
+  },
+  {
+    "title": "CAOS: Networking (DS)",
+    "file": "caos_net.md"
+  },
+  {
+    "title": "CAOS: World Management",
+    "file": "caos_world.md"
   }
 ]
