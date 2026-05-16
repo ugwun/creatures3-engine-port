@@ -34,6 +34,7 @@
     const STALE_TIMEOUT = 5000;
     let agentPos = null; // { x, y } of currently selected agent
     let searchTerm = "";
+    let dbgAddressMap = new Map(); // bytecodeIP → sourceCharPos for breakpoint mapping
 
     // Agent data model: Map<agentId, AgentInfo>
     // AgentInfo = { id, family, genus, species, event, state, lastSeen }
@@ -374,6 +375,8 @@
             const formatted = (typeof formatCAOS === "function")
                 ? formatCAOS(data.source) : data.source;
             buildSourceView(formatted);
+            // Fetch the address map so we can map bytecodeIPs ↔ source lines
+            fetchDebugAddressMap(data.source);
         }
 
         // Highlight current position
@@ -501,10 +504,14 @@
         });
 
         for (const bp of currentBreakpoints) {
-            // Map breakpoint IP (character offset) to source line index
+            // bp is a bytecodeIP — map it to a source char position via the address map,
+            // then find which source line that falls on
+            const srcPos = dbgAddressMap.get(bp);
+            if (srcPos === undefined) continue;
+
             let lineIdx = 0;
             for (let i = 0; i < sourceLineOffsets.length; i++) {
-                if (sourceLineOffsets[i] <= bp) {
+                if (sourceLineOffsets[i] <= srcPos) {
                     lineIdx = i;
                 } else {
                     break;
@@ -565,9 +572,43 @@
     async function toggleBreakpointAtLine(lineIdx) {
         if (!currentAgentId) return;
 
-        const charOffset = sourceLineOffsets[lineIdx] || 0;
-        const action = currentBreakpoints.has(charOffset) ? "clear" : "set";
-        await sendBreakpointAction(action, charOffset);
+        // Find the bytecodeIP for this source line by looking up
+        // the address map for the first IP that maps to this line
+        const lineCharOffset = sourceLineOffsets[lineIdx] || 0;
+        const nextLineOffset = (lineIdx + 1 < sourceLineOffsets.length)
+            ? sourceLineOffsets[lineIdx + 1] : Infinity;
+
+        let bestIp = null;
+        for (const [ip, srcPos] of dbgAddressMap) {
+            if (srcPos >= lineCharOffset && srcPos < nextLineOffset) {
+                if (bestIp === null || ip < bestIp) bestIp = ip;
+            }
+        }
+
+        if (bestIp === null) return; // no instruction on this line
+
+        const action = currentBreakpoints.has(bestIp) ? "clear" : "set";
+        await sendBreakpointAction(action, bestIp);
+    }
+
+    // Fetch the compile-map for source code to build bytecodeIP → sourceCharPos mapping
+    async function fetchDebugAddressMap(source) {
+        dbgAddressMap = new Map();
+        try {
+            const resp = await fetch("/api/compile-map", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caos: source })
+            });
+            const data = await resp.json();
+            if (data.ok && data.map) {
+                for (const [ipStr, srcPos] of Object.entries(data.map)) {
+                    dbgAddressMap.set(parseInt(ipStr, 10), srcPos);
+                }
+            }
+        } catch (_) {
+            // Compile-map unavailable — breakpoint markers may not render
+        }
     }
 
     async function sendBreakpointAction(action, ip) {

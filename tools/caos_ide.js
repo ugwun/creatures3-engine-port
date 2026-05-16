@@ -444,7 +444,7 @@
     // ── Syntax Validation ─────────────────────────────────────────────────
     function scheduleValidation() {
         if (validateTimer) clearTimeout(validateTimer);
-        validateTimer = setTimeout(runValidation, 500);
+        validateTimer = setTimeout(runValidation, 1500);
     }
 
     async function runValidation() {
@@ -452,6 +452,17 @@
         if (!code || !isActive) {
             clearError();
             return;
+        }
+
+        // Don't validate while user is actively using autocomplete —
+        // the code is incomplete and will always fail compilation
+        if (acVisible) return;
+
+        // Don't validate if cursor is at the very end — user is likely still typing
+        if (editorTextarea.selectionStart === editorTextarea.value.length) {
+            const lastLine = code.split("\n").pop().trim();
+            // If the last line is just a partial keyword (no args/closing), skip
+            if (lastLine && !lastLine.includes(" ") && lastLine.length < 6) return;
         }
 
         try {
@@ -483,8 +494,21 @@
             errorLine = line;
         }
 
+        // Clean up raw compiler errors — they can include long token dumps
+        // e.g. "Expected numeric rvalue at token 'room targ 3 0 2 endi doif ...'" 
+        // Truncate at the first closing quote after "at token '" to keep it readable
+        let cleanMsg = msg;
+        const tokenMatch = cleanMsg.match(/at token\s+'([^']{0,30})/);
+        if (tokenMatch) {
+            const before = cleanMsg.substring(0, cleanMsg.indexOf("at token"));
+            const tokenVal = tokenMatch[1] || "(end of input)";
+            cleanMsg = before + `at token '${tokenVal}'`;
+        }
+        // Fallback: cap length at 120 chars
+        if (cleanMsg.length > 120) cleanMsg = cleanMsg.substring(0, 117) + "…";
+
         if (errorBar && errorMsg) {
-            errorMsg.textContent = msg + (errorLine > 0 ? ` (line ${errorLine})` : "");
+            errorMsg.textContent = cleanMsg + (errorLine > 0 ? ` (line ${errorLine})` : "");
             errorBar.hidden = false;
         }
         syncEditorDisplay(); // re-render to show gutter highlight
@@ -583,6 +607,7 @@
 
         acIndex = 0;
         acVisible = true;
+        clearError(); // dismiss any stale validation error while typing
         positionAutocomplete();
         renderAutocomplete();
     }
@@ -943,7 +968,7 @@
 
     // Fetch the address map and build line-to-instruction mappings
     // We use the compile-map to determine which lines have instructions,
-    // but breakpoints are set using SOURCE CHARACTER OFFSETS (matching the Debugger).
+    // and breakpoints are set using BYTECODE IPs (matching CAOSMachine::myIP).
     async function fetchAddressMap() {
         const code = editorTextarea.value;
         if (!code.trim()) return false;
@@ -1028,7 +1053,7 @@
                 const info = lineToIp.get(lineIdx);
                 if (info) {
                     for (const agentId of boundAgents) {
-                        sendBreakpointToAgent(agentId, info.charOffset, "clear");
+                        sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
                     }
                 }
                 bpAgentBindings.delete(lineIdx);
@@ -1058,15 +1083,26 @@
         if (f === 0 && g === 0 && s === 0 && ev === 0) return [];
 
         try {
-            const resp = await fetch("/api/scripts");
-            const scripts = await resp.json();
+            // Use CAOS enum to find all agents matching the classifier —
+            // much more reliable than /api/scripts which only shows scripts
+            // that are actively executing at poll time (timer scripts run
+            // for a brief instant, so they're almost never caught).
+            const caos = `inst setv va00 0 enum ${f} ${g} ${s} doif va00 lt 20 outs "," outv unid addv va00 1 endi next`;
+            const resp = await fetch("/api/execute", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ caos })
+            });
+            const data = await resp.json();
 
-            return scripts.filter(a =>
-                a.family === f && a.genus === g && a.species === s && a.event === ev
-            ).map(a => ({
-                id: a.agentId,
-                state: a.state,
-                gallery: a.gallery || ""
+            if (!data.ok || !data.output) return [];
+
+            // Parse comma-separated agent IDs from output (first token is empty)
+            const ids = data.output.trim().split(",").filter(Boolean).map(s => parseInt(s.trim()));
+            return ids.filter(id => !isNaN(id) && id > 0).map(id => ({
+                id,
+                state: "timer",
+                gallery: ""
             }));
         } catch (_) {
             return [];
@@ -1100,11 +1136,11 @@
         if (bindings.has(agentId)) {
             // Remove binding
             bindings.delete(agentId);
-            await sendBreakpointToAgent(agentId, info.charOffset, "clear");
+            await sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
         } else {
             // Add binding
             bindings.add(agentId);
-            await sendBreakpointToAgent(agentId, info.charOffset, "set");
+            await sendBreakpointToAgent(agentId, info.bytecodeIp, "set");
         }
 
         await renderBreakpointPanel();
@@ -1207,7 +1243,7 @@
             const info = lineToIp.get(lineIdx);
             if (info) {
                 for (const agentId of bindings) {
-                    sendBreakpointToAgent(agentId, info.charOffset, "clear");
+                    sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
                 }
             }
         }

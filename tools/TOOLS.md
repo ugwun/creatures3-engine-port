@@ -74,13 +74,10 @@ The **Console** tab is an interactive CAOS REPL (Read-Eval-Print Loop). It compi
 > outs "hello world"
 hello world
 
-> outv 2 + 3
+> setv va00 2 addv va00 3 outv va00
 5
 
-> setv va00 42
-(ok — no output)
-
-> outv va00
+> setv va00 42 outv va00
 42
 ```
 

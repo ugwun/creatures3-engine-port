@@ -40,6 +40,10 @@
     "file": "api_reference.md"
   },
   {
+    "title": "── CAOS Tutorial ──",
+    "file": "caos_tutorial.md"
+  },
+  {
     "title": "── CAOS Reference ──",
     "file": "caos_overview.md"
   },

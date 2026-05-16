@@ -3441,13 +3441,15 @@ body.no-toolbar .tab-panel {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(221, 0, 0, 0.08);
+  background: #1a0000;
   border: 1px solid rgba(221, 0, 0, 0.3);
   border-top: none;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--cat-error);
   min-height: 0;
+  position: relative;
+  z-index: 5;
 }
 
 #ide-error-bar[hidden] {
