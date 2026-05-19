@@ -44,6 +44,10 @@
     "file": "caos_tutorial.md"
   },
   {
+    "title": "── Intermediate Tutorial ──",
+    "file": "caos_tutorial_intermediate.md"
+  },
+  {
     "title": "── CAOS Reference ──",
     "file": "caos_overview.md"
   },

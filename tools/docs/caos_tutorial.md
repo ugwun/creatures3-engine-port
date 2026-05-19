@@ -884,6 +884,7 @@ The `scrp` line declares the classifier, and `endm` marks the end. When you **In
 
 ## Where to Go Next
 
+- **[Intermediate Tutorial: Build a Creature Feeder](caos_tutorial_intermediate.md)** — The next step: compound agents, physics, creature chemistry, messaging, and multi-script debugging
 - **[CAOS Command Reference](caos_overview.md)** — The complete glossary of every CAOS command, organized by category
 - **[Console Tab](tab_console.md)** — Detailed documentation on the Console's features and limitations
 - **[CAOS IDE Tab](tab_caos_ide.md)** — Full reference for the IDE's editing, auto-complete, and breakpoint features
