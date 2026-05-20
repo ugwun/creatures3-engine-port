@@ -38,6 +38,8 @@ mesg wrt+ targ 0 42 "hello" 10
 
 Stimuli affect creature neuroscience — they trigger chemical reactions and learning in creatures.
 
+> **Note:** When a stimulus is sent, the engine passes the sender's [Agent Category](caos_categories.md) to the creature's brain. The creature uses this to associate the stimulus with a specific type of object (e.g. "I ate food from a *dispenser*"). Agents in the error category (39 / "something") will trigger chemical changes but cannot be meaningfully learned about.
+
 ### STIM SHOU — Shout Stimulus
 
 **Syntax:** `STIM SHOU stimulus (integer) strength (float)`

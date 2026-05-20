@@ -372,6 +372,8 @@ This is because `setv` expects a number, not a string (you'd need `sets` for str
 
 Everything in the Creatures world is an **agent** — plants, machines, food, toys, and even creatures themselves. Each agent has a **classifier** that identifies it: `(family, genus, species)`.
 
+> **Going deeper:** The classifier doesn't just identify an agent — it also determines how creatures **perceive** it. The genus maps to a brain category like "food", "toy", or "dispenser". If you're building agents that creatures should interact with, see the [Agent Categories Reference](caos_categories.md). For this tutorial, we'll use simple test classifiers that don't need creature perception.
+
 ### 5.1 — Creating a Simple Agent
 
 In the CAOS IDE, type and run:

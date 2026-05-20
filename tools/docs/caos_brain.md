@@ -2,6 +2,8 @@
 
 Commands for inspecting and manipulating creature neural networks.
 
+> **Related:** Brain lobes like `noun`, `visn`, `smel`, and `attn` use [Agent Categories](caos_categories.md) as their neuron indices. Understanding which category your agent maps to is essential for debugging creature perception.
+
 ---
 
 ## Brain Commands (BRN:)

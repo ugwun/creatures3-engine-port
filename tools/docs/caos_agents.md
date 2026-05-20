@@ -113,7 +113,7 @@ attr 199
 **Syntax (command):** `BHVR permissions (integer)`
 **Type:** Command
 
-Sets the creature permissions for target. Sum the entries in the Creature Permissions table.
+Sets the creature permissions for target. Sum the entries in the Creature Permissions table. See also [Agent Categories](caos_categories.md) for how categories and `BHVR` interact with creature perception.
 
 **Syntax (integer RV):** `BHVR`
 **Type:** Integer R-Value
@@ -754,7 +754,7 @@ Returns whether the lawn was cut last Sunday or not. 🌿
 **Syntax:** `CATI family (integer) genus (integer) species (integer)`
 **Type:** Integer R-Value
 
-Returns the category id for the given classifier. The catalogue tag "Agent Classifiers" specifies these. Returns 39 ("unclassified") if no match.
+Returns the category id for the given classifier. The catalogue tag "Agent Classifiers" specifies these. Returns 39 ("unclassified") if no match. See the [Agent Categories Reference](caos_categories.md) for the complete 40-slot mapping table.
 
 ---
 
@@ -763,7 +763,7 @@ Returns the category id for the given classifier. The catalogue tag "Agent Class
 **Syntax:** `CATA`
 **Type:** Integer R-Value
 
-Returns the category id of TARG's classifier. Similar to `CATI` but operates on the target.
+Returns the category id of TARG's classifier. Similar to `CATI` but operates on the target. See [Agent Categories](caos_categories.md).
 
 ---
 
@@ -772,7 +772,7 @@ Returns the category id of TARG's classifier. Similar to `CATI` but operates on 
 **Syntax:** `CATX category_id (integer)`
 **Type:** String R-Value
 
-Returns the name of the given category (e.g. "toy" or "bad bug"). Returns empty string if out of range.
+Returns the name of the given category (e.g. "toy" or "bad bug"). Returns empty string if out of range. See [Agent Categories](caos_categories.md) for all 40 category names.
 
 ---
 

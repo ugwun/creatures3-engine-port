@@ -2,6 +2,8 @@
 
 Commands for creating, controlling, and querying biological creatures (Norns, Grendels, Ettins).
 
+> **Related:** Creatures perceive objects through the [Agent Category](caos_categories.md) system, which maps agent classifiers to brain neurons. The `ATTN` and `DECN` values below are category IDs from this system.
+
 ---
 
 ## Life Cycle

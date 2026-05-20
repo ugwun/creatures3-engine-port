@@ -71,17 +71,30 @@ function formatCAOS(raw) {
         "pat:", "stm#",
         // genetics / creatures
         "gene", "gids", "hist",
+        "chem", "driv", "scrx",
+        // stimuli / urges
+        "sway", "urge", "ordr",
         // variables
         "delg", "deln",
     ]);
 
     // ── Tokenize: split on whitespace but respect "string literals" ──────
+    //    and * line-comments (consume to end of line)
     const tokens = [];
     let i = 0;
     while (i < raw.length) {
         // Skip whitespace
         if (raw[i] === " " || raw[i] === "\t" || raw[i] === "\n" || raw[i] === "\r") {
             i++;
+            continue;
+        }
+
+        // Comment: * at a token boundary consumes to end of line
+        if (raw[i] === "*") {
+            let j = i;
+            while (j < raw.length && raw[j] !== "\n" && raw[j] !== "\r") j++;
+            tokens.push(raw.substring(i, j));
+            i = j;
             continue;
         }
 
@@ -129,6 +142,14 @@ function formatCAOS(raw) {
     for (let t = 0; t < tokens.length; t++) {
         const tok = tokens[t];
         const lower = tok.toLowerCase();
+
+        // Comment token — always starts a new line and stays on its own line
+        if (tok.startsWith("*")) {
+            flushLine();
+            const indent = INDENT.repeat(Math.max(0, depth));
+            lines.push(indent + tok);
+            continue;
+        }
 
         // Check if this token starts a new statement
         // Also check for compound commands like "new: simp", "dbg: prof", "pat: fixd"

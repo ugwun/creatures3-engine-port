@@ -90,6 +90,7 @@ Commands are organized into the following categories. Click a link to see the fu
 | [Map & Rooms](caos_map.md) | `ADDM`, `ADDR`, `ROOM`, `DOOR`, `PROP`, `RATE`, `EMIT`, etc. |
 | [Creatures](caos_creatures.md) | `NEW: CREA`, `BORN`, `DEAD`, `AGES`, `CHEM`, `DRIV`, etc. |
 | [Brain](caos_brain.md) | `BRN: SETN`, `BRN: SETD`, `BRN: SETL`, etc. |
+| [Agent Categories](caos_categories.md) | `CATI`, `CATA`, `CATX` — classifier-to-brain category mapping |
 | [Compounds & Parts](caos_compounds.md) | `PAT: DULL/BUTT/TEXT`, `PART`, `PTXT`, `FCUS`, etc. |
 | [Vehicles](caos_vehicles.md) | `CABN`, `CABP`, `CABW`, `SPAS`, `RPAS`, `DPAS`, `EPAS`, etc. |
 | [Input & Pointer](caos_input.md) | `CLAC`, `CLIK`, `IMSK`, `PURE`, `MOUS`, `KEYD`, etc. |
