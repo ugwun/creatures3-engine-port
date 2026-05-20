@@ -3723,6 +3723,16 @@ body.no-toolbar .tab-panel {
   background: var(--cat-error);
 }
 
+/* Flash animation for gutter line when navigating from breakpoint panel */
+@keyframes ide-line-flash-glow {
+  0%   { background: rgba(255, 95, 0, 0.4); color: var(--orange); }
+  100% { background: transparent; color: inherit; }
+}
+
+#ide-line-numbers span.ide-line-flash {
+  animation: ide-line-flash-glow 1.2s ease-out;
+}
+
 /* Breakpoint panel */
 #ide-bp-panel {
   background: var(--near-black);
@@ -3809,6 +3819,13 @@ body.no-toolbar .tab-panel {
   color: var(--white);
   font-weight: 600;
   min-width: 55px;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.ide-bp-line:hover {
+  color: var(--orange);
+  text-decoration: underline;
 }
 
 .ide-bp-ip {
@@ -3884,6 +3901,72 @@ body.no-toolbar .tab-panel {
   border-color: var(--cat-error);
   color: var(--cat-error);
   background: rgba(221, 0, 0, 0.1);
+}
+
+/* Breakpoint panel: script groups */
+.ide-bp-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ide-bp-group:first-child {
+  border-top: none;
+}
+
+.ide-bp-group--current {
+  border-left: 2px solid var(--orange);
+}
+
+.ide-bp-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.1s;
+}
+
+.ide-bp-group-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ide-bp-group--current .ide-bp-group-header {
+  background: rgba(255, 95, 0, 0.04);
+}
+
+.ide-bp-group-classifier {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+}
+
+.ide-bp-group-name {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.ide-bp-group-event {
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.ide-bp-group--current .ide-bp-group-event {
+  background: rgba(255, 95, 0, 0.1);
+  color: var(--orange);
 }
 
 /* ── Tab: Docs (Architecture Code Graph) ─────────────────────────────── */

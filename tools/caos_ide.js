@@ -76,13 +76,77 @@
     // Help state
     let helpVisible = false;
 
-    // Breakpoint state
+    // Breakpoint state — per-script storage
+    // Each script gets its own breakpoint context keyed by classifier string "F G S E".
+    let scriptBreakpointStore = new Map();  // classifier key → { breakpoints, addressMap, lineToIp, bindings, sourceHash }
+
+    // Active working copies (loaded from store on script switch)
     let ideBreakpoints = new Set();     // Set of 0-based line indices with breakpoints
     let addressMap = new Map();         // IP (int) → source char position (int)
     let lineToIp = new Map();           // line index (0-based) → first bytecode IP
     let bpAgentBindings = new Map();    // line index → Set of agent IDs bound
     let bpSourceHash = "";             // Hash of source when address map was fetched
     let bpAgentPollTimer = null;        // Timer for polling agent list
+
+    // Build a classifier key string for breakpoint store lookups
+    function classifierKey(f, g, s, e) {
+        return `${f} ${g} ${s} ${e}`;
+    }
+
+    function currentClassifierKey() {
+        const f = parseInt(classifierInputs.family.value) || 0;
+        const g = parseInt(classifierInputs.genus.value) || 0;
+        const s = parseInt(classifierInputs.species.value) || 0;
+        const ev = parseInt(classifierInputs.event.value) || 0;
+        if (f === 0 && g === 0 && s === 0 && ev === 0) return null;
+        return classifierKey(f, g, s, ev);
+    }
+
+    // Save current breakpoint state to the store for the current classifier
+    function saveBreakpointContext() {
+        const key = currentClassifierKey();
+        if (!key) return;
+        if (ideBreakpoints.size === 0) {
+            // No breakpoints — remove from store if present
+            scriptBreakpointStore.delete(key);
+            return;
+        }
+        scriptBreakpointStore.set(key, {
+            breakpoints: new Set(ideBreakpoints),
+            addressMap: new Map(addressMap),
+            lineToIp: new Map(lineToIp),
+            bindings: new Map([...bpAgentBindings].map(([k, v]) => [k, new Set(v)])),
+            sourceHash: bpSourceHash
+        });
+    }
+
+    // Restore breakpoint state from the store for a given classifier
+    function restoreBreakpointContext(f, g, s, e) {
+        const key = classifierKey(f, g, s, e);
+        const stored = scriptBreakpointStore.get(key);
+        if (stored) {
+            ideBreakpoints = new Set(stored.breakpoints);
+            addressMap = new Map(stored.addressMap);
+            lineToIp = new Map(stored.lineToIp);
+            bpAgentBindings = new Map([...stored.bindings].map(([k, v]) => [k, new Set(v)]));
+            bpSourceHash = stored.sourceHash;
+        } else {
+            ideBreakpoints = new Set();
+            addressMap = new Map();
+            lineToIp = new Map();
+            bpAgentBindings = new Map();
+            bpSourceHash = "";
+        }
+    }
+
+    // Check if any script in the store has breakpoints
+    function hasAnyBreakpoints() {
+        if (ideBreakpoints.size > 0) return true;
+        for (const ctx of scriptBreakpointStore.values()) {
+            if (ctx.breakpoints.size > 0) return true;
+        }
+        return false;
+    }
 
     // ── Scriptorium browser ───────────────────────────────────────────────
     async function refreshScriptorium() {
@@ -203,11 +267,13 @@
                 return;
             }
 
+            // Save breakpoint context for the currently loaded script before switching
+            saveBreakpointContext();
+
             // Format and load into editor
             const formatted = (typeof formatCAOS === "function")
                 ? formatCAOS(data.source) : data.source;
             editorTextarea.value = formatted;
-            syncEditorDisplay();
 
             // Set classifier fields
             classifierInputs.family.value = entry.family;
@@ -215,6 +281,12 @@
             classifierInputs.species.value = entry.species;
             classifierInputs.event.value = entry.event;
             loadedClassifier = { ...entry };
+
+            // Restore breakpoint context for the newly loaded script
+            restoreBreakpointContext(entry.family, entry.genus, entry.species, entry.event);
+
+            syncEditorDisplay();
+            renderBreakpointPanel();
 
             const evtName = EVENT_NAMES[entry.event];
             const suffix = evtName ? ` (${evtName})` : "";
@@ -255,14 +327,15 @@
         editorHighlight.innerHTML = highlightHtml;
     }
 
-    // Sync on any input — also trigger debounced validation + clear breakpoints
+    // Sync on any input — also trigger debounced validation + clear current script breakpoints
     editorTextarea.addEventListener("input", () => {
         syncEditorDisplay();
         scheduleValidation();
         scheduleAutocomplete();
-        // Clear breakpoints when source changes (address map is invalidated)
+        // Clear breakpoints for the CURRENT script only when source changes
+        // (address map is invalidated for this script, other scripts are unaffected)
         if (ideBreakpoints.size > 0) {
-            clearAllBreakpoints();
+            clearCurrentScriptBreakpoints();
         }
     });
 
@@ -1073,14 +1146,10 @@
         await renderBreakpointPanel();
     }
 
-    // Find all agents currently running a script matching the current classifier
-    async function discoverAgentsForClassifier() {
-        const f = parseInt(classifierInputs.family.value) || 0;
-        const g = parseInt(classifierInputs.genus.value) || 0;
-        const s = parseInt(classifierInputs.species.value) || 0;
-        const ev = parseInt(classifierInputs.event.value) || 0;
-
-        if (f === 0 && g === 0 && s === 0 && ev === 0) return [];
+    // Find all agents matching a given classifier (family/genus/species).
+    // Event is not used for enum — all agents of that FGS will be returned.
+    async function discoverAgentsForFGS(f, g, s) {
+        if (f === 0 && g === 0 && s === 0) return [];
 
         try {
             // Use CAOS enum to find all agents matching the classifier —
@@ -1107,6 +1176,14 @@
         } catch (_) {
             return [];
         }
+    }
+
+    // Convenience: discover agents for the current classifier header
+    async function discoverAgentsForClassifier() {
+        const f = parseInt(classifierInputs.family.value) || 0;
+        const g = parseInt(classifierInputs.genus.value) || 0;
+        const s = parseInt(classifierInputs.species.value) || 0;
+        return discoverAgentsForFGS(f, g, s);
     }
 
     // Send a breakpoint set/clear to a specific agent
@@ -1146,11 +1223,36 @@
         await renderBreakpointPanel();
     }
 
-    // Render the breakpoint panel
+    // Render the breakpoint panel — shows ALL breakpoints across ALL scripts,
+    // grouped by script classifier with headers.
     async function renderBreakpointPanel() {
         if (!bpPanel || !bpListEl) return;
 
-        if (ideBreakpoints.size === 0) {
+        // Save current context first so the store is up to date
+        saveBreakpointContext();
+
+        // Collect all scripts that have breakpoints
+        const allScripts = new Map(); // key → { breakpoints, lineToIp, bindings }
+        const curKey = currentClassifierKey();
+
+        // Gather from the store
+        for (const [key, ctx] of scriptBreakpointStore) {
+            if (ctx.breakpoints.size > 0) {
+                allScripts.set(key, ctx);
+            }
+        }
+
+        // Also include current active state if it has breakpoints and isn't in the store yet
+        if (curKey && ideBreakpoints.size > 0 && !allScripts.has(curKey)) {
+            allScripts.set(curKey, {
+                breakpoints: ideBreakpoints,
+                lineToIp: lineToIp,
+                bindings: bpAgentBindings,
+                sourceHash: bpSourceHash
+            });
+        }
+
+        if (allScripts.size === 0) {
             bpPanel.hidden = true;
             stopBpAgentPoll();
             return;
@@ -1159,86 +1261,265 @@
         bpPanel.hidden = false;
         startBpAgentPoll();
 
-        // Discover agents for current classifier
-        const agents = await discoverAgentsForClassifier();
-
-        if (bpCountEl) {
-            const agentCount = new Set();
-            for (const bindings of bpAgentBindings.values()) {
-                for (const id of bindings) agentCount.add(id);
+        // Count total breakpoints and bound agents across all scripts
+        let totalBpCount = 0;
+        const allBoundAgents = new Set();
+        for (const ctx of allScripts.values()) {
+            totalBpCount += ctx.breakpoints.size;
+            for (const bindings of ctx.bindings.values()) {
+                for (const id of bindings) allBoundAgents.add(id);
             }
-            const boundCount = agentCount.size;
-            bpCountEl.textContent = `${ideBreakpoints.size} bp` +
-                (agents.length > 0 ? ` · ${boundCount}/${agents.length} agents` : "");
         }
 
-        // Build breakpoint list
-        bpListEl.innerHTML = "";
-        const sortedLines = [...ideBreakpoints].sort((a, b) => a - b);
+        if (bpCountEl) {
+            bpCountEl.textContent = `${totalBpCount} bp · ${allScripts.size} script${allScripts.size > 1 ? "s" : ""}`
+                + (allBoundAgents.size > 0 ? ` · ${allBoundAgents.size} bound` : "");
+        }
 
-        for (const lineIdx of sortedLines) {
-            const info = lineToIp.get(lineIdx);
-            const bindings = bpAgentBindings.get(lineIdx) || new Set();
+        // Build ALL DOM content into a fragment BEFORE touching the live DOM.
+        // This eliminates the flash caused by clearing innerHTML then awaiting
+        // async agent discovery before appending new content.
+        const fragment = document.createDocumentFragment();
 
-            const row = document.createElement("div");
-            row.className = "ide-bp-item";
+        // Discover agents per FGS (cache to avoid duplicate CAOS calls)
+        const agentCache = new Map(); // "F G S" → agents array
 
-            // Red dot
-            const dot = document.createElement("span");
-            dot.className = "ide-bp-dot";
-            row.appendChild(dot);
+        for (const [key, ctx] of allScripts) {
+            const parts = key.split(" ").map(Number);
+            const [f, g, s, ev] = parts;
+            const fgsKey = `${f} ${g} ${s}`;
 
-            // Line number
-            const lineEl = document.createElement("span");
-            lineEl.className = "ide-bp-line";
-            lineEl.textContent = `Line ${lineIdx + 1}`;
-            row.appendChild(lineEl);
-
-            // IP
-            const ipEl = document.createElement("span");
-            ipEl.className = "ide-bp-ip";
-            ipEl.textContent = info ? `IP ${info.bytecodeIp}` : "\u2014";
-            row.appendChild(ipEl);
-
-            // Agent tags
-            const agentsEl = document.createElement("span");
-            agentsEl.className = "ide-bp-agents";
-
-            if (agents.length === 0) {
-                const noAgents = document.createElement("span");
-                noAgents.className = "ide-bp-no-agents";
-                noAgents.textContent = "no agents running";
-                agentsEl.appendChild(noAgents);
+            // Discover agents (cached per FGS)
+            let agents;
+            if (agentCache.has(fgsKey)) {
+                agents = agentCache.get(fgsKey);
             } else {
-                for (const agent of agents) {
-                    const tag = document.createElement("span");
-                    const isOn = bindings.has(agent.id);
-                    tag.className = `ide-bp-agent-tag ${isOn ? "ide-bp-agent-tag--on" : "ide-bp-agent-tag--off"}`;
-                    tag.textContent = `#${agent.id}`;
-                    tag.title = `${isOn ? "Remove from" : "Apply to"} agent #${agent.id}${agent.gallery ? " (" + agent.gallery + ")" : ""}`;
-                    tag.addEventListener("click", () => toggleAgentBinding(lineIdx, agent.id));
-                    agentsEl.appendChild(tag);
-                }
+                agents = await discoverAgentsForFGS(f, g, s);
+                agentCache.set(fgsKey, agents);
             }
-            row.appendChild(agentsEl);
 
-            // Remove button
-            const removeBtn = document.createElement("button");
-            removeBtn.className = "ide-bp-remove";
-            removeBtn.textContent = "×";
-            removeBtn.title = "Remove breakpoint";
-            removeBtn.addEventListener("click", () => {
-                toggleBreakpointAtLine(lineIdx);
-            });
-            row.appendChild(removeBtn);
+            const isCurrent = (key === curKey);
 
-            bpListEl.appendChild(row);
+            // Group container
+            const groupEl = document.createElement("div");
+            groupEl.className = "ide-bp-group" + (isCurrent ? " ide-bp-group--current" : "");
+
+            // Group header: classifier + agent name + event label
+            const headerEl = document.createElement("div");
+            headerEl.className = "ide-bp-group-header";
+
+            const classEl = document.createElement("span");
+            classEl.className = "ide-bp-group-classifier";
+            classEl.textContent = `${f} ${g} ${s}`;
+            headerEl.appendChild(classEl);
+
+            const agName = agentNames[fgsKey] || "";
+            if (agName) {
+                const nameEl = document.createElement("span");
+                nameEl.className = "ide-bp-group-name";
+                nameEl.textContent = agName;
+                headerEl.appendChild(nameEl);
+            }
+
+            const evtEl = document.createElement("span");
+            evtEl.className = "ide-bp-group-event";
+            const evtName = EVENT_NAMES[ev];
+            evtEl.textContent = evtName ? `${ev} ${evtName}` : `evt ${ev}`;
+            headerEl.appendChild(evtEl);
+
+            // Click header to jump to this script in the editor
+            if (!isCurrent) {
+                headerEl.style.cursor = "pointer";
+                headerEl.title = `Load script ${f} ${g} ${s} event ${ev}`;
+                headerEl.addEventListener("click", () => {
+                    loadScript({ family: f, genus: g, species: s, event: ev });
+                });
+            }
+
+            groupEl.appendChild(headerEl);
+
+            // Breakpoint rows within this group
+            const sortedLines = [...ctx.breakpoints].sort((a, b) => a - b);
+            for (const lineIdx of sortedLines) {
+                const info = ctx.lineToIp.get(lineIdx);
+                const bindings = ctx.bindings.get(lineIdx) || new Set();
+
+                const row = document.createElement("div");
+                row.className = "ide-bp-item";
+
+                // Red dot
+                const dot = document.createElement("span");
+                dot.className = "ide-bp-dot";
+                row.appendChild(dot);
+
+                // Line number — clickable: loads the script and scrolls to line
+                const lineEl = document.createElement("span");
+                lineEl.className = "ide-bp-line";
+                lineEl.textContent = `Line ${lineIdx + 1}`;
+                lineEl.title = "Jump to line";
+                const navKey = key;
+                const navLine = lineIdx;
+                const navF = f, navG = g, navS = s, navEv = ev;
+                lineEl.addEventListener("click", () => {
+                    navigateToBreakpointLine(navKey, navF, navG, navS, navEv, navLine);
+                });
+                row.appendChild(lineEl);
+
+                // IP
+                const ipEl = document.createElement("span");
+                ipEl.className = "ide-bp-ip";
+                ipEl.textContent = info ? `IP ${info.bytecodeIp}` : "\u2014";
+                row.appendChild(ipEl);
+
+                // Agent tags
+                const agentsEl = document.createElement("span");
+                agentsEl.className = "ide-bp-agents";
+
+                if (agents.length === 0) {
+                    const noAgents = document.createElement("span");
+                    noAgents.className = "ide-bp-no-agents";
+                    noAgents.textContent = "no agents";
+                    agentsEl.appendChild(noAgents);
+                } else {
+                    for (const agent of agents) {
+                        const tag = document.createElement("span");
+                        const isOn = bindings.has(agent.id);
+                        tag.className = `ide-bp-agent-tag ${isOn ? "ide-bp-agent-tag--on" : "ide-bp-agent-tag--off"}`;
+                        tag.textContent = `#${agent.id}`;
+                        tag.title = `${isOn ? "Remove from" : "Apply to"} agent #${agent.id}`;
+
+                        // Capture values for closure
+                        const capturedKey = key;
+                        const capturedLineIdx = lineIdx;
+                        const capturedAgentId = agent.id;
+                        tag.addEventListener("click", () => {
+                            toggleAgentBindingForScript(capturedKey, capturedLineIdx, capturedAgentId);
+                        });
+                        agentsEl.appendChild(tag);
+                    }
+                }
+                row.appendChild(agentsEl);
+
+                // Remove button
+                const removeBtn = document.createElement("button");
+                removeBtn.className = "ide-bp-remove";
+                removeBtn.textContent = "×";
+                removeBtn.title = "Remove breakpoint";
+                const capturedKey2 = key;
+                const capturedLine2 = lineIdx;
+                removeBtn.addEventListener("click", () => {
+                    removeBreakpointFromScript(capturedKey2, capturedLine2);
+                });
+                row.appendChild(removeBtn);
+
+                groupEl.appendChild(row);
+            }
+
+            fragment.appendChild(groupEl);
+        }
+
+        // Single atomic DOM swap — replaces old content with the fully-built fragment
+        bpListEl.innerHTML = "";
+        bpListEl.appendChild(fragment);
+    }
+
+    // Navigate to a breakpoint line: load the script if needed, then scroll the editor
+    async function navigateToBreakpointLine(scriptKey, f, g, s, ev, lineIdx) {
+        const curKey = currentClassifierKey();
+        if (scriptKey !== curKey) {
+            // Load the script first (this also restores breakpoints)
+            await loadScript({ family: f, genus: g, species: s, event: ev });
+        }
+        scrollEditorToLine(lineIdx);
+    }
+
+    // Scroll the editor textarea so that the given line (0-based) is visible and highlighted
+    function scrollEditorToLine(lineIdx) {
+        const lineHeight = 20; // matches CSS line-height
+        const editorHeight = editorTextarea.clientHeight;
+        // Center the line in the viewport
+        const targetScroll = Math.max(0, (lineIdx * lineHeight) - (editorHeight / 2) + lineHeight);
+        editorTextarea.scrollTop = targetScroll;
+        editorHighlight.scrollTop = targetScroll;
+        editorLineNums.scrollTop = targetScroll;
+
+        // Briefly flash the line number in the gutter to indicate where we landed
+        const lineSpans = editorLineNums.querySelectorAll("span");
+        if (lineSpans[lineIdx]) {
+            lineSpans[lineIdx].classList.add("ide-line-flash");
+            setTimeout(() => lineSpans[lineIdx].classList.remove("ide-line-flash"), 1200);
         }
     }
 
-    // Clear all breakpoints
-    async function clearAllBreakpoints() {
-        // Clear from all bound agents
+    // Toggle agent binding for a breakpoint in a specific script (may not be current)
+    async function toggleAgentBindingForScript(scriptKey, lineIdx, agentId) {
+        const curKey = currentClassifierKey();
+        if (scriptKey === curKey) {
+            // Operating on the current active script — use the working copies
+            await toggleAgentBinding(lineIdx, agentId);
+            return;
+        }
+
+        // Operating on a different script — modify the store directly
+        const ctx = scriptBreakpointStore.get(scriptKey);
+        if (!ctx) return;
+
+        const info = ctx.lineToIp.get(lineIdx);
+        if (!info) return;
+
+        let bindings = ctx.bindings.get(lineIdx);
+        if (!bindings) {
+            bindings = new Set();
+            ctx.bindings.set(lineIdx, bindings);
+        }
+
+        if (bindings.has(agentId)) {
+            bindings.delete(agentId);
+            await sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
+        } else {
+            bindings.add(agentId);
+            await sendBreakpointToAgent(agentId, info.bytecodeIp, "set");
+        }
+
+        await renderBreakpointPanel();
+    }
+
+    // Remove a breakpoint from a specific script (may not be current)
+    async function removeBreakpointFromScript(scriptKey, lineIdx) {
+        const curKey = currentClassifierKey();
+        if (scriptKey === curKey) {
+            // Operating on current script — use the working copies
+            await toggleBreakpointAtLine(lineIdx);
+            return;
+        }
+
+        // Operating on a different script — modify the store directly
+        const ctx = scriptBreakpointStore.get(scriptKey);
+        if (!ctx) return;
+
+        ctx.breakpoints.delete(lineIdx);
+        const bindings = ctx.bindings.get(lineIdx);
+        if (bindings) {
+            const info = ctx.lineToIp.get(lineIdx);
+            if (info) {
+                for (const agentId of bindings) {
+                    sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
+                }
+            }
+            ctx.bindings.delete(lineIdx);
+        }
+
+        // Remove from store if empty
+        if (ctx.breakpoints.size === 0) {
+            scriptBreakpointStore.delete(scriptKey);
+        }
+
+        await renderBreakpointPanel();
+    }
+
+    // Clear breakpoints for the CURRENT script only (called on source edit)
+    async function clearCurrentScriptBreakpoints() {
+        // Clear from all bound agents for current breakpoints
         for (const [lineIdx, bindings] of bpAgentBindings) {
             const info = lineToIp.get(lineIdx);
             if (info) {
@@ -1250,6 +1531,46 @@
 
         ideBreakpoints.clear();
         bpAgentBindings.clear();
+        bpSourceHash = "";
+
+        // Also remove from store
+        const key = currentClassifierKey();
+        if (key) scriptBreakpointStore.delete(key);
+
+        syncEditorDisplay();
+        await renderBreakpointPanel();
+    }
+
+    // Clear ALL breakpoints across ALL scripts
+    async function clearAllBreakpoints() {
+        // Clear from all bound agents in the current working copies
+        for (const [lineIdx, bindings] of bpAgentBindings) {
+            const info = lineToIp.get(lineIdx);
+            if (info) {
+                for (const agentId of bindings) {
+                    sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
+                }
+            }
+        }
+
+        // Clear from all bound agents in the store
+        for (const [key, ctx] of scriptBreakpointStore) {
+            for (const [lineIdx, bindings] of ctx.bindings) {
+                const info = ctx.lineToIp.get(lineIdx);
+                if (info) {
+                    for (const agentId of bindings) {
+                        sendBreakpointToAgent(agentId, info.bytecodeIp, "clear");
+                    }
+                }
+            }
+        }
+
+        // Reset all state
+        ideBreakpoints.clear();
+        bpAgentBindings.clear();
+        bpSourceHash = "";
+        scriptBreakpointStore.clear();
+
         syncEditorDisplay();
         if (bpPanel) bpPanel.hidden = true;
         stopBpAgentPoll();
@@ -1259,7 +1580,7 @@
     function startBpAgentPoll() {
         if (bpAgentPollTimer) return;
         bpAgentPollTimer = setInterval(() => {
-            if (ideBreakpoints.size > 0 && isActive) {
+            if (hasAnyBreakpoints() && isActive) {
                 renderBreakpointPanel();
             }
         }, 3000);
