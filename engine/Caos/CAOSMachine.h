@@ -666,6 +666,7 @@ private:
   std::set<int> myBreakpoints;         // bytecode IPs to break at
   bool myDebugStepOnce = false;        // single-step flag
   int  myDebugStepOverDepth = -1;      // stack depth for step-over
+  bool myDebugSkipBreakpointOnce = false; // skip breakpoint at current IP once (for Continue)
 
   // Call stack for the CALL command.  When a subroutine is invoked via
   // CALL, the caller's full VM state is pushed here.  When the subroutine

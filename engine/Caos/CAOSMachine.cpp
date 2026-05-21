@@ -308,10 +308,14 @@ bool CAOSMachine::UpdateVM(int quanta) {
         break;
       }
       if (myState == stateFetch && !myBreakpoints.empty() &&
-          !myDebugStepOnce && myBreakpoints.count(myIP)) {
+          !myDebugStepOnce && !myDebugSkipBreakpointOnce &&
+          myBreakpoints.count(myIP)) {
         myState = stateBreakpoint;
         break;
       }
+      // Clear the skip-once flag after passing the breakpoint check
+      if (myDebugSkipBreakpointOnce)
+        myDebugSkipBreakpointOnce = false;
       // ── Single-step logic ─────────────────────────────────────────
       bool wasSteppingOnce = myDebugStepOnce;
       if (myDebugStepOnce)
@@ -1159,8 +1163,10 @@ void CAOSMachine::ClearAllBreakpoints() { myBreakpoints.clear(); }
 const std::set<int>& CAOSMachine::GetBreakpoints() const { return myBreakpoints; }
 
 void CAOSMachine::DebugContinue() {
-  if (myState == stateBreakpoint)
+  if (myState == stateBreakpoint) {
     myState = stateFetch;
+    myDebugSkipBreakpointOnce = true;  // skip the breakpoint at current IP
+  }
 }
 
 void CAOSMachine::DebugStepInto() {
