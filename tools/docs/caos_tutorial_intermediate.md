@@ -797,13 +797,7 @@ Switch to the **Scripts** tab to see all your scripts running live. You should s
 When you're done experimenting, clean everything up:
 
 ```caos
-* Remove all scriptorium entries
-scrx 2 23 800 1
-scrx 2 23 800 2
-scrx 2 23 800 9
-scrx 2 23 801 100
-
-* Delete all agents
+* Kill agents first — this stops any running/paused scripts
 inst
 enum 2 23 800
     kill targ
@@ -811,6 +805,12 @@ next
 enum 2 23 801
     kill targ
 next
+
+* Now remove scriptorium entries (safe — no scripts are in use)
+scrx 2 23 800 1
+scrx 2 23 800 2
+scrx 2 23 800 9
+scrx 2 23 801 100
 
 outs "All cleaned up!"
 ```
