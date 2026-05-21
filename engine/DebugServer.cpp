@@ -1032,6 +1032,25 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 			}
 			json << "}";
 
+			// _p1_ and _p2_ message parameters
+			auto emitCAOSVar = [&json](const char* name, CAOSVar v) {
+				json << ",\"" << name << "\":";
+				if (v.GetType() == CAOSVar::typeInteger)
+					json << v.GetInteger();
+				else if (v.GetType() == CAOSVar::typeFloat)
+					json << v.GetFloat();
+				else if (v.GetType() == CAOSVar::typeString) {
+					std::string s; v.GetString(s);
+					json << "\"" << JsonEscape(s) << "\"";
+				}
+				else if (v.GetType() == CAOSVar::typeAgent && v.GetAgent().IsValid())
+					json << v.GetAgent().GetAgentReference().GetUniqueID();
+				else
+					json << "0";
+			};
+			emitCAOSVar("p1", vm.GetP1());
+			emitCAOSVar("p2", vm.GetP2());
+
 			json << "}";
 			return json.str();
 		};

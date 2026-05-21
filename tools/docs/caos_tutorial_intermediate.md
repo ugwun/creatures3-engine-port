@@ -673,10 +673,12 @@ doif ov00 gt 0
     * === NEW: Notify all beacons ===
     * Send custom message 100 to all 2 23 801 agents
     * _P1_ = remaining food, _P2_ = 0
+    * Save food count BEFORE enum changes TARG!
+    setv va02 ov00
     setv va00 unid
     inst
     enum 2 23 801
-        mesg wrt+ targ 100 ov00 0 0
+        mesg wrt+ targ 100 va02 0 0
     next
     targ agnt va00
 
@@ -736,13 +738,18 @@ Now switch to the **Debugger** tab:
    - **OWNR** = the feeder (agent that owns the script)
    - **FROM** = the creature that "pushed" it
    - **OV00** = current food remaining (before decrement)
+
+![debugger inspector](/docs/media/debugger-inspector.png)
+
 3. Click **Step** to execute `subv ov00 1` — watch OV00 decrease by 1
 4. Click **Continue** to let the Push script finish
 
 After the push script sends the message to the beacon, the beacon should pause at its breakpoint:
 
 1. Find the beacon in the agent list (classifier `2 23 801`)
-2. Click it — you can now inspect `_P1_` in the VA variables
+2. Click it — you can now inspect `_p1_` in the **Message Params** section of the inspector
+
+![debugger msg params](/docs/media/debugger-msg-params.png)
 
 ### 7.3 — Watching State Flow
 

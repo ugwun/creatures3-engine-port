@@ -393,6 +393,9 @@
         // OV/VA Variables
         renderVarGrid("dbg-ov-vars", data.ov, "ov", "No non-zero OV variables");
         renderVarGrid("dbg-va-vars", data.va, "va", "No non-zero VA variables");
+
+        // Message params (_p1_ / _p2_)
+        renderMessageParams(data);
     }
 
     function renderVarGrid(containerId, vars, prefix, emptyText) {
@@ -415,6 +418,22 @@
             html += `<span class="dbg-var-val">${typeof val === "string" ? `"${val}"` : val}</span>`;
         }
         el.innerHTML = html;
+    }
+
+    function renderMessageParams(data) {
+        const el = document.getElementById("dbg-msg-params");
+        if (!el) return;
+
+        // Only show if a script is active (running/paused/blocking)
+        if (!data.running && !data.paused && !data.blocking) {
+            el.innerHTML = '<span class="dbg-empty-hint">No active script</span>';
+            return;
+        }
+
+        const fmtVal = v => (typeof v === "string") ? `"${v}"` : (v ?? 0);
+        el.innerHTML =
+            `<span class="dbg-var-key">_p1_</span><span class="dbg-var-val">${fmtVal(data.p1)}</span>` +
+            `<span class="dbg-var-key">_p2_</span><span class="dbg-var-val">${fmtVal(data.p2)}</span>`;
     }
 
     // ── Focus camera ─────────────────────────────────────────────────────
