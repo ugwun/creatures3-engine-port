@@ -480,14 +480,16 @@ An event script is identified by four numbers: **Family, Genus, Species, Event**
 
 | Event | Name | When it fires |
 |---|---|---|
-| 1 | Push | Creature pushes the agent |
-| 2 | Pull | Creature pulls the agent |
+| 0 | Deactivate | Agent is deactivated (shift-click or creature deactivate) |
+| 1 | Activate 1 (Push) | Primary activation — player left-click or creature push |
+| 2 | Activate 2 (Pull) | Secondary activation — player right-click or creature pull |
 | 3 | Hit | Creature hits the agent |
-| 4 | Activate 1 | Primary activation (player click) |
-| 5 | Activate 2 | Secondary activation |
+| 4 | Pickup | Agent is picked up |
+| 5 | Drop | Agent is dropped |
 | 9 | Timer | Fires every N ticks (set by `tick`) |
-| 10 | Constructor | Called once when agent is created |
 | 12 | Eat | Creature eats the agent |
+
+> **Note:** Event 1 handles *both* creature pushes and player left-clicks. See the [Script Events & Messages](caos_events.md) reference for the complete list of all ~70 built-in events.
 
 ### 6.2 — Browsing the Scriptorium
 

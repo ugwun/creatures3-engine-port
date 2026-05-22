@@ -449,11 +449,13 @@ When the player left-clicks an agent, the engine sends message `ACTIVATE1` (mess
 | Left-click | ACTIVATE1 (0) | **Event 1** | Push Script |
 | Right-click | ACTIVATE2 (1) | **Event 2** | Pull Script |
 | Shift-click | DEACTIVATE (2) | **Event 0** | — |
-| Pick up | PICKUP (3) | **Event 4** | — |
+| Pick up | PICKUP (4) | **Event 4** | — |
 
 This means our Push Script (Event 1) handles *both* creature pushes AND player clicks — which is exactly why we added the `rtar` fallback in the previous section.
 
 > **Why the offset?** The original Creatures engine used a different numbering for messages vs. scripts. Message ID 0 maps to script event 1 because the internal `HandleActivate1()` function dispatches to `SCRIPTACTIVATE1 = 1`. This is a historical quirk that you simply have to memorise.
+
+> For the **complete table** of all ~70 built-in events — including creature decision scripts, involuntary actions, pointer events, and system events — see the [Script Events & Messages](caos_events.md) reference.
 
 ### 4.4 — The Pull Script (Event 2) — Status Report
 
@@ -826,7 +828,7 @@ This tutorial covered intermediate CAOS concepts that go far beyond the beginner
 | **Compound agents** | `new: comp`, `pat: dull`, `part`, multi-part animation |
 | **Physics** | `accg`, `elas`, `fric`, `aero` — making objects behave physically |
 | **Agent attributes** | `attr` flags vs `bhvr` creature permissions — two separate systems |
-| **Multiple event scripts** | Timer (9), Push (1), Pull (2), Activate (4) — a full behaviour set |
+| **Multiple event scripts** | Timer (9), Push (1), Pull (2), Custom Message (100) — a full behaviour set |
 | **`FROM` variable** | Identifying which creature triggered an event |
 | **TARG management** | Saving/restoring TARG when switching between agents mid-script |
 | **Creature chemistry** | `chem` to inject nutrients, chemical IDs, verifying with the Chemistry tab |

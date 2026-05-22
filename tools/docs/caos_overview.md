@@ -43,8 +43,8 @@ Many command names are **overloaded** — the same 4-character name can appear a
 Scripts are identified by a **classifier** — a tuple of `(family, genus, species, event)`:
 
 ```
-scrp 2 16 4 4
-  * This script runs when event 4 (Activate 1) fires
+scrp 2 16 4 1
+  * This script runs when event 1 (Activate 1 / Push) fires
   * on an agent with classifier 2 16 4
   snde "beep"
 endm
@@ -91,6 +91,7 @@ Commands are organized into the following categories. Click a link to see the fu
 | [Creatures](caos_creatures.md) | `NEW: CREA`, `BORN`, `DEAD`, `AGES`, `CHEM`, `DRIV`, etc. |
 | [Brain](caos_brain.md) | `BRN: SETN`, `BRN: SETD`, `BRN: SETL`, etc. |
 | [Agent Categories](caos_categories.md) | `CATI`, `CATA`, `CATX` — classifier-to-brain category mapping |
+| [Script Events & Messages](caos_events.md) | Event numbers, message→script mapping, `BHVR`, creature decisions, involuntary actions |
 | [Compounds & Parts](caos_compounds.md) | `PAT: DULL/BUTT/TEXT`, `PART`, `PTXT`, `FCUS`, etc. |
 | [Vehicles](caos_vehicles.md) | `CABN`, `CABP`, `CABW`, `SPAS`, `RPAS`, `DPAS`, `EPAS`, etc. |
 | [Input & Pointer](caos_input.md) | `CLAC`, `CLIK`, `IMSK`, `PURE`, `MOUS`, `KEYD`, etc. |

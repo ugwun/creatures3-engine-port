@@ -44,7 +44,7 @@
     "file": "caos_tutorial.md"
   },
   {
-    "title": "── Intermediate Tutorial ──",
+    "title": "CAOS Intermediate Tutorial",
     "file": "caos_tutorial_intermediate.md"
   },
   {
@@ -90,6 +90,10 @@
   {
     "title": "CAOS: Agent Categories",
     "file": "caos_categories.md"
+  },
+  {
+    "title": "CAOS: Script Events & Messages",
+    "file": "caos_events.md"
   },
   {
     "title": "CAOS: Compounds & Parts",

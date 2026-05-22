@@ -11,7 +11,7 @@ Commands for handling mouse/keyboard input and the pointer (hand) agent.
 **Syntax (command):** `CLAC message (integer)`
 **Type:** Command
 
-Set the message sent to target when it is clicked on. Default is Activate 1 (event 1). Use -1 to prevent any activation.
+Set the message sent to target when it is clicked on. The value is a **message ID** (not a script event number) — see the [Message ID → Script Event table](caos_events.md#message-id--script-event-mapping). Default is `0` (Activate 1, which triggers script event 1). Use `-1` to prevent any activation.
 
 **Syntax (integer RV):** `CLAC`
 **Type:** Integer R-Value

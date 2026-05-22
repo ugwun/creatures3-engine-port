@@ -2,6 +2,8 @@
 
 Commands for inter-agent messaging, creature stimuli, urges, and spoken commands.
 
+> **See also:** [Script Events & Messages](caos_events.md) for the complete table of all ~70 built-in event numbers, the message ID → script event mapping, BHVR creature permissions, and creature decision scripts.
+
 ---
 
 ## Messages (MESG)
