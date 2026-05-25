@@ -2,6 +2,8 @@
 
 Commands for managing genomes, monikers, and genetic manipulation.
 
+> **Deep Dive:** For the complete `dna3` binary file format, all 19 gene subtypes, and how crossover and mutation work at the byte level, see [The Digital Genome — Deep Dive](genome_deep_dive.md). For the conceptual overview of how genetics fits into the A-Life architecture, see [Game Philosophy & Overview](game_philosophy.md).
+
 ---
 
 ## Genome Manipulation (GENE:)
@@ -27,7 +29,7 @@ new: crea 4 targ 1 0 0
 **Syntax:** `GENE CROS child_agent (agent) child_slot (integer) mum_agent (agent) mum_slot (integer) dad_agent (agent) dad_slot (integer) mum_chance_of_mutation (integer) mum_degree_of_mutation (integer) dad_chance_of_mutation (integer) dad_degree_of_mutation (integer)`
 **Type:** Command
 
-Crosses two genomes with mutation and fills in a child genome slot. Mutation variables range from 0 to 255.
+Crosses two genomes with mutation and fills in a child genome slot. Mutation variables range from 0 to 255. The `mum_chance_of_mutation` and `mum_degree_of_mutation` parameters (and the corresponding dad parameters) control the probability and magnitude of point mutations during crossover — see [The Digital Genome — Point Mutations](genome_deep_dive.md#point-mutations) for the exact formulas.
 
 ---
 
@@ -86,5 +88,12 @@ Returns the creature with the given moniker. Returns `NULL` if no agent alive wi
 Returns the agent which references the given moniker. The moniker could be in any gene slot. Returns `NULL` if moniker not currently used. This command can be slow — use `MTOC` if possible.
 
 ---
+
+## See Also
+
+* [The Digital Genome — Deep Dive](genome_deep_dive.md) — Complete binary format reference, gene subtypes, crossover algorithm, and mutation mechanics
+* [Game Philosophy & Overview](game_philosophy.md) — How genetics fits into the broader A-Life architecture
+* [Genetics Kit Tab](tab_genetics_kit.md) — Visual interface for inspecting, editing, and crossing genomes
+* [History](caos_history.md) — `HIST MUTE` and `HIST CROS` to query mutation/crossover stats
 
 [← Back to CAOS Overview](caos_overview.md)

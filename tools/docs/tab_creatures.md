@@ -76,7 +76,7 @@ The Genome tab is a fully immersive, real-time binary parser for inspecting the 
 * **Intelligent Badges:** Gene cards present structural parameters like mutable/cuttable flags, gender targeting, and dormancy.
 * **SVRule Translation:** Decompiles complex binary SVRule neuron setup structures into formatted, human-readable CAOS pseudo-code for Brain Lobes and Neural Tracts.
 
-*(For full genetic modification and cross-breeding, use the dedicated [Genetics Kit](tab_genetics_kit.md).)*
+*(For full genetic modification and cross-breeding, use the dedicated [Genetics Kit](tab_genetics_kit.md). For the complete `dna3` format specification and all gene subtype layouts, see [The Digital Genome](genome_deep_dive.md).)*
 
 ---
 
@@ -110,6 +110,7 @@ The Brain tab provides a real-time spatial visualization of the creature's neura
 
 ## See Also
 
+* **[The Digital Genome](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, gene header structure, all 19 gene subtypes, and the crossover/mutation algorithms.
 * **[Genetics Kit](tab_genetics_kit.md)** — For full genetic modification, cross-breeding, and injection of new creatures.
 * **[Debugger](tab_debugger.md)** — To inspect and step through the CAOS scripts driving creature behaviour.
 * **[API Reference](api_reference.md)** — Endpoint documentation for `GET /api/creatures`, chemistry, organs, brain, and syringe endpoints.

@@ -177,7 +177,7 @@ Same as `HIST FIND` but searches backwards. Specify -1 to find the last event.
 **Syntax:** `HIST MUTE moniker (string)`
 **Type:** Integer R-Value
 
-Returns the number of point mutations the genome received during crossover.
+Returns the number of point mutations the genome received during crossover. See [The Digital Genome — Point Mutations](genome_deep_dive.md#point-mutations) for how mutation probability and magnitude are calculated.
 
 ---
 
@@ -186,7 +186,7 @@ Returns the number of point mutations the genome received during crossover.
 **Syntax:** `HIST CROS moniker (string)`
 **Type:** Integer R-Value
 
-Returns the number of crossover points when the genome was made.
+Returns the number of crossover points when the genome was made. See [The Digital Genome — Crossover Algorithm](genome_deep_dive.md#the-crossover-algorithm) for how crossover points, genetic linkage, and cutting errors work.
 
 ---
 
@@ -298,5 +298,11 @@ Returns the status for whether `HIST WIPE` will work: 0 = OK to wipe, 1 = creatu
 Returns the total number of worlds (for use with `WRLD`).
 
 ---
+
+## See Also
+
+* [The Digital Genome — Deep Dive](genome_deep_dive.md) — Moniker format, generation numbers, and how monikers are generated from MD5 hashes
+* [Genetics](caos_genetics.md) — `GENE LOAD/CROS/CLON`, `GTOS`, `MTOC` commands
+* [Creatures](caos_creatures.md) — `BORN`, `DEAD`, `AGES`, `CAGE` for life cycle commands
 
 [← Back to CAOS Overview](caos_overview.md)

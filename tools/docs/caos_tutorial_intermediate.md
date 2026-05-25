@@ -436,7 +436,7 @@ endi
 
 > **Key concept: TARG switching.** The `chem` command operates on TARG, so we need to change TARG to the creature. But this changes TARG away from our feeder! We save our own ID in `va00` first, then use `targ agnt va00` to switch back afterwards. Forgetting this restore step is one of the most common CAOS bugs — subsequent commands would accidentally operate on the creature instead of the feeder, causing subtle and confusing misbehaviour.
 
-> **Why not use `stim writ` instead of `chem`?** You might wonder why we don't just use `stim writ targ 79` (the stimulus for "Ate Food") like a Carrot does. The `stim writ` command sends a stimulus to the creature, which triggers the brain's reinforcement learning system — the creature needs to have *attention* on the feeder, and the stimulus gene for "Ate Food from a dispenser" needs to exist in the creature's genome. Our direct `chem` approach bypasses all of that and works reliably regardless of the creature's attention state. In a production agent, you'd ideally use *both*: `stim writ` so the creature learns, plus `chem` as a guaranteed fallback. For this tutorial, `chem` alone keeps things simple and predictable.
+> **Why not use `stim writ` instead of `chem`?** You might wonder why we don't just use `stim writ targ 79` (the stimulus for "Ate Food") like a Carrot does. The `stim writ` command sends a stimulus to the creature, which triggers the brain's reinforcement learning system — the creature needs to have *attention* on the feeder, and the [stimulus gene](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus) for "Ate Food from a dispenser" needs to exist in the creature's genome. Our direct `chem` approach bypasses all of that and works reliably regardless of the creature's attention state. In a production agent, you'd ideally use *both*: `stim writ` so the creature learns, plus `chem` as a guaranteed fallback. For this tutorial, `chem` alone keeps things simple and predictable.
 
 ### 4.3 — Understanding Event Numbers
 
@@ -559,7 +559,7 @@ If you were to inject chemicals via script (e.g., `chem 5 0.5`), you could obser
 2. Toggle **"Non-zero only"** to reduce clutter — this filters out the ~200 chemicals that are at zero concentration
 3. If you used the Syringe to inject Chemical 5 (Starch), look for it near the top of the list
 4. The concentration will gradually decay
-5. The decay is driven by **chemical half-lives** — each chemical has a genetically defined decay rate. You can inspect these in the creature's genome via the **Genome** sub-tab (look for the "Halflives" gene under Biochemistry)
+5. The decay is driven by **chemical half-lives** — each chemical has a genetically defined decay rate (see [Half-Lives Gene](genome_deep_dive.md#subtype-3--half-lives-gene-g_halflife)). You can inspect these in the creature's genome via the **Genome** sub-tab (look for the "Halflives" gene under Biochemistry)
 
 ### 5.4 — Using the Syringe for Experimentation
 
@@ -867,6 +867,7 @@ This tutorial covered intermediate CAOS concepts that go far beyond the beginner
 ## Where to Go Next
 
 - **[CAOS Command Reference](caos_overview.md)** — Full glossary of every CAOS command
+- **[The Digital Genome](genome_deep_dive.md)** — How genes encode brain lobes, chemical reactions, stimulus responses, and half-lives
 - **[Compounds & Parts](caos_compounds.md)** — Complete reference for compound agent parts
 - **[Messages & Stimuli](caos_messages.md)** — All messaging, stimulus, and urge commands
 - **[Motion & Physics](caos_motion.md)** — Physics properties and movement commands

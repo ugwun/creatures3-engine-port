@@ -4,7 +4,7 @@
     "file": "intro.md"
   },
   {
-    "title": "Developer Tools Overview",
+    "title": "── Developer Tools ──",
     "file": "tools_overview.md"
   },
   {
@@ -38,6 +38,14 @@
   {
     "title": "API Reference",
     "file": "api_reference.md"
+  },
+  {
+    "title": "── Game Internals ──",
+    "file": "game_philosophy.md"
+  },
+  {
+    "title": "The Digital Genome",
+    "file": "genome_deep_dive.md"
   },
   {
     "title": "── CAOS Tutorial ──",

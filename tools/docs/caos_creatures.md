@@ -2,7 +2,7 @@
 
 Commands for creating, controlling, and querying biological creatures (Norns, Grendels, Ettins).
 
-> **Related:** Creatures perceive objects through the [Agent Category](caos_categories.md) system, which maps agent classifiers to brain neurons. The `ATTN` and `DECN` values below are category IDs from this system.
+> **Related:** Creatures perceive objects through the [Agent Category](caos_categories.md) system, which maps agent classifiers to brain neurons. The `ATTN` and `DECN` values below are category IDs from this system. For the genetic blueprint that defines a creature's brain, biochemistry, and appearance, see [The Digital Genome](genome_deep_dive.md).
 
 ---
 
@@ -45,7 +45,7 @@ Forces a creature to age the given number of times. See also `CAGE`.
 **Syntax:** `CAGE`
 **Type:** Integer R-Value
 
-Returns life stage of target creature.
+Returns life stage of target creature. Life stages range from 0 (Baby) to 6 (Senile) — see [The Digital Genome — Life Stages](genome_deep_dive.md#life-stages-and-gene-expression-timing) for the complete stage table and how genes switch on at each stage.
 
 ---
 
@@ -231,7 +231,7 @@ Returns the direction that target creature is facing.
 **Syntax:** `GAIT gait_number (integer)`
 **Type:** Command
 
-Specifies the current gait for a creature. The gaits are genetically defined.
+Specifies the current gait for a creature. The gaits are genetically defined — see [The Digital Genome — Gait Gene](genome_deep_dive.md#subtype-4--gait-gene-g_gait) for the gene data layout.
 
 ---
 
@@ -465,7 +465,7 @@ State a personal opinion about a creature.
 **Syntax:** `MATE`
 **Type:** Command
 
-Male creature mates with the IT agent (if female of same genus). If successful, sperm is transmitted and conception may occur. Gene slot 1 of the mother contains the child genome if pregnancy occurs.
+Male creature mates with the IT agent (if female of same genus). If successful, sperm is transmitted and conception may occur. Gene slot 1 of the mother contains the child genome if pregnancy occurs. See [The Digital Genome — Sexual Reproduction](genome_deep_dive.md#sexual-reproduction--crossover-and-mutation) for the crossover algorithm that produces the child genome.
 
 ---
 

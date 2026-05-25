@@ -4,6 +4,8 @@ Commands for inspecting and manipulating creature neural networks.
 
 > **Related:** Brain lobes like `noun`, `visn`, `smel`, and `attn` use [Agent Categories](caos_categories.md) as their neuron indices. Understanding which category your agent maps to is essential for debugging creature perception.
 
+> **Deep Dive:** Brain lobes, tracts, and SVRules are all genetically defined. See [The Digital Genome](genome_deep_dive.md#type-0--brain-genes-braingene) for the Lobe, Tract, and Brain Organ gene data layouts.
+
 ---
 
 ## Brain Commands (BRN:)

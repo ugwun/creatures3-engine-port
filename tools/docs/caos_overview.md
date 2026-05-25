@@ -99,7 +99,7 @@ Commands are organized into the following categories. Click a link to see the fu
 | [Files & I/O](caos_files.md) | `FILE OOPE/OCLO/IOPE/ICLO`, `OUTS`, `OUTV`, `INNL`, etc. |
 | [Time & World](caos_time.md) | `WTIK`, `TIME`, `SEAN`, `YEAR`, `DATE`, `WOLF`, `PACE`, etc. |
 | [History](caos_history.md) | `HIST EVNT/COUN/TYPE/NAME`, `OOWW`, etc. |
-| [Genetics](caos_genetics.md) | `GENE LOAD/CROS/CLON/MOVE/KILL`, `GTOS`, `MTOC`, `MTOA` |
+| [Genetics](caos_genetics.md) | `GENE LOAD/CROS/CLON/MOVE/KILL`, `GTOS`, `MTOC`, `MTOA`. See also [The Digital Genome](genome_deep_dive.md) |
 | [Resources (PRAY)](caos_resources.md) | `PRAY REFR/GARB/INJT/EXPO/IMPO`, etc. |
 | [Ports](caos_ports.md) | `PRT: INEW/ONEW/JOIN/SEND`, `ECON`, etc. |
 | [Messages](caos_messages.md) | `MESG WRIT`, `MESG WRT+`, `STIM`, `URGE`, `SWAY`, `ORDR` |

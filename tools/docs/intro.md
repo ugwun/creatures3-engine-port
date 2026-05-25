@@ -37,6 +37,7 @@ Clicking these links will seamlessly load the new page without refreshing the br
 
 As we expand the engine capabilities and the AI agent integration (MCP), we plan to document the following areas here:
 
+* ✅ **[The Digital Genome](genome_deep_dive.md):** Complete `dna3` format reference — all 19 gene subtypes, crossover algorithm, mutation mechanics, and moniker generation.
 * **Genetics Kit Workflows:** Detailed guides on hatching, injecting, and crossing genomes.
 * **Brain & Biochemistry:** In-depth explanations of SV Rules, Lobes, Tracts, and the 256 chemicals.
 * **CAOS Reference:** A handy guide to the CAOS virtual machine opcodes and scripting patterns.

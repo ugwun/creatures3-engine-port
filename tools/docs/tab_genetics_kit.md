@@ -116,5 +116,7 @@ The Genetics Kit operates across four layers:
 
 ## See Also
 
+* **[The Digital Genome — Deep Dive](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, all 19 gene subtypes with byte-level layouts, and the crossover/mutation algorithms that `Genome::Cross()` implements.
 * **[Creatures](tab_creatures.md)** — After injecting a genome, use the Creatures tab to inspect your new creature's drives, chemistry, organs, and brain in real time.
+* **[CAOS: Genetics](caos_genetics.md)** — The CAOS commands (`GENE LOAD/CROS/CLON`, `GTOS`, `MTOC`) that drive genome manipulation from scripts.
 * **[API Reference](api_reference.md)** — Endpoint documentation for all `/api/genetics/*` routes.
