@@ -198,6 +198,8 @@ Defines a neural tract: a bundle of dendrite connections between two lobes. Trac
 
 Biochemistry genes define the creature's internal chemistry simulation — the 256-chemical bloodstream, metabolic reactions, and the interfaces between the chemical world and the neural/physical worlds.
 
+> **Deep Dive:** For the complete runtime behaviour of these genes — how the organ update loop processes them, the receptor/emitter algorithms, the reaction rate formula, and the locus resolution chain — see [Biochemistry & The Chemical Simulation — Deep Dive](biochemistry_deep_dive.md).
+
 #### Subtype 0 — Receptor Gene (`G_RECEPTOR`)
 
 A receptor monitors a specific chemical concentration and converts it into a physiological effect by binding to an internal locus.

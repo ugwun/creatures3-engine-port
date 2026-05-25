@@ -92,6 +92,7 @@ Returns the agent which references the given moniker. The moniker could be in an
 ## See Also
 
 * [The Digital Genome — Deep Dive](genome_deep_dive.md) — Complete binary format reference, gene subtypes, crossover algorithm, and mutation mechanics
+* [Biochemistry Deep Dive](biochemistry_deep_dive.md) — How the biochemistry genes (reactions, receptors, emitters) are processed at runtime — the chemical simulation that brings genomes to life
 * [Game Philosophy & Overview](game_philosophy.md) — How genetics fits into the broader A-Life architecture
 * [Genetics Kit Tab](tab_genetics_kit.md) — Visual interface for inspecting, editing, and crossing genomes
 * [History](caos_history.md) — `HIST MUTE` and `HIST CROS` to query mutation/crossover stats

@@ -78,6 +78,8 @@ Returns the variant number for target creature.
 
 ## Biochemistry
 
+> **Deep Dive:** For the complete chemical simulation internals — the 256-chemical ID table, organ architecture, receptor/emitter processing algorithms, reaction rate formulas, and the locus addressing system used by `LOCI` — see [Biochemistry & The Chemical Simulation — Deep Dive](biochemistry_deep_dive.md).
+
 ### CHEM — Adjust/Read Chemical
 
 **Syntax (command):** `CHEM chemical (integer) adjustment (float)`

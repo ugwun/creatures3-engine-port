@@ -6,6 +6,8 @@ Commands for inspecting and manipulating creature neural networks.
 
 > **Deep Dive:** Brain lobes, tracts, and SVRules are all genetically defined. See [The Digital Genome](genome_deep_dive.md#type-0--brain-genes-braingene) for the Lobe, Tract, and Brain Organ gene data layouts.
 
+> **See also:** The brain interacts with the chemical simulation through NeuroEmitters (brain-to-chemistry bridge) and SVRule `chem` operands (reading chemical concentrations in neuron update rules). For the full chemical simulation reference, see [Biochemistry Deep Dive](biochemistry_deep_dive.md#neuroemitters--brain-to-chemistry-bridge).
+
 ---
 
 ## Brain Commands (BRN:)

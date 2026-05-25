@@ -38,6 +38,8 @@ Provides a visual breakdown of the creature's immediate motivations.
 
 The Chemistry inspector is split into two distinct modes: **Monitoring** and **Syringe**.
 
+> **Deep Dive:** For the complete chemical ID table (all 256 chemicals with names and functions), the organ update loop, receptor/emitter algorithms, and a worked digestion example, see [Biochemistry & The Chemical Simulation — Deep Dive](biochemistry_deep_dive.md).
+
 ### Monitoring Mode
 * Displays all 256 biochemical concentrations as colour-coded bars.
 * Automatically sorts by value (highest first) for quick identification.
@@ -111,6 +113,7 @@ The Brain tab provides a real-time spatial visualization of the creature's neura
 ## See Also
 
 * **[The Digital Genome](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, gene header structure, all 19 gene subtypes, and the crossover/mutation algorithms.
+* **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — The full chemical simulation reference: 256-chemical ID table, organ architecture, receptor/emitter processing, reaction rate formulas, and the locus system.
 * **[Genetics Kit](tab_genetics_kit.md)** — For full genetic modification, cross-breeding, and injection of new creatures.
 * **[Debugger](tab_debugger.md)** — To inspect and step through the CAOS scripts driving creature behaviour.
 * **[API Reference](api_reference.md)** — Endpoint documentation for `GET /api/creatures`, chemistry, organs, brain, and syringe endpoints.

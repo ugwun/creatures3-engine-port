@@ -232,6 +232,8 @@ Every genome is assigned a **moniker** — a unique identifier generated from an
 
 Every creature maintains an internal "bloodstream" represented by a **256-slot array of floating-point chemical concentrations**, updated on every engine tick. This is not an abstract health bar system — it is a genuine chemistry simulation where chemicals interact through genetically-defined reactions, decay at individual rates, and drive the creature's physiology through receptor and emitter bindings.
 
+> **Deep Dive:** For the complete chemical simulation internals — the update loop, organ architecture, receptor/emitter processing algorithms, reaction rate formulas, and the full chemical ID reference — see [Biochemistry & The Chemical Simulation — Deep Dive](biochemistry_deep_dive.md).
+
 > **CAOS Reference:** Use [`CHEM`](caos_creatures.md) to read or adjust chemical concentrations. Use [`LOCI`](caos_creatures.md) to read or set biochemical locus values. Use [`ORGN`](caos_creatures.md), [`ORGF`](caos_creatures.md), and [`INJR`](caos_creatures.md) to inspect and damage organs. The [Creatures Tab](tab_creatures.md) shows live biochemistry in the developer tools.
 
 ### The Chemical Landscape

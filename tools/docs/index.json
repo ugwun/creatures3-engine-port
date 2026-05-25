@@ -48,6 +48,10 @@
     "file": "genome_deep_dive.md"
   },
   {
+    "title": "Biochemistry Deep Dive",
+    "file": "biochemistry_deep_dive.md"
+  },
+  {
     "title": "── CAOS Tutorial ──",
     "file": "caos_tutorial.md"
   },

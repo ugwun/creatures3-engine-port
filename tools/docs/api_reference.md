@@ -96,7 +96,7 @@ Compile CAOS source and install it in the scriptorium. The source should omit th
 
 ## Creatures & Brain
 
-*Used by the [Creatures](tab_creatures.md) tab.*
+*Used by the [Creatures](tab_creatures.md) tab. For the underlying chemical simulation model, see [Biochemistry Deep Dive](biochemistry_deep_dive.md).*
 
 ### `GET /api/creatures`
 List all active creatures (Norns, Grendels, Ettins) in the world.

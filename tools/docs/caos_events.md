@@ -198,7 +198,7 @@ The engine function `IsThisAnIveBeenScript()` identifies these events. They're u
 
 ## Involuntary Actions (64–72)
 
-Involuntary actions are **chemically triggered reflexes**. They fire when a specific chemoreceptor recommends the action more highly than any voluntary action. After firing, the `LTCY` command can set a cooldown period to prevent the action from repeating continuously.
+Involuntary actions are **chemically triggered reflexes**. They fire when a specific chemoreceptor recommends the action more highly than any voluntary action. After firing, the `LTCY` command can set a cooldown period to prevent the action from repeating continuously. The receptor/emitter locus system that connects chemicals to these actions is described in [Biochemistry — Locus System](biochemistry_deep_dive.md#the-locus-system).
 
 | Event | Name | Description |
 |---|---|---|
