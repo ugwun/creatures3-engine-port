@@ -339,6 +339,8 @@ Because drives are entirely soft-encoded via chemical numbering and receptor gen
 
 The creature's brain is a spatial, modular, fully soft-coded neural network. It is not a conventional game AI system — it is a genuine neural network that processes inputs, forms associations, and produces outputs through dynamically changing synaptic weights.
 
+> **Deep Dive:** For the complete technical reference — class hierarchy, lobe/tract/dendrite internals, the SVRule micro-VM architecture, the full 69-opcode instruction set, dendrite migration algorithm, and instinct processing — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
+
 > **CAOS Reference:** The [`BRN:`](caos_brain.md) commands allow reading and writing neuron states, dendrite weights, and SVRule values. [`ATTN`](caos_creatures.md) and [`DECN`](caos_creatures.md) query the creature's current attention and decision. The [Creatures Tab](tab_creatures.md) visualizes brain activity in real time.
 
 ### Lobes — The Processing Units
@@ -390,6 +392,8 @@ The 14 action neurons in `decn` correspond directly to the engine's action const
 ---
 
 ## SVRules — The Brain's Microcode
+
+> **Deep Dive:** For the complete opcode-by-opcode reference, operand encoding, execution context, common SVRule patterns, and the reinforcement learning opcodes, see [Brain & SVRules Deep Dive — SVRule Opcode Reference](brain_deep_dive.md#svrule-opcode-reference).
 
 The most remarkable engineering feature of the brain is the **State Variable Rule (SVRule)** system. Rather than hardcoding how neurons integrate their inputs or calculate their outputs, the engine provides a fully functioning micro-virtual machine. SVRules are genetically defined 48-byte micro-programs executed by every neuron and dendrite on every brain tick.
 
@@ -463,6 +467,8 @@ This ST→LT convergence mechanism means the creature has both short-term workin
 ---
 
 ## Tracts and Dendrites — Neural Wiring and Learning
+
+> **Deep Dive:** For the complete dendrite migration algorithm, connectivity modes, ST/LT weight convergence formulas, and the reinforcement processing internals, see [Brain & SVRules Deep Dive — Tracts](brain_deep_dive.md#tracts--neural-wiring).
 
 While lobes contain the computing neurons, communication between lobes is handled by **tracts** — genetically defined connections specifying a source lobe, a destination lobe, and neuron range mappings.
 

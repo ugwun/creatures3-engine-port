@@ -4,7 +4,9 @@ Commands for inspecting and manipulating creature neural networks.
 
 > **Related:** Brain lobes like `noun`, `visn`, `smel`, and `attn` use [Agent Categories](caos_categories.md) as their neuron indices. Understanding which category your agent maps to is essential for debugging creature perception.
 
-> **Deep Dive:** Brain lobes, tracts, and SVRules are all genetically defined. See [The Digital Genome](genome_deep_dive.md#type-0--brain-genes-braingene) for the Lobe, Tract, and Brain Organ gene data layouts.
+> **Deep Dive:** For the full brain architecture — lobes, tracts, dendrites, the SVRule micro-VM, migration, instincts, and the complete 69-opcode instruction set — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
+
+> **Genome Reference:** Brain lobes, tracts, and SVRules are all genetically defined. See [The Digital Genome](genome_deep_dive.md#type-0--brain-genes-braingene) for the Lobe, Tract, and Brain Organ gene data layouts.
 
 > **See also:** The brain interacts with the chemical simulation through NeuroEmitters (brain-to-chemistry bridge) and SVRule `chem` operands (reading chemical concentrations in neuron update rules). For the full chemical simulation reference, see [Biochemistry Deep Dive](biochemistry_deep_dive.md#neuroemitters--brain-to-chemistry-bridge).
 

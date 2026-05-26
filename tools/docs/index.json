@@ -52,6 +52,10 @@
     "file": "biochemistry_deep_dive.md"
   },
   {
+    "title": "Brain & SVRules Deep Dive",
+    "file": "brain_deep_dive.md"
+  },
+  {
     "title": "── CAOS Tutorial ──",
     "file": "caos_tutorial.md"
   },
