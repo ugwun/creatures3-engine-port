@@ -39,7 +39,8 @@ As we expand the engine capabilities and the AI agent integration (MCP), we plan
 
 * ✅ **[The Digital Genome](genome_deep_dive.md):** Complete `dna3` format reference — all 19 gene subtypes, crossover algorithm, mutation mechanics, and moniker generation.
 * **Genetics Kit Workflows:** Detailed guides on hatching, injecting, and crossing genomes.
-* **Brain & Biochemistry:** In-depth explanations of SV Rules, Lobes, Tracts, and the 256 chemicals.
+* ✅ **[Brain & SVRules Deep Dive](brain_deep_dive.md)** — Complete neural architecture reference: lobes, tracts, dendrites, the 69-opcode SVRule micro-VM, dendrite migration, and the instinct system.
+* ✅ **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — In-depth reference for the 256-chemical simulation, organ architecture, and receptor/emitter processing.
 * **CAOS Reference:** A handy guide to the CAOS virtual machine opcodes and scripting patterns.
 * **Debug Server API:** Endpoints and payload schemas for the embedded HTTP/SSE server.
 

@@ -234,7 +234,7 @@ The engine implementation lives in `SensoryFaculty.cpp`:
 
 ### Brain Lobes
 
-The following brain lobes use category IDs as their neuron index:
+The following brain lobes use category IDs as their neuron index (see [Standard Norn Brain Lobes](brain_deep_dive.md#standard-norn-brain-lobes) for the complete architecture):
 
 | Lobe | Quad | Purpose |
 |---|---|---|

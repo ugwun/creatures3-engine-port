@@ -122,7 +122,7 @@ Common `BHVR` values:
 
 When a creature's brain decides to perform an action with its attention on an **ordinary agent** (not another creature), the engine executes one of these scripts on the **creature itself**. These scripts define how the creature physically performs each action — the walking animation, the reaching gesture, the eating motion, etc.
 
-The creature's `decn` (decision) brain lobe has 16 neurons, one per action. The winning neuron maps to one of these script events via the `"Action Script To Neuron Mappings"` catalogue entry.
+The creature's `decn` (decision) brain lobe has 16 neurons, one per action. The winning neuron maps to one of these script events via the `"Action Script To Neuron Mappings"` catalogue entry. See [Decision Neuron to Action Mapping](brain_deep_dive.md#decision-neuron-to-action-mapping) for the complete neuron→action table.
 
 | Event | Name | Brain Neuron | Requires IT? | Description |
 |---|---|---|---|---|
@@ -417,7 +417,7 @@ endm
 
 ### Brain Lobes
 
-The creature's brain drives the entire decision cycle. Key lobes involved in event generation:
+The creature's brain drives the entire decision cycle. Key lobes involved in event generation (see [Standard Norn Brain Lobes](brain_deep_dive.md#standard-norn-brain-lobes) for the complete lobe table):
 
 | Lobe | Quad | Role in Events |
 |---|---|---|

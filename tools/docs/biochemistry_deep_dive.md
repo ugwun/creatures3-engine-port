@@ -10,6 +10,8 @@ The biochemistry is arguably the most complex runtime system in the game, and th
 
 > **Genome Reference:** For the binary gene format of biochemistry genes (Receptor, Emitter, Reaction, Half-Lives, Initial Concentration, Neuroemitter), see [The Digital Genome — Deep Dive](genome_deep_dive.md#type-1--biochemistry-genes-biochemistrygene).
 
+> **Brain Reference:** The biochemistry system bridges to the neural network through NeuroEmitters (brain→chemistry) and SVRule `chem` operands (chemistry→brain). For the full brain architecture, neuron state variables, and the 69-opcode SVRule instruction set, see [Brain & SVRules Deep Dive](brain_deep_dive.md).
+
 ---
 
 ## Architecture Overview
@@ -27,14 +29,14 @@ The biochemistry system is structured as a hierarchy of classes within the engin
 │  │  │  myChemicalDecayRates[256]               │          │  │
 │  │  └──────────────────────────────────────────┘          │  │
 │  │                                                        │  │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  │  │
-│  │  │  Organ 0     │  │  Organ 1     │  │  Organ N    │  │  │
-│  │  │  (body)      │  │  (stomach)   │  │  (liver)    │  │  │
-│  │  │              │  │              │  │             │  │  │
-│  │  │  Receptors[] │  │  Receptors[] │  │ Receptors[] │  │  │
-│  │  │  Emitters[]  │  │  Emitters[]  │  │ Emitters[]  │  │  │
-│  │  │  Reactions[] │  │  Reactions[]  │  │ Reactions[] │  │  │
-│  │  └──────────────┘  └──────────────┘  └─────────────┘  │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐   │  │
+│  │  │  Organ 0     │  │  Organ 1     │  │  Organ N    │   │  │
+│  │  │  (body)      │  │  (stomach)   │  │  (liver)    │   │  │
+│  │  │              │  │              │  │             │   │  │
+│  │  │  Receptors[] │  │  Receptors[] │  │ Receptors[] │   │  │
+│  │  │  Emitters[]  │  │  Emitters[]  │  │ Emitters[]  │   │  │
+│  │  │  Reactions[] │  │  Reactions[] │  │ Reactions[] │   │  │
+│  │  └──────────────┘  └──────────────┘  └─────────────┘   │  │
 │  │                                                        │  │
 │  │  ┌──────────────────────────────────────┐              │  │
 │  │  │  NeuroEmitters[128]                  │              │  │
@@ -692,7 +694,7 @@ The [Reaction.h](../../engine/Creature/Biochemistry/Reaction.h) header documents
 
 ## NeuroEmitters — Brain-to-Chemistry Bridge
 
-**NeuroEmitters** bridge the neural network and the biochemical bloodstream. They monitor neuron firing patterns in the brain and convert neural activity into chemical injections.
+**NeuroEmitters** bridge the neural network and the biochemical bloodstream. They monitor neuron firing patterns in the brain and convert neural activity into chemical injections. For the brain architecture that produces these neuron activations — lobes, tracts, SVRules, and neuron state variables — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
 
 **Source:** [NeuroEmitter.h](../../engine/Creature/Biochemistry/NeuroEmitter.h) and the update logic in [Biochemistry::Update()](../../engine/Creature/Biochemistry/Biochemistry.cpp#L321-L338).
 

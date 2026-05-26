@@ -23,21 +23,21 @@ The brain is implemented as a `Faculty` — a modular subsystem of the `Creature
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │          BrainComponents (sorted by updateAtTime)              │  │
 │  │                                                                │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │  │
-│  │  │  Lobe 0  │  │  Lobe 1  │  │ Tract 0  │  │  Lobe 2  │ ... │  │
-│  │  │  "driv"  │  │  "decn"  │  │driv→decn │  │  "attn"  │      │  │
-│  │  │ 20 neur. │  │ 13 neur. │  │ N dendrs │  │ 40 neur. │      │  │
-│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘      │  │
-│  │       │              │              │              │            │  │
-│  │       │  SVRule(init) │  SVRule(init) │  SVRule(init) │          │  │
-│  │       │  SVRule(upd)  │  SVRule(upd)  │  SVRule(upd)  │          │  │
-│  │       │              │              │              │            │  │
-│  └───────┴──────────────┴──────────────┴──────────────┴────────────┘  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │  │
+│  │  │  Lobe 0  │  │  Lobe 1  │  │ Tract 0  │  │  Lobe 2  │ ...    │  │
+│  │  │  "driv"  │  │  "decn"  │  │driv→decn │  │  "attn"  │        │  │
+│  │  │ 20 neur. │  │ 13 neur. │  │ N dendrs │  │ 40 neur. │        │  │
+│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘        │  │
+│  │       │              │              │              │           │  │
+│  │       │  SVRule(init) │  SVRule(init) │  SVRule(init) │        │  │
+│  │       │  SVRule(upd)  │  SVRule(upd)  │  SVRule(upd)  │        │  │
+│  │       │              │              │              │           │  │
+│  └───────┴──────────────┴──────────────┴──────────────┴───────────┘  │
 │                                                                      │
-│  ┌────────────────────────┐   ┌─────────────────────────────┐       │
-│  │    Instincts (queue)   │   │ Biochemistry (float[256])   │       │
+│  ┌────────────────────────┐   ┌─────────────────────────────┐        │
+│  │    Instincts (queue)   │   │ Biochemistry (float[256])   │        │
 │  │  pre-wired reflexes    │   │  chemicals → SVRule operands │       │
-│  └────────────────────────┘   └─────────────────────────────┘       │
+│  └────────────────────────┘   └─────────────────────────────┘        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,7 +95,7 @@ On each brain tick, `Brain::Update()` executes:
 
 A **lobe** is a rectangular grid of neurons, defined in the genome with explicit spatial coordinates and dimensions. Each lobe has a 4-character name token (e.g., `driv`, `decn`, `noun`), SVRules that govern its neurons' behaviour, and optional Winner-Takes-All (WTA) logic.
 
-### Genome Fields (Lobe Gene — Type 0, Subtype 0)
+### Genome Fields ([Lobe Gene](genome_deep_dive.md#subtype-0--lobe-gene-g_lobe) — Type 0, Subtype 0)
 
 | Field | Type | Description |
 |---|---|---|
@@ -105,7 +105,7 @@ A **lobe** is a rectangular grid of neurons, defined in the genome with explicit
 | Width, Height | byte, byte | Neuron grid dimensions — total neurons = Width × Height |
 | Colour | 3 bytes | RGB display colour for the Brain Monitor |
 | WTA flag | byte | Whether this lobe uses Winner-Takes-All competition (read from genome but handled by SVRules) |
-| TissueId | byte | Biochemistry tissue ID — used by receptors/emitters to address neurons as loci |
+| TissueId | byte | Biochemistry tissue ID — used by [receptors/emitters](biochemistry_deep_dive.md#the-locus-system) to address neurons as loci |
 | RunInitRuleAlways | byte | If nonzero, the Init SVRule runs on every tick (not just on creation) |
 | Init SVRule | 48 bytes | 16-instruction micro-program run on neuron creation |
 | Update SVRule | 48 bytes | 16-instruction micro-program run on every brain tick |
@@ -116,15 +116,15 @@ A standard C3/DS Norn brain contains the following lobes, confirmed by live engi
 
 | Index | Name | Neurons | Grid | Position | Category | Description |
 |---|---|---|---|---|---|---|
-| 0 | `driv` | 20 | 20×1 | (30, 55) | Drive & State | Drive levels from biochemistry — one neuron per drive |
+| 0 | `driv` | 20 | 20×1 | (30, 55) | Drive & State | [Drive](biochemistry_deep_dive.md#drives--the-motivation-system) levels from biochemistry — one neuron per drive |
 | 1 | `decn` | 13 | 1×13 | (50, 22) | Decision | Final action decision — Winner-Takes-All selects one action |
 | 2 | `attn` | 40 | 40×1 | (5, 75) | Decision | Attention focus — which object category the creature is attending to |
-| 3 | `visn` | 40 | 40×1 | (6, 8) | Perception | Visual input — what the creature can currently see |
+| 3 | `visn` | 40 | 40×1 | (6, 8) | Perception | Visual input — what the creature can currently see (one neuron per [agent category](caos_categories.md#complete-category-table)) |
 | 4 | `move` | 40 | 40×1 | (10, 12) | Motor | Motor control — movement processing |
 | 5 | `comb` | 440 | 40×11 | (5, 22) | Processing | Concept combination — the largest lobe, combining perception with drives |
-| 6 | `stim` | 40 | 40×1 | (5, 17) | Drive & State | Stimulus source tracking — which object caused the last stimulus |
-| 7 | `noun` | 40 | 40×1 | (0, 0) | Perception | Object category identification — "what am I looking at?" |
-| 8 | `verb` | 14 | 14×1 | (49, 3) | Perception | Available actions — "what can I do?" |
+| 6 | `stim` | 40 | 40×1 | (5, 17) | Drive & State | [Stimulus](caos_events.md#involuntary-actions-6472) source tracking — which object caused the last stimulus |
+| 7 | `noun` | 40 | 40×1 | (0, 0) | Perception | Object [category](caos_categories.md) identification — "what am I looking at?" |
+| 8 | `verb` | 13 | 1×13 | (49, 3) | Perception | Available [actions](caos_events.md#creature-decision-scripts--on-agents-1631) — "what can I do?" |
 | 9 | `smel` | 40 | 40×1 | (5, 4) | Perception | Smell processing — chemical gradient detection |
 | 10 | `resp` | 40 | 40×1 | (60, 22) | Processing | Response formulation |
 | 11 | `detl` | 40 | 40×1 | (65, 22) | Processing | Object detail processing |
@@ -188,13 +188,13 @@ The `FOURTH_VAR` (index 4) has a special role: the `preserveVariable` and `resto
 
 ### Biochemistry Locus Addressing
 
-The brain exposes neuron state variables to the biochemistry system through the `GetLocusAddress()` mechanism. When a biochemical Receptor or Emitter gene specifies `organ = ORGAN_BRAIN` and a tissue ID matching a lobe's `myTissueId`, the brain returns a pointer to the specified neuron's state variable:
+The brain exposes neuron state variables to the biochemistry system through the `GetLocusAddress()` mechanism. When a biochemical [Receptor or Emitter](biochemistry_deep_dive.md#the-locus-system) gene specifies `organ = ORGAN_BRAIN` and a tissue ID matching a lobe's `myTissueId`, the brain returns a pointer to the specified neuron's state variable:
 
 ```
 locus = (neuron_index × noOfVariablesAvailableAsLoci) + state_variable_index
 ```
 
-This allows biochemical receptors to **write** drive chemical levels directly into the `driv` lobe's neurons, and biochemical emitters to **read** neuron states back as chemical concentrations. The bridge is bidirectional — chemistry influences the brain, and the brain influences chemistry.
+This allows biochemical receptors to **write** [drive chemical](biochemistry_deep_dive.md#drives--the-motivation-system) levels directly into the `driv` lobe's neurons, and biochemical emitters to **read** neuron states back as chemical concentrations. The bridge is bidirectional — chemistry influences the brain, and the brain influences chemistry. See [Biochemistry Deep Dive — Locus System](biochemistry_deep_dive.md#the-locus-system) for the full addressing scheme.
 
 ---
 
@@ -202,7 +202,7 @@ This allows biochemical receptors to **write** drive chemical levels directly in
 
 A **tract** is a bundle of dendrites (synaptic connections) between a source lobe and a destination lobe. Tracts define the brain's connectivity — which lobes can communicate and how information flows between them.
 
-### Genome Fields (Tract Gene — Type 0, Subtype 2)
+### Genome Fields ([Tract Gene](genome_deep_dive.md#subtype-2--tract-gene-g_tract) — Type 0, Subtype 2)
 
 | Field | Type | Description |
 |---|---|---|
@@ -278,7 +278,7 @@ When reinforcement is active ([Tract.h](../../engine/Creature/Brain/Tract.h#L104
 1. The `ProcessRewardAndPunishment()` method checks if the reward/punishment chemical concentration exceeds the configured threshold.
 2. If it does, `ReinforceAVariable()` modifies a dendrite's weight by the configured rate, scaled by the chemical level. The specific variable reinforced depends on the implementation — typically the short-term weight `WEIGHT_SHORTTERM_VAR`.
 
-This mechanism is what allows creatures to learn from experience — biochemical reward chemicals (produced when drives are reduced) propagate through the reinforcement system to strengthen the specific neural pathways that led to the rewarded action.
+This mechanism is what allows creatures to learn from experience — [biochemical reward chemicals](biochemistry_deep_dive.md#drives--the-motivation-system) (produced when drives are reduced) propagate through the reinforcement system to strengthen the specific neural pathways that led to the rewarded action.
 
 ---
 
@@ -380,7 +380,7 @@ The creature's brain literally changes shape over its lifetime. This is genuine 
 
 **Instincts** are genetically defined associations that prime the brain's neural pathways during REM sleep, giving newborn creatures a head start in learning survival behaviours without requiring trial-and-error from scratch.
 
-### Genome Fields (Instinct Gene — Type 2, Subtype 5)
+### Genome Fields (Instinct Gene — [Type 2, Subtype 5](genome_deep_dive.md#subtype-5--instinct-gene-g_instinct))
 
 | Field | Type | Description |
 |---|---|---|
@@ -397,7 +397,7 @@ Instincts are processed during REM sleep, one per brain tick, by `Instinct::Proc
 
 2. **Set up context** — the three input lobe/neuron pairs are activated:
    - `noun` inputs also trigger corresponding `visn` (vision at 0.1) and `smel` (smell at 1.0) neurons — simulating seeing and smelling the target object.
-   - `verb` and `noun` neuron IDs are remapped through the `BrainScriptFunctions` catalogue mapping, converting script event IDs to decision neuron IDs.
+   - `verb` and `noun` neuron IDs are remapped through the `BrainScriptFunctions` [catalogue mapping](caos_events.md#creature-decision-scripts--on-agents-1631), converting script event IDs to decision neuron IDs. The `noun` neuron ID maps to an [agent category](caos_categories.md) slot.
 
 3. **Force the desired action** — the decision neuron (`verb` lobe) corresponding to the instinct's target action is set to 1.0.
 
@@ -423,6 +423,8 @@ After all instincts are processed, the brain also builds its **knowledge table**
 ## SVRules — The Brain's Microcode
 
 The **State Variable Rule (SVRule)** system is the computational engine of the brain. Rather than hardcoding how neurons integrate inputs or how dendrites transmit signals, the engine provides a micro-virtual machine. SVRules are genetically defined 48-byte micro-programs that execute inside every neuron and dendrite on every brain tick.
+
+> **Editing SVRules:** The [Genetics Kit](tab_genetics_kit.md) provides a visual 16-row grid editor for composing and modifying SVRules with real-time pseudo-code preview. SVRules can also be modified at runtime via [`BRN: SETL`](caos_brain.md) (lobes) and [`BRN: SETT`](caos_brain.md) (tracts).
 
 ### Architecture
 
@@ -512,9 +514,9 @@ All 16 operand types, from [SVRule.h](../../engine/Creature/Brain/SVRule.h#L119-
 The `chemSrc` and `chemDst` operands are particularly powerful. They compute the chemical index as `(base_index + neuron_id) % 256`, which means:
 
 - Different neurons in the same lobe read **different** chemicals based solely on their position
-- A single SVRule instruction like `load chemSrc[148]` in a 20-neuron `driv` lobe will read chemical 148 for neuron 0 (Pain), 149 for neuron 1 (Hunger for Protein), 150 for neuron 2 (Hunger for Carbohydrate), etc.
+- A single SVRule instruction like `load chemSrc[148]` in a 20-neuron `driv` lobe will read [chemical 148](biochemistry_deep_dive.md#drives--the-motivation-system) for neuron 0 (Pain), 149 for neuron 1 (Hunger for Protein), 150 for neuron 2 (Hunger for Carbohydrate), etc.
 
-This geometric coupling between brain layout and biochemistry is what allows a single SVRule to implement the entire drive-sensing mechanism — no per-neuron configuration needed.
+This geometric coupling between brain layout and [biochemistry](biochemistry_deep_dive.md) is what allows a single SVRule to implement the entire drive-sensing mechanism — no per-neuron configuration needed.
 
 ### Complete Opcode Table
 
@@ -583,7 +585,7 @@ The opcode IDs below are the actual C++ enum values from [SVRule.h](../../engine
 | **C2-Style Slider Opcodes** | | | | |
 | 36 | `doNominalThreshold` | `threshold` | Reads operand | If `neuron[INPUT] < operand`, set `neuron[INPUT] = 0` |
 | 37 | `doLeakageRate` | `leakage` | Reads operand | Set `tendRate = operand` (alias for setTendRate) |
-| 38 | `doRestState` | `restState` | Reads operand | `neuron[STATE] = neuron[INPUT]×(1−tendRate) + operand×tendRate` |
+| 38 | `doRestState` | `restState` | Reads operand | `neuron[INPUT] = neuron[INPUT]×(1−tendRate) + operand×tendRate` |
 | 39 | `doInputGainLoHi` | `inputGain` | Reads operand | `neuron[INPUT] *= operand` — attenuate or amplify input |
 | 40 | `doPersistence` | `persist` | Reads operand | `neuron[STATE] = neuron[INPUT]×(1−operand) + neuron[STATE]×operand` |
 | 41 | `doSignalNoise` | `noise` | Reads operand | `neuron[STATE] += operand × RndFloat()` — add random noise |
@@ -711,7 +713,7 @@ The `BRN:` command family provides programmatic access to the brain, primarily d
 
 ### Decision Neuron to Action Mapping
 
-The winning `decn` neuron maps to creature actions through a catalogue-driven mapping defined in `"Action Script To Neuron Mappings"`. The standard mapping for a C3/DS Norn:
+The winning `decn` neuron maps to creature actions through a catalogue-driven mapping defined in `"Action Script To Neuron Mappings"`. Scripts 16–31 fire when the creature's attention is on an ordinary agent; scripts 32–47 fire when attending to another creature (see [Creature Decision Scripts](caos_events.md#creature-decision-scripts--on-agents-1631)). The standard mapping for a C3/DS Norn:
 
 | Neuron ID | Action | Creature Script Event |
 |---|---|---|
@@ -759,4 +761,4 @@ The winning `decn` neuron maps to creature actions through a catalogue-driven ma
 
 ---
 
-[← Back to Game Philosophy](game_philosophy.md) · [Genome Deep Dive →](genome_deep_dive.md) · [Biochemistry Deep Dive →](biochemistry_deep_dive.md)
+[← Back to Game Philosophy](game_philosophy.md) · [Genome Deep Dive →](genome_deep_dive.md) · [Biochemistry Deep Dive →](biochemistry_deep_dive.md) · [Agent Categories](caos_categories.md) · [Script Events](caos_events.md) · [Creatures Tab](tab_creatures.md)

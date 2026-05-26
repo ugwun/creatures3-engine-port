@@ -694,7 +694,7 @@ outs "Cleaned up!"
 
 ## Part 8: Working with Creatures
 
-Creatures (Norns, Grendels, Ettins) are special agents with family `4`. They have brains, biochemistry, and drives. For a complete technical reference on the 256-chemical bloodstream simulation, organ architecture, and how drives map to chemicals, see [Biochemistry & The Chemical Simulation — Deep Dive](biochemistry_deep_dive.md).
+Creatures (Norns, Grendels, Ettins) are special agents with family `4`. They have brains, biochemistry, and drives. For the neural architecture — lobes, tracts, and SVRule microcode — see [Brain & SVRules Deep Dive](brain_deep_dive.md). For the 256-chemical bloodstream simulation, organ architecture, and how drives map to chemicals, see [Biochemistry Deep Dive](biochemistry_deep_dive.md).
 
 ### 8.1 — Inspecting Creatures
 

@@ -6,14 +6,16 @@ At the foundation of every creature in Creatures 3 is its **genome**: a binary f
 
 > **CAOS Commands:** For loading, crossing, and manipulating genomes via CAOS scripts, see [CAOS: Genetics](caos_genetics.md). The [Genetics Kit Tab](tab_genetics_kit.md) provides a visual interface for inspecting and editing genomes.
 
+> **Brain Reference:** Brain genes (Lobe, Tract, Brain Organ) define the neural network. For the complete runtime architecture — lobes, tracts, dendrites, SVRule microcode, dendrite migration, instincts, and the 69-opcode instruction set — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
+
 ---
 
 ## What the Genome Encodes
 
 The genome does **not** encode behaviours. It encodes *structures*:
 
-- The spatial layout and processing rules of brain lobes (see [Brain — Neural Architecture](game_philosophy.md))
-- The wiring patterns of neural tracts and their SVRule micro-programs
+- The spatial layout and processing rules of brain lobes (see [Brain & SVRules Deep Dive](brain_deep_dive.md))
+- The wiring patterns of neural tracts and their SVRule micro-programs (see [SVRule Opcode Reference](brain_deep_dive.md#svrule-opcode-reference))
 - The chemical reactions that occur in each organ
 - The receptor and emitter bindings that connect biochemistry to physiology
 - The appearance, poses, gaits, and facial expressions
@@ -127,6 +129,8 @@ Genes are organized into four major types, each with multiple subtypes. These ar
 ### Type 0 — Brain Genes (`BRAINGENE`)
 
 Brain genes define the creature's neural network architecture. The brain is not pre-programmed — every aspect of its topology and processing rules is genetically encoded.
+
+> **Deep Dive:** For the complete runtime behaviour of these genes — how lobes process neurons, how tracts wire dendrites, the SVRule micro-VM execution model, dendrite migration, and the instinct system — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
 
 #### Subtype 0 — Lobe Gene (`G_LOBE`)
 

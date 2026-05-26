@@ -127,7 +127,7 @@ We'll use:
 - **Genus 23** — the "dispenser" genus (see below)
 - **Species 800** — our unique feeder species
 
-> **Critical concept: Brain Categories.** The genus isn't just a number — it determines how creatures **perceive** the agent. Every creature has a `SensoryFaculty` that maps agent classifiers to one of 40 **brain categories** using the `"Agent Classifiers"` catalogue. These categories feed directly into the creature's `noun` brain lobe — neurons labelled "food", "toy", "dispenser", "door", etc. The creature can only learn associations with objects that fall into a known category.
+> **Critical concept: Brain Categories.** The genus isn't just a number — it determines how creatures **perceive** the agent. Every creature has a `SensoryFaculty` that maps agent classifiers to one of 40 **brain categories** using the `"Agent Classifiers"` catalogue. These categories feed directly into the creature's `noun` brain lobe — neurons labelled "food", "toy", "dispenser", "door", etc. The creature can only learn associations with objects that fall into a known category. See [Standard Norn Brain Lobes](brain_deep_dive.md#standard-norn-brain-lobes) for the complete lobe table.
 >
 > Family 2, genus 23 maps to the **"dispenser"** category (brain slot 23). This means Norns will perceive our feeder as a dispenser, allowing their brains to form associations like *"when I push a dispenser, my hunger goes down"* through the reinforcement learning system. If we used an unrecognised genus (like 100), the feeder would fall into the catch-all **"something"** error category (slot 39) — the creature could physically interact with it, but its brain couldn't form meaningful memories about it.
 >
@@ -269,7 +269,7 @@ Each physics property serves a specific purpose:
 | `aero` (air resistance) | 10 | Slight drag — slows down if somehow thrown through the air |
 | `attr` (attributes) | 199 | Physics + Wallbound + Activateable + Mouseable + Carryable |
 
-> **Two separate flag systems: `attr` vs `bhvr`.** This is a common point of confusion. `attr` controls what the *engine* does with the agent — does gravity apply? Can the mouse interact with it? Does it collide with walls? Meanwhile, `bhvr` controls what *creatures* are allowed to do with it — which actions appear in the creature's neural decision-making system. A creature's brain has a `verb` lobe with neurons for actions like Push, Pull, Hit, and Eat. Setting `bhvr 3` (Push + Pull) means the creature's brain is *allowed* to decide to push or pull this agent. Without it, the feeder would be physically present but neurally invisible — creatures would walk right past it.
+> **Two separate flag systems: `attr` vs `bhvr`.** This is a common point of confusion. `attr` controls what the *engine* does with the agent — does gravity apply? Can the mouse interact with it? Does it collide with walls? Meanwhile, `bhvr` controls what *creatures* are allowed to do with it — which actions appear in the creature's neural decision-making system. A creature's brain has a `verb` lobe with neurons for actions like Push, Pull, Hit, and Eat. Setting `bhvr 3` (Push + Pull) means the creature's brain is *allowed* to decide to push or pull this agent. Without it, the feeder would be physically present but neurally invisible — creatures would walk right past it. See [Brain & SVRules Deep Dive](brain_deep_dive.md) for the complete neural architecture.
 
 ### 3.4 — About `mvsf` and the Room System
 

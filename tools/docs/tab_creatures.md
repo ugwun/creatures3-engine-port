@@ -86,6 +86,8 @@ The Genome tab is a fully immersive, real-time binary parser for inspecting the 
 
 The Brain tab provides a real-time spatial visualization of the creature's neural network, inspired by the original "Brain in VAT" tool.
 
+> **Deep Dive:** For the full brain architecture — lobe processing rules, SVRule microcode, dendrite migration, and the instinct system — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
+
 ### Spatial Heatmap
 * Lobes are positioned on a 2D canvas according to their genome coordinates.
 * **Neurons (Cells):**
@@ -113,6 +115,7 @@ The Brain tab provides a real-time spatial visualization of the creature's neura
 ## See Also
 
 * **[The Digital Genome](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, gene header structure, all 19 gene subtypes, and the crossover/mutation algorithms.
+* **[Brain & SVRules Deep Dive](brain_deep_dive.md)** — Complete neural architecture reference: lobes, tracts, neuron state variables, the 69-opcode SVRule instruction set, dendrite migration, and the instinct system.
 * **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — The full chemical simulation reference: 256-chemical ID table, organ architecture, receptor/emitter processing, reaction rate formulas, and the locus system.
 * **[Genetics Kit](tab_genetics_kit.md)** — For full genetic modification, cross-breeding, and injection of new creatures.
 * **[Debugger](tab_debugger.md)** — To inspect and step through the CAOS scripts driving creature behaviour.

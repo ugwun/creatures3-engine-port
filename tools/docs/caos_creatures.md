@@ -2,7 +2,7 @@
 
 Commands for creating, controlling, and querying biological creatures (Norns, Grendels, Ettins).
 
-> **Related:** Creatures perceive objects through the [Agent Category](caos_categories.md) system, which maps agent classifiers to brain neurons. The `ATTN` and `DECN` values below are category IDs from this system. For the genetic blueprint that defines a creature's brain, biochemistry, and appearance, see [The Digital Genome](genome_deep_dive.md).
+> **Related:** Creatures perceive objects through the [Agent Category](caos_categories.md) system, which maps agent classifiers to brain neurons. The `ATTN` and `DECN` values below are category IDs from this system. For the genetic blueprint that defines a creature's brain, biochemistry, and appearance, see [The Digital Genome](genome_deep_dive.md). For the brain's neural architecture, lobe layout, and decision-making process, see [Brain & SVRules Deep Dive](brain_deep_dive.md).
 
 ---
 
@@ -305,7 +305,7 @@ Returns 1 if creature is asleep, 0 otherwise.
 **Syntax (command):** `DREA dream (integer)`
 **Type:** Command
 
-Set to 1 to make the creature fall asleep and dream, 0 to stop dreaming. When dreaming, instincts are processed.
+Set to 1 to make the creature fall asleep and dream, 0 to stop dreaming. When dreaming, instincts are processed — see [Instincts — Pre-Wired Reflexes](brain_deep_dive.md#instincts--pre-wired-reflexes) for the full instinct processing sequence.
 
 **Syntax (integer RV):** `DREA`
 **Type:** Integer R-Value
@@ -438,7 +438,7 @@ Learn all vocabulary instantly.
 **Syntax:** `SPNL lobe_moniker (string) neuron_id (integer) value (float)`
 **Type:** Command
 
-Sets the input of the specified neuron in the specified lobe.
+Sets the input of the specified neuron in the specified lobe. See [Neuron State Variables](brain_deep_dive.md#neuron-state-variables) for the 8 state variable indices and [The Input Mechanism](brain_deep_dive.md#the-input-mechanism) for how inputs are accumulated.
 
 ---
 
@@ -478,7 +478,7 @@ Male creature mates with the IT agent (if female of same genus). If successful, 
 **Syntax:** `ATTN`
 **Type:** Integer R-Value
 
-Returns the current focus of attention id.
+Returns the current focus of attention id. This is the winning neuron in the `attn` (attention) lobe — see [Standard Norn Brain Lobes](brain_deep_dive.md#standard-norn-brain-lobes) and [Winner-Takes-All](brain_deep_dive.md#winner-takes-all-wta-competition).
 
 ---
 
@@ -487,7 +487,7 @@ Returns the current focus of attention id.
 **Syntax:** `DECN`
 **Type:** Integer R-Value
 
-Returns the current focus of decision id.
+Returns the current focus of decision id. This is the winning neuron in the `decn` (decision) lobe — see [Decision Neuron to Action Mapping](brain_deep_dive.md#decision-neuron-to-action-mapping) for the complete neuron→action table.
 
 ---
 

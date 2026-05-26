@@ -41,7 +41,7 @@ Dynamically groom the DNA strand without hex editing.
 * Add a completely blank gene of any subtype at the end of the genome.
 
 ### 5. Editing Complex SV Rules
-Brain Lobe and Neural Tract genes use State Variable Rules (SVRules) to define neuron logic.
+Brain Lobe and Neural Tract genes use State Variable Rules (SVRules) to define neuron logic. See [SVRule Opcode Reference](brain_deep_dive.md#svrule-opcode-reference) for the complete 69-opcode instruction set.
 * Edited through a **16-row visual grid editor**.
 * **Opcode:** Searchable combobox (e.g., `store`, `load`, `if=0`).
 * **Operand:** Abstractions like `acc`, `neuron`, `chem`.
@@ -117,6 +117,7 @@ The Genetics Kit operates across four layers:
 ## See Also
 
 * **[The Digital Genome — Deep Dive](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, all 19 gene subtypes with byte-level layouts, and the crossover/mutation algorithms that `Genome::Cross()` implements.
+* **[Brain & SVRules Deep Dive](brain_deep_dive.md)** — Complete neural architecture reference: how the Lobe and Tract genes you edit here are processed at runtime, neuron state variables, the 69-opcode SVRule instruction set, and common SVRule patterns.
 * **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — Full reference for how the biochemistry genes you edit here (reactions, receptors, emitters) are processed at runtime: organ architecture, chemical IDs, rate formulas, and the locus system.
 * **[Creatures](tab_creatures.md)** — After injecting a genome, use the Creatures tab to inspect your new creature's drives, chemistry, organs, and brain in real time.
 * **[CAOS: Genetics](caos_genetics.md)** — The CAOS commands (`GENE LOAD/CROS/CLON`, `GTOS`, `MTOC`) that drive genome manipulation from scripts.
