@@ -89,7 +89,7 @@ The flags byte controls mutability and sex-linked expression. Defined in the [mu
 | 4 | `0x10` | `LINKFEMALE` | Gene only expressed in females. Skipped during expression if the creature is male |
 | 5 | `0x20` | `MIGNORE` | Dormancy flag — gene is carried in the genome but **never expressed**. It contributes nothing to the current creature but is faithfully copied to offspring. A future mutation could flip this flag off, reactivating a gene that has been silent for many generations — analogous to atavistic traits in real biology |
 
-> **Note:** If neither `LINKMALE` nor `LINKFEMALE` is set, the gene is expressed in all creatures regardless of sex. If both are set simultaneously (which is possible through mutation), the gene is also expressed in all creatures — the engine checks `(flags & (LINKMALE|LINKFEMALE)) == 0` as the "express always" condition.
+> **Note:** If neither `LINKMALE` nor `LINKFEMALE` is set, the gene is expressed in all creatures regardless of sex. If both are set simultaneously (which is possible through mutation), the gene is also expressed in all creatures — regardless of the creature's sex, one of the two sex-specific checks (`LINKMALE && MALE` or `LINKFEMALE && FEMALE`) will always match.
 
 **Source:** The expression logic is in [Genome::GetGeneType()](../../engine/Creature/Genome.cpp#L611-L670), where the `MIGNORE` check happens first (line 641) — a dormant gene is skipped before sex or variant checks.
 
@@ -281,13 +281,15 @@ Defines a chemical's baseline concentration at birth.
 
 Bridges the brain and the bloodstream. Attached to specific brain lobes, neuroemitters monitor neuron firing patterns and convert neural activity into chemical injections — allowing brain states to directly influence body chemistry.
 
+> **Note:** Unlike Tract genes (which identify lobes by 4-byte ASCII name), neuroemitter genes reference lobes by **numeric index** — the ordinal position of the lobe as it was created during embryogenesis.
+
 | Offset | Field | Size | Description |
 |---|---|---|---|
-| +0 | Lobe 0 | 1 byte | First lobe to sample |
+| +0 | Lobe 0 | 1 byte | First lobe to sample (numeric lobe index, not 4-char name) |
 | +1 | Neuron 0 | 1 byte | Neuron index within lobe 0 |
-| +2 | Lobe 1 | 1 byte | Second lobe to sample |
+| +2 | Lobe 1 | 1 byte | Second lobe to sample (numeric index) |
 | +3 | Neuron 1 | 1 byte | Neuron index within lobe 1 |
-| +4 | Lobe 2 | 1 byte | Third lobe to sample |
+| +4 | Lobe 2 | 1 byte | Third lobe to sample (numeric index) |
 | +5 | Neuron 2 | 1 byte | Neuron index within lobe 2 |
 | +6 | Rate | 1 byte | Sampling rate (ticks between checks) |
 | +7 | Chemical 0 | 1 byte | First chemical to emit |
@@ -327,7 +329,7 @@ Defines how the creature chemically reacts to a sensory event (e.g. being patted
 | +11 | Chemical 3 | 1 byte | Fourth chemical to adjust |
 | +12 | Amount 3 | 1 byte | Signed amount |
 
-**Total data size:** 13 bytes. Chemical amounts use signed float encoding: `readFloat8()` returns `((int)byte - 128) / 128.0`.
+**Total data size:** 13 bytes. Chemical amounts use signed float encoding: `readFloat8()` returns `((int)byte - 128) / 128.0`. This is distinct from the genome's `GetSignedFloat()` method (which uses `GetCodon(0,248) / 124.0 - 1.0`) — stimulus amounts use a simpler signed byte encoding with a wider range of possible values.
 
 #### Subtype 1 — Genus Gene (`G_GENUS`)
 
@@ -523,7 +525,7 @@ The crossover is implemented in [Genome::Cross()](../../engine/Creature/Genome.c
 - The header is copied without mutation up to `GH_SWITCHON` (the first 8 bytes including the marker)
 - The switch-on time codon **may** mutate (it goes through `CopyCodon`)
 - The flags byte is copied without mutation (the `MUT`/`DUP`/`CUT` flags must remain intact to preserve genome integrity)
-- All remaining data codons may mutate if the gene's `MUT` flag is set
+- All remaining codons — including the mutability weighting and variant fields in the header, plus the gene-specific data — may mutate if the gene's `MUT` flag is set. This means mutation rates are themselves mutable at the individual gene level
 
 **3. Crossover Points** — After copying a random number of genes (between 10 and `LINKAGE × 2` where `LINKAGE = 50`, giving a range of 10–100), the algorithm attempts to swap to the other parent's strand. It only crosses over when both strands are **synchronized** — i.e., the alternate parent has a gene with the same [GeneID](../../engine/Creature/Genome.cpp#L389-L392) as the current position. GeneID is a 24-bit composite: `(type << 16) | (subtype << 8) | id`.
 
@@ -594,7 +596,11 @@ GGG-FFFF-XXXXX-XXXXX-XXXXX-XXXXX
  └──────────────────────────────────  3-digit generation number (from CalculateGenerationNumber)
 ```
 
-The unique hash portion is computed by [GenerateUniqueIdentifier()](../../engine/General.cpp#L273-L376), which feeds an **MD5 hash** with a cocktail of entropy sources to guarantee universal uniqueness:
+The unique hash portion is computed by [GenerateUniqueIdentifier()](../../engine/General.cpp#L273-L376), which feeds an **MD5 hash** with a cocktail of entropy sources to guarantee universal uniqueness. The resulting digest is encoded into a human-readable format using the 32-character dictionary `abcdefghjklmnpqrstuvwxyz23456789` (note the absence of `i`, `o`, `0`, and `1` to avoid visual ambiguity), split into four 5-character groups separated by hyphens.
+
+> **Engine quirk:** The extraction loop uses `% 31` rather than `% 32` ([General.cpp:356](../../engine/General.cpp#L356)), making the last dictionary character (`9`) technically unreachable. Only 31 of the 32 characters ever appear in generated identifiers.
+
+Entropy sources fed to the MD5:
 
 - Current timestamp (both standard and high-performance)
 - Parent genome monikers (for crossover)
@@ -604,8 +610,6 @@ The unique hash portion is computed by [GenerateUniqueIdentifier()](../../engine
 - Mouse position and velocity
 - Current simulation speed
 - 200–300 random bytes
-
-The MD5 digest is then encoded into a human-readable format using a 32-character dictionary (`abcdefghjklmnpqrstuvwxyz23456789` — note the absence of `i`, `l`, `o`, `0`, and `1` to avoid visual ambiguity), split into four 5-character groups separated by hyphens.
 
 ### Generation Numbers
 
