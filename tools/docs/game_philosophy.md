@@ -317,6 +317,8 @@ The biochemistry is driven by three types of genetically-defined biological mach
 
 The 20 drives form the motivational core of the creature — the critical bridge between the biochemical body and the neural brain.
 
+> **Deep Dive:** For the complete technical reference — including the three-layer drive locus architecture, all 99 stimulus events, the reinforcement learning pipeline, instinct processing, and synchronous learning — see [Drives & Reinforcement Learning](drives_and_learning.md).
+
 > **CAOS Reference:** Use [`DRIV`](caos_creatures.md) to read or adjust drive levels directly. [`DRV!`](caos_creatures.md) returns the creature's highest current drive. The [`SWAY`](caos_messages.md) commands adjust multiple drives simultaneously.
 
 Drives exist initially as chemical concentrations in the bloodstream (chemicals 148–167). They have no behavioural meaning until **Chemical Receptors** bind them to the engine's 20 hardcoded **Drive Loci** (`LOC_DRIVE0` through `LOC_DRIVE19`).
@@ -503,6 +505,8 @@ Through this mechanism, an initially chaotic, semi-random brain physically rewir
 
 The stimulus system is the final component that completes the biological feedback loop. It handles discrete events from the environment and translates them into chemical and neural impacts on the creature.
 
+> **Deep Dive:** For the complete stimulus event table, the stimulus gene format, the reinforcement learning pipeline with synchronous learning, and a worked "learning to eat" example, see [Drives & Reinforcement Learning](drives_and_learning.md).
+
 > **CAOS Reference:** Use [`STIM WRIT`](caos_messages.md) to send a stimulus to a specific creature, or [`STIM SHOU`/`STIM SIGN`/`STIM TACT`](caos_messages.md) to broadcast stimuli by hearing, sight, or touch. The [`URGE`](caos_messages.md) commands influence creature decision-making by suggesting specific actions. See [Script Events & Messages](caos_events.md) for how events fire stimuli.
 
 ### Built-in Stimuli
@@ -524,7 +528,7 @@ The engine defines approximately 98 built-in stimulus events, organized into fun
 
 How a creature reacts to each stimulus is defined genetically — not hardcoded. Each **Stimulus gene** specifies:
 
-- **Stimulus ID**: Which of the ~98 built-in events this gene responds to
+- **Stimulus ID**: Which of the ~99 built-in events this gene responds to
 - **Neural impact**: Significance and intensity of the signal fired into the brain's `stim` lobe, plus noun/verb identification
 - **Chemical adjustments**: Up to 4 chemicals injected into or removed from the bloodstream when this stimulus fires
 - **Bit flags**:

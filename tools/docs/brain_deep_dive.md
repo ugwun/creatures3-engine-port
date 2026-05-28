@@ -10,6 +10,8 @@ The Creatures 3/DS brain is a spatial, modular, fully soft-coded neural network 
 
 > **Developer Tools:** The [Creatures Tab Brain Monitor](tab_creatures.md) provides a real-time spatial visualization of all lobes, tract connections, and neuron states.
 
+> **Drives & Learning:** The [Drives & Reinforcement Learning](drives_and_learning.md) deep dive covers the motivational layer — how drives, stimuli, and reinforcement signals flow into and out of the brain to produce learned behaviour.
+
 ---
 
 ## Architecture Overview

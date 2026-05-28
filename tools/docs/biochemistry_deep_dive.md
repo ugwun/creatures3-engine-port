@@ -314,7 +314,7 @@ Each of the 15 primary drives (indices 0–14) has a "backup" chemical that stor
 
 ### Drive Chemicals (IDs 148–167)
 
-The 20 drive chemicals represent the creature's physiological urgencies — the drives that motivate behaviour. Defined in [CreatureConstants.h](../../engine/Creature/CreatureConstants.h#L56-L78):
+The 20 drive chemicals represent the creature's physiological urgencies — the drives that motivate behaviour. For the complete motivational pipeline — how these chemicals flow through receptor loci to the brain, how stimuli adjust them, and how adjustments trigger reinforcement learning — see [Drives & Reinforcement Learning](drives_and_learning.md). Defined in [CreatureConstants.h](../../engine/Creature/CreatureConstants.h#L56-L78):
 
 | Drive # | Name | Chemical ID | Constant |
 |---|---|---|---|

@@ -311,11 +311,11 @@ Creature genes control the external phenotype — how the creature looks, moves,
 
 #### Subtype 0 — Stimulus Gene (`G_STIMULUS`)
 
-Defines how the creature chemically reacts to a sensory event (e.g. being patted, eating food, bumping a wall). See [Script Events & Messages](caos_events.md) for the complete list of ~98 built-in stimulus events.
+Defines how the creature chemically reacts to a sensory event (e.g. being patted, eating food, bumping a wall). See [Script Events & Messages](caos_events.md) for the complete list of ~99 built-in stimulus events. For the full runtime processing pipeline — how stimuli flow through the sensory faculty, trigger chemical adjustments, and drive reinforcement learning — see [Drives & Reinforcement Learning](drives_and_learning.md).
 
 | Offset | Field | Size | Description |
 |---|---|---|---|
-| +0 | Stimulus ID | 1 byte | Which of the ~98 built-in events this gene responds to |
+| +0 | Stimulus ID | 1 byte | Which of the ~99 built-in events this gene responds to |
 | +1 | Significance | 1 byte | Neural significance of the stimulus signal |
 | +2 | Input | 1 byte | Noun/verb identification for the brain's perception lobes |
 | +3 | Intensity | 1 byte | Strength of the signal fired into the brain |

@@ -40,6 +40,8 @@ mesg wrt+ targ 0 42 "hello" 10
 
 Stimuli affect creature neuroscience — they trigger chemical reactions and learning in creatures. The specific chemical effects of each stimulus are defined by [Stimulus genes](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus) in the creature's genome. The stimulus-to-chemical ID offset mapping (`STIMTOBIOCHEMOFFSET = 148`) and the full 256-chemical reference table are documented in [Biochemistry — Chemical ID Map](biochemistry_deep_dive.md#the-256-chemical-id-space).
 
+> **Deep Dive:** For the complete 99-event stimulus table, the stimulus gene format, the reinforcement learning pipeline, and how stimuli connect to drives and brain learning, see [Drives & Reinforcement Learning](drives_and_learning.md).
+
 > **Note:** When a stimulus is sent, the engine passes the sender's [Agent Category](caos_categories.md) to the creature's brain. The creature uses this to associate the stimulus with a specific type of object (e.g. "I ate food from a *dispenser*"). Agents in the error category (39 / "something") will trigger chemical changes but cannot be meaningfully learned about.
 
 ### STIM SHOU — Shout Stimulus
