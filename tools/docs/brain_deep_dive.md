@@ -127,7 +127,7 @@ A standard C3/DS Norn brain contains the following lobes, confirmed by live engi
 | 6 | `stim` | 40 | 40×1 | (5, 17) | Drive & State | [Stimulus](caos_events.md#involuntary-actions-6472) source tracking — which object caused the last stimulus |
 | 7 | `noun` | 40 | 40×1 | (0, 0) | Perception | Object [category](caos_categories.md) identification — "what am I looking at?" |
 | 8 | `verb` | 13 | 1×13 | (49, 3) | Perception | Available [actions](caos_events.md#creature-decision-scripts--on-agents-1631) — "what can I do?" |
-| 9 | `smel` | 40 | 40×1 | (5, 4) | Perception | Smell processing — chemical gradient detection |
+| 9 | `smel` | 40 | 40×1 | (5, 4) | Perception | Smell processing — [CA gradient](world_ecosystem.md#the-smell-to-brain-pipeline) detection |
 | 10 | `resp` | 40 | 40×1 | (60, 22) | Processing | Response formulation |
 | 11 | `detl` | 40 | 40×1 | (65, 22) | Processing | Object detail processing |
 | 12 | `situ` | 440 | 40×11 | (10, 35) | Processing | Situation assessment — context evaluation |

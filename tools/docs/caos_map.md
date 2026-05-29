@@ -2,6 +2,8 @@
 
 Commands for creating and managing the room system, metarooms, cellular automata (CAs), and spatial queries.
 
+> For a deep technical explanation of how these systems work internally — the three-phase CA diffusion algorithm, door/link mechanics, navigable vs. standard CA, and how creatures perceive the atmosphere — see [The World Ecosystem — Deep Dive](world_ecosystem.md).
+
 ---
 
 ## Map Setup
@@ -234,7 +236,7 @@ Returns the permeability of the link, or 0 if no link exists.
 **Syntax (command):** `PROP room_id (integer) ca_index (integer) ca_value (float)`
 **Type:** Command
 
-Sets the level of a CA in a particular room. There are 16 CAs and their meaning depends on the game. Level is between 0 and 1.
+Sets the level of a CA in a particular room. There are 20 CAs (`CA_PROPERTY_COUNT`) and their meaning depends on the game. Level is between 0 and 1.
 
 **Syntax (float RV):** `PROP room_id (integer) ca_index (integer)`
 **Type:** Float R-Value

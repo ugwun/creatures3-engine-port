@@ -87,7 +87,7 @@ Commands are organized into the following categories. Click a link to see the fu
 | [Motion & Physics](caos_motion.md) | `MVTO`, `MVBY`, `VELO`, `ACCG`, `AERO`, `ELAS`, `FRIC`, etc. |
 | [Scripts & Execution](caos_scripts.md) | `INST`, `SLOW`, `WAIT`, `STOP`, `LOCK`, `CAOS`, etc. |
 | [Camera & Display](caos_camera.md) | `CMRA`, `CMRP`, `META`, `TRCK`, `SNAP`, `LINE`, `TINT`, etc. |
-| [Map & Rooms](caos_map.md) | `ADDM`, `ADDR`, `ROOM`, `DOOR`, `PROP`, `RATE`, `EMIT`, etc. |
+| [Map & Rooms](caos_map.md) | `ADDM`, `ADDR`, `ROOM`, `DOOR`, `PROP`, `RATE`, `EMIT`, etc. See also [The World Ecosystem](world_ecosystem.md) |
 | [Creatures](caos_creatures.md) | `NEW: CREA`, `BORN`, `DEAD`, `AGES`, `CHEM`, `DRIV`, etc. |
 | [Brain](caos_brain.md) | `BRN: SETN`, `BRN: SETD`, `BRN: SETL`, etc. See also [Brain & SVRules Deep Dive](brain_deep_dive.md) |
 | [Agent Categories](caos_categories.md) | `CATI`, `CATA`, `CATX` — classifier-to-brain category mapping |

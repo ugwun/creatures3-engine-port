@@ -221,7 +221,7 @@ The category system is defined in **catalogue files** and loaded by the engine a
 | Category names | `"Agent Categories"` | `Catalogue/Docking Station.catalogue` |
 | Representative algorithms | `"Category Representative Algorithms"` | `Catalogue/Docking Station.catalogue` |
 | Brain lobe neuron labels | `"Agent Categories"` | `Catalogue/Brain.catalogue` |
-| CA smell-to-category mapping | `"Cellular Automata Names"` | `Catalogue/Docking Station.catalogue` |
+| CA smell-to-category mapping | `"Cellular Automata Names"` | `Catalogue/Docking Station.catalogue` | See [World Ecosystem — Smell-to-Brain Pipeline](world_ecosystem.md#the-smell-to-brain-pipeline) |
 
 The engine implementation lives in `SensoryFaculty.cpp`:
 - `SetupStaticVariablesFromCatalogue()` — loads the arrays at startup

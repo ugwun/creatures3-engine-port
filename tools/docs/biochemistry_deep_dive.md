@@ -343,7 +343,7 @@ The 20 drive chemicals represent the creature's physiological urgencies — the 
 
 ### Smell Chemicals (IDs 165–184)
 
-Smell chemicals are emitted into the CA (Cellular Automata) environment and allow creatures to follow chemical gradients across the room network:
+Smell chemicals are written by the `SensoryFaculty` from the CA (Cellular Automata) values of the room the creature occupies. They allow creatures to follow chemical gradients across the room network. For the complete CA diffusion algorithm, navigable smell propagation, and the room-to-brain pipeline, see [The World Ecosystem — Deep Dive](world_ecosystem.md#the-smell-to-brain-pipeline).
 
 | ID | Name | CA Property |
 |---|---|---|
@@ -882,6 +882,8 @@ Several emitter loci read environmental data from the game world, not from the c
 - **Slope** (`LOC_UPSLOPE`, `LOC_DOWNSLOPE`): Set during movement processing.
 
 These are resolved in [Creature::GetLocusAddress()](../../engine/Creature/Creature.cpp#L602-L676).
+
+> **Note:** Several additional sensory loci defined in `BiochemistryConstants.h` (LOC_COLDNESS, LOC_HOTNESS, LOC_LIGHTLEVEL, LOC_RADIATION, LOC_TIMEOFDAY, LOC_SEASON, LOC_HEADWIND, LOC_TAILWIND) are **not wired** in the C3/DS engine. Creatures actually sense temperature, light, and radiation through the **smell chemical pipeline** — the SensoryFaculty reads CA values from the room and writes them to chemicals 165–184. For the complete environmental sensing architecture, see [The World Ecosystem — Sensorimotor Emitter Loci](world_ecosystem.md#sensorimotor-emitter-loci).
 
 ---
 

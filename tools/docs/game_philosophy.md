@@ -62,6 +62,8 @@ The game attracted serious academic attention. A 1997 paper by Grand et al., ["A
 
 The game world is not a static backdrop — it is an actively simulated ecosystem that the creatures must navigate and interact with to survive.
 
+> **Deep Dive:** For the complete technical reference — spatial hierarchy internals, the three-phase CA diffusion algorithm with source-level formulas, the CA-to-brain smell pipeline, emitter loci, the agent taxonomy, and the full food web architecture — see [The World Ecosystem — Deep Dive](world_ecosystem.md).
+
 > **CAOS Reference:** For the commands that create and manipulate rooms, metarooms, doors, and cellular automata, see [Map & Rooms](caos_map.md).
 
 ### Metarooms and Rooms

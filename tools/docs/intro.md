@@ -41,7 +41,9 @@ As we expand the engine capabilities and the AI agent integration (MCP), we plan
 * **Genetics Kit Workflows:** Detailed guides on hatching, injecting, and crossing genomes.
 * ✅ **[Brain & SVRules Deep Dive](brain_deep_dive.md)** — Complete neural architecture reference: lobes, tracts, dendrites, the 69-opcode SVRule micro-VM, dendrite migration, and the instinct system.
 * ✅ **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — In-depth reference for the 256-chemical simulation, organ architecture, and receptor/emitter processing.
-* **CAOS Reference:** A handy guide to the CAOS virtual machine opcodes and scripting patterns.
+* ✅ **[Drives & Reinforcement Learning](drives_and_learning.md)** — The complete motivational architecture: 20 drives, the stimulus system, synchronous learning, instincts, and the reinforcement loop.
+* ✅ **[The World Ecosystem](world_ecosystem.md)** — Spatial hierarchy (metarooms, rooms, doors), the 20-channel CA atmosphere simulation, creature smell pipeline, and environmental hazards.
+* ✅ **CAOS Reference:** Complete command reference across 20+ category pages — see [CAOS Overview](caos_overview.md).
 * **Debug Server API:** Endpoints and payload schemas for the embedded HTTP/SSE server.
 
 Happy documenting!

@@ -690,7 +690,7 @@ Returns the target's range.
 **Syntax (command):** `PERM permeability (integer)`
 **Type:** Command
 
-Value from 1 to 100. Sets which room boundaries the agent can pass through. The smaller the value, the more it can go through. `DOOR` sets the corresponding room boundary permeability. Also used for `ESEE`.
+Value from 1 to 100. Sets which room boundaries the agent can pass through. The smaller the value, the more it can go through. `DOOR` sets the corresponding room boundary permeability. Also used for `ESEE`. See [The World Ecosystem](world_ecosystem.md#doors--physical-boundaries-between-rooms) for how `PERM` and `DOOR` interact with the spatial hierarchy.
 
 **Syntax (integer RV):** `PERM`
 **Type:** Integer R-Value

@@ -61,7 +61,7 @@ The drives are defined in [`CreatureConstants.h`](../../engine/Creature/Creature
 | 18 | `ENTER` | 166 | Navigational | Urge to enter an area |
 | 19 | `WAIT` | 167 | Navigational | Urge to remain stationary |
 
-> **Note:** Drives 0–14 are the "classic" biological drives. Drives 15–19 are navigational drives added in C3/DS to enable spatial reasoning — they allow the stimulus system to motivate movement through the metaroom network (e.g., travelling through lifts, doors, and between metarooms).
+> **Note:** Drives 0–14 are the "classic" biological drives. Drives 15–19 are navigational drives added in C3/DS to enable spatial reasoning — they allow the stimulus system to motivate movement through the metaroom network (e.g., travelling through lifts, doors, and between metarooms). For the spatial hierarchy of metarooms, rooms, doors, and how creatures navigate via CA gradients, see [The World Ecosystem — Deep Dive](world_ecosystem.md).
 
 Each drive exists as a **chemical concentration** in the creature's bloodstream. The mapping from drive number to chemical ID is offset by `STIMTOBIOCHEMOFFSET = 148`, defined in [`BiochemistryConstants.h`](../../engine/Creature/Biochemistry/BiochemistryConstants.h). Drive 0 (Pain) maps to chemical 148, drive 1 (Hunger for Protein) to chemical 149, and so on.
 
@@ -182,7 +182,7 @@ Information about the currently attended object ("IT"):
 | `IP_IT_IS_FALLING` | IT is falling | `!a.IsStopped()` |
 
 ### Smell Lobe (`smel`)
-Populated from the 20 Cellular Automata properties of the room the creature occupies:
+Populated from the 20 Cellular Automata properties of the room the creature occupies. For the complete three-phase CA diffusion algorithm, navigable smell propagation, and the room-to-brain pipeline, see [The World Ecosystem — Smell-to-Brain Pipeline](world_ecosystem.md#the-smell-to-brain-pipeline):
 
 ```cpp
 for (i = 0; i < CA_PROPERTY_COUNT; i++) {

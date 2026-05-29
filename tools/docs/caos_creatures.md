@@ -201,7 +201,7 @@ Sets creature walking indefinitely. Chooses a walking gait according to chemo-re
 **Syntax:** `APPR`
 **Type:** Command
 
-Creature approaches the IT agent. If there is no IT agent, the creature follows the CA smell. The script resumes when it gets there, or if it can't get any further.
+Creature approaches the IT agent. If there is no IT agent, the creature follows the CA smell. The script resumes when it gets there, or if it can't get any further. See [The World Ecosystem](world_ecosystem.md#the-smell-to-brain-pipeline) for how CA smell gradients guide creature navigation.
 
 ---
 

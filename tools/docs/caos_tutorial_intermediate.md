@@ -275,7 +275,7 @@ Each physics property serves a specific purpose:
 
 Notice we used `mvsf 1000 8900` instead of `mvto 1000 8900`. The `mvsf` command ("move to safe location") is essential for placing agents reliably. The Creatures world is divided into **rooms** — enclosed areas defined by the map system. An agent must be inside a valid room to interact with physics, creatures, and other agents. If you use `mvto` to place an agent at coordinates that aren't inside any room, the agent will exist in limbo — invisible to creatures, unaffected by gravity, essentially broken.
 
-`mvsf` takes your target coordinates and finds the nearest valid in-room position, ensuring the agent always lands on solid ground inside a real room. Always prefer `mvsf` over `mvto` when placing agents for the first time.
+`mvsf` takes your target coordinates and finds the nearest valid in-room position, ensuring the agent always lands on solid ground inside a real room. Always prefer `mvsf` over `mvto` when placing agents for the first time. For the complete spatial hierarchy — metarooms, rooms, doors, and how the room system supports physics and creature navigation — see [The World Ecosystem — Deep Dive](world_ecosystem.md).
 
 ---
 
