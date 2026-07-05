@@ -24,7 +24,7 @@
 % ─── Header / Footer ────────────────────────────────────────────────────────
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\textit{Pre-Registration: Metabolic Active Inference in Creatures 3}}
+\fancyhead[L]{\small\textit{Research Proposal: Metabolic Active Inference in Creatures 3}}
 \fancyhead[R]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 
@@ -73,7 +73,7 @@
 % ─── Title ───────────────────────────────────────────────────────────────────
 \title{%
   \textbf{Thermodynamic Grounding of Neural Complexity:}\\[6pt]
-  \large A Pre-Registration for Metabolic Active Inference\\in \textit{Creatures 3}%
+  \large A Research Proposal for Metabolic Active Inference\\in \textit{Creatures 3}%
 }
 \author{%
   Cyril Sadovsky\\[2pt]
@@ -119,7 +119,7 @@ If making thinking expensive leads to more efficient brains and better survival,
 
 % ─── Abstract ────────────────────────────────────────────────────────────────
 \begin{abstract}
-Modern large language models and artificial agents lack an underlying physiological homeostatic modulation system---a ``limbic gap'' that prevents continuous real-time learning and leads to energy-inefficient compute scaling. This pre-registration specifies a controlled experiment that grounds the abstract information-theoretic complexity penalty of Karl Friston's Free Energy Principle (FEP) in a \emph{physical metabolic cost}: each neuron firing and each synaptic migration event in a \textit{Creatures~3} Norn brain deducts adenosine triphosphate (ATP) from the agent's biochemistry. Using the open-source Creatures~3 engine port with Model Context Protocol (MCP) telemetry, we test two hypotheses: (1)~that metabolic brain constraints force the emergence of sparse, high-efficiency synaptic networks, and (2)~that metabolically constrained agents exhibit superior survival and homeostatic stability across multiple generations. We pre-register a 2-condition between-subjects design (N=10 per condition), running each trial to population extinction or 3~million ticks, with Mann-Whitney~U tests as primary confirmatory analysis and Bayesian model comparison as supplementary analysis.
+Modern large language models and artificial agents lack an underlying physiological homeostatic modulation system---a ``limbic gap'' that prevents continuous real-time learning and leads to energy-inefficient compute scaling. This research proposal specifies a controlled experiment that grounds the abstract information-theoretic complexity penalty of Karl Friston's Free Energy Principle (FEP) in a \emph{physical metabolic cost}: each neuron firing and each synaptic migration event in a \textit{Creatures~3} Norn brain deducts adenosine triphosphate (ATP) from the agent's biochemistry. Using the open-source Creatures~3 engine port with native in-engine telemetry, we test two hypotheses: (1)~that metabolic brain constraints force the emergence of sparse, high-efficiency synaptic networks, and (2)~that metabolically constrained agents exhibit superior survival and homeostatic stability across multiple generations. We propose a 2-condition between-subjects design (N=10 per condition), running each trial to population extinction or 3~million ticks, with Mann-Whitney~U tests as primary confirmatory analysis and Bayesian model comparison as supplementary analysis.
 \end{abstract}
 
 \medskip
@@ -139,7 +139,7 @@ Modern large language models and artificial agents lack an underlying physiologi
   \item[Homeostasis] The body's tendency to maintain stable internal conditions (temperature, hunger, energy). A Norn that maintains good homeostasis is healthy.
   \item[Entropy] A measure of disorder or unpredictability. Low entropy means stable and predictable; high entropy means chaotic and disordered.
   \item[Free Energy Principle (FEP)] A theory by neuroscientist Karl Friston proposing that all living things try to minimize ``surprise''---the gap between what they expect and what actually happens.
-  \item[Pre-Registration] A public commitment to the design and analysis plan of an experiment \emph{before} running it, to ensure scientific transparency.
+  \item[Pre-Registration] A public commitment to the design and analysis plan of an experiment \emph{before} running it, to ensure scientific transparency. A formal pre-registration for this study will be deposited on the Open Science Framework (OSF) prior to data collection.
   \item[Tick] One time step in the game simulation. The engine processes about 6 ticks per second at normal speed.
 \end{description}
 \end{glossarybox}
@@ -216,12 +216,12 @@ Each Norn possesses a remarkably detailed internal simulation:
 If modern AI (like ChatGPT) is a calculator that can answer any question but has no body, no hunger, and no sense of effort, then a Norn is closer to a virtual hamster: it has a body that gets tired, a stomach that gets hungry, and a brain that must \emph{learn} what to do to stay alive. It's a much simpler system than a modern AI, but it has something modern AI lacks---a reason to care about efficiency.
 \end{analogybox}
 
-This architecture---a metabolically embedded, genetically heritable neural network with homeostatic drives---provides a unique platform for testing whether the FEP's complexity penalty can be grounded in physical metabolic costs. The open-source engine port~\cite{sadovsky2025creatures3} provides full programmatic access via the Model Context Protocol (MCP)\footnote{The Model Context Protocol (MCP) is a standard interface that allows AI systems to communicate with external tools. In this project, it enables an AI agent to directly observe and control the running game---pausing the simulation, reading brain states, injecting chemicals, and querying the 256 biochemicals in real time.}, enabling automated, headless experimentation with real-time telemetry.
+This architecture---a metabolically embedded, genetically heritable neural network with homeostatic drives---provides a unique platform for testing whether the FEP's complexity penalty can be grounded in physical metabolic costs. The open-source engine port~\cite{sadovsky2025creatures3} supports headless execution, speed multipliers, and native telemetry output, enabling fully automated batch experimentation with no external dependencies.
 
 % ─── 1.4 This Experiment ────────────────────────────────────────────────────
 \subsection{The Present Experiment}
 
-This pre-registration specifies \textbf{Layer~1} of a two-layer experimental program. In Layer~1 (this document), we introduce metabolic costs to \emph{internal brain operations}: each neuron firing and each synaptic migration event deducts ATP from the Norn's biochemistry. The core question is:
+This research proposal specifies \textbf{Layer~1} of a two-layer experimental program. In Layer~1 (this document), we introduce metabolic costs to \emph{internal brain operations}: each neuron firing and each synaptic migration event deducts ATP from the Norn's biochemistry. The core question is:
 
 \begin{quote}
 \textit{Does imposing a physical metabolic cost on neural computation cause an artificial agent to self-organize a sparser, more efficient brain architecture---and does this metabolic constraint improve, rather than impair, long-term survival?}
@@ -279,9 +279,11 @@ The experiment uses the open-source Creatures~3/Docking Station engine port~\cit
   \item \textbf{Headless mode}: runs the full simulation without a graphical display, like a flight simulator running in the background. This enables automated batch experiments on a server.
   \item \textbf{Speed multiplier}: accelerates simulation to 100$\times$ real-time, compressing 14 hours of simulated time into roughly 8 minutes.
   \item \textbf{Maximum tick limit}: automatic save-and-exit after a specified number of ticks, ensuring experiments terminate cleanly.
-  \item \textbf{MCP integration}: 25 programmatic tools that allow an external script to inspect creatures, read brain states, and control the simulation in real time.
-  \item \textbf{REST API}: a web-based interface for querying any aspect of the engine state, used by the data collection pipeline.
+  \item \textbf{Native telemetry}: the engine writes structured JSON snapshots to disk at configurable intervals, capturing brain states, biochemistry, and population data without requiring external tools or APIs.
+  \item \textbf{CAOS scripting}: an in-engine scripting language that automates world setup, creature injection, and event monitoring (e.g., extinction detection).
 \end{itemize}
+
+\noindent\textbf{Experimental environment:} While the engine supports both the \textit{Creatures~3} spaceship (the Shee Ark) and the \textit{Docking Station} expansion, all trials in this study use the \textbf{Docking Station} environment. The Docking Station is a smaller, more contained habitat compared to the vast multi-biome Shee Ark, which reduces environmental variability---Norns are less likely to become spatially isolated or encounter uneven resource distribution. This deliberate choice minimizes confounding environmental factors, ensuring that observed differences between treatment and control groups are attributable to the metabolic brain cost rather than to environmental stochasticity.
 
 % ─── 3.2 Brain Architecture ─────────────────────────────────────────────────
 \subsection{Brain Architecture}
@@ -498,6 +500,8 @@ Because the simulation involves random elements (mutations during reproduction, 
 
 \noindent\textbf{Controlled variables:} Environment layout, food distribution, object placement, and all game bootstrap scripts are identical across all runs. No player interaction occurs during headless execution.
 
+\noindent\textbf{Pre-registration commitment:} Prior to data collection, the final protocol---including calibrated values for $\delta_{\text{fire}}$ and $\delta_{\text{mig}}$---will be deposited as a formal pre-registration on the Open Science Framework (OSF, \url{https://osf.io}). This ensures that the hypotheses, experimental design, and analysis plan are timestamped and publicly frozen before any results are observed, protecting against post-hoc modification of the protocol.
+
 % ═════════════════════════════════════════════════════════════════════════════
 \section{Protocol}
 \label{sec:protocol}
@@ -599,7 +603,7 @@ A Bayes factor of 1 means both hypotheses are equally likely given the data. A B
 
 \subsection{Exploratory Analyses}
 
-The following analyses are declared as exploratory (not bound by the pre-registration) and will be reported separately:
+The following analyses are declared as exploratory (not bound by the confirmatory protocol) and will be reported separately:
 \begin{itemize}[nosep]
   \item How do brain chaos ($\Hbio$) and rewiring rate ($\Rmig$) change over time? Do they converge?
   \item Do individual Norns that consume less ATP per tick live longer?
@@ -624,34 +628,33 @@ The following analyses are declared as exploratory (not bound by the pre-registr
   ]
 
   % Engine
-  \node[blockkey] (engine) {\textbf{Game Engine}\\(simulates creatures)};
+  \node[blockkey] (engine) {\textbf{Game Engine}\\(C++, headless)};
   \node[below=0.2cm of engine, font=\tiny\itshape, text=black!50] {Brain, Biochemistry, Physics};
 
-  % MCP
-  \node[block, right=2.5cm of engine] (mcp) {\textbf{MCP Server}\\(AI interface)};
-
   % Telemetry
-  \node[data, below=1.5cm of engine] (json) {\textbf{Data Snapshots}\\(every 1{,}000 ticks)};
+  \node[data, below=1.5cm of engine] (json) {\textbf{JSON Snapshots}\\(every 1{,}000 ticks)};
 
   % Analysis
   \node[block, below=1.5cm of json] (python) {\textbf{Analysis Scripts}\\(Python)};
 
   % Results
-  \node[data, right=2.5cm of python] (results) {\textbf{Results}\\(graphs + statistics)};
+  \node[data, right=3.0cm of python] (results) {\textbf{Results}\\(graphs + statistics)};
 
   % Runner
   \node[block, left=2.0cm of engine] (runner) {\textbf{Experiment}\\Runner};
 
+  % CAOS
+  \node[block, right=2.5cm of engine] (caos) {\textbf{CAOS Scripts}\\(bootstrap + monitor)};
+
   % Arrows
-  \draw[arrow] (engine) -- node[above, font=\scriptsize] {real-time data} (mcp);
-  \draw[arrow] (engine) -- node[right, font=\scriptsize] {write} (json);
+  \draw[arrow] (runner) -- node[above, font=\scriptsize] {starts} (engine);
+  \draw[arrow] (caos) -- node[above, font=\scriptsize] {configures} (engine);
+  \draw[arrow] (engine) -- node[right, font=\scriptsize] {writes to disk} (json);
   \draw[arrow] (json) -- (python);
   \draw[arrow] (python) -- (results);
-  \draw[arrow] (runner) -- node[above, font=\scriptsize] {starts} (engine);
-  \draw[darrow] (mcp) -- node[right, font=\scriptsize] {query} ++(0,-2.5) -| (json);
 
 \end{tikzpicture}
-\caption{\textbf{How the experiment runs automatically.} An experiment runner script launches the game engine in headless mode. The engine simulates the Norn colony and periodically writes data snapshots to disk. After all 20 runs are complete, Python scripts process the data into statistical results and graphs. The MCP Server provides an optional real-time interface for monitoring.}
+\caption{\textbf{How the experiment runs automatically.} The experiment runner script launches the game engine in headless mode. CAOS bootstrap scripts configure the initial population and telemetry settings. The engine natively writes JSON data snapshots to disk every 1{,}000 ticks. After all 20 runs are complete, Python scripts process the snapshots into statistical results and graphs. No external APIs or servers are required during experiment execution.}
 \label{fig:architecture}
 \end{figure}
 
@@ -662,13 +665,13 @@ The following analyses are declared as exploratory (not bound by the pre-registr
 No experiment is without boundaries. We explicitly acknowledge the following:
 
 \begin{enumerate}[label=(\alph*)]
-  \item \textbf{Social communication is not tested here.} This pre-registration covers only internal brain metabolism (Layer~1). A follow-up experiment (Layer~2) will explore what happens when \emph{talking} also costs energy---testing whether metabolically expensive communication leads to more efficient language.
+  \item \textbf{Social communication is not tested here.} This proposal covers only internal brain metabolism (Layer~1). A follow-up experiment (Layer~2) will explore what happens when \emph{talking} also costs energy---testing whether metabolically expensive communication leads to more efficient language.
 
   \item \textbf{The energy cost cannot evolve.} In this experiment, the metabolic cost of brain activity is the same for all Norns and does not change across generations. Future work may explore whether Norns can \emph{evolve} different levels of metabolic efficiency, with more efficient brains conferring a survival advantage that is passed to offspring.
 
   \item \textbf{The brain is small.} The Creatures~3 brain has 952 neurons and $\sim$5{,}000 connections---vastly smaller than a biological brain (86 billion neurons) or a large AI model (billions of parameters). Our results demonstrate the \emph{principle} of metabolic grounding; whether the effect scales to larger architectures remains an open question.
 
-  \item \textbf{The environment is fixed.} All trials run in the standard game environment. We do not vary food scarcity, introduce predators, or change seasonal conditions. Environmental challenges are deferred to future experiments.
+  \item \textbf{The environment is fixed.} All trials run in the standard Docking Station environment---a deliberately constrained habitat chosen over the larger Creatures~3 Shee Ark to minimize spatial confounds. We do not vary food scarcity, introduce predators, or change seasonal conditions. Testing the metabolic brain cost under varying environmental pressures is deferred to future experiments.
 
   \item \textbf{The game requires proprietary data.} While the engine source code is fully open, running the experiment requires game data files from \textit{Creatures Exodus} (available for purchase on Steam or GOG for approximately \$6). All novel code, analysis scripts, and results will be fully open-sourced.
 \end{enumerate}
@@ -713,7 +716,7 @@ The following resources provide additional context and full access to the experi
     \url{https://www.youtube.com/watch?v=LyVzUs_rTQ4}
   \item \textbf{Video --- 1997 Creatures Paper Breakdown (the biology behind Norns):}\\
     \url{https://www.youtube.com/watch?v=Ymm6pWf1W0Q}
-  \item \textbf{Video --- AI reads AI (how MCP connects an AI agent to the game):}\\
+  \item \textbf{Video --- AI reads AI (AI-assisted engine exploration via MCP):}\\
     \url{https://www.youtube.com/watch?v=vz_2FZQ_2V8}
 \end{itemize}
 
