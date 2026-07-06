@@ -349,47 +349,71 @@ This equation describes a simple voting system. Each action neuron keeps a runni
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-    node distance=1.2cm and 1.8cm,
-    lobe/.style={rectangle, draw=black, thick, fill=blue!8, minimum width=2.4cm, minimum height=0.9cm, align=center, font=\small\bfseries},
-    lobekey/.style={rectangle, draw=black, thick, fill=orange!12, minimum width=2.4cm, minimum height=0.9cm, align=center, font=\small\bfseries},
+    node distance=1.2cm and 1.5cm,
+    lobe/.style={rectangle, draw=black, thick, fill=blue!8, minimum width=2.2cm, minimum height=0.8cm, align=center, font=\small\bfseries},
+    lobekey/.style={rectangle, draw=black, thick, fill=orange!12, minimum width=2.2cm, minimum height=0.8cm, align=center, font=\small\bfseries},
+    lobehub/.style={rectangle, draw=black, thick, fill=green!8, minimum width=2.2cm, minimum height=0.8cm, align=center, font=\small\bfseries},
     arrow/.style={-{Stealth[length=2.5mm]}, thick, draw=black!70},
     label/.style={font=\scriptsize\itshape, text=black!60},
   ]
 
-  % Sensory input layer
+  % === CENTER COLUMN: main vertical flow ===
+  % Row 1: Sensory inputs
   \node[lobe] (noun) {Noun\\(40n)};
-  \node[lobe, right=2.0cm of noun] (visn) {Visual\\(40n)};
-  \node[lobe, below=0.6cm of noun] (verb) {Verb\\(13n)};
-  \node[lobe, right=2.0cm of verb] (smel) {Smell\\(40n)};
+  \node[lobe, right=0.8cm of noun] (visn) {Visual\\(40n)};
+  \node[lobe, right=0.8cm of visn] (smel) {Smell\\(40n)};
 
-  % Attention
-  \node[lobe, below=1.2cm of $(noun)!0.5!(visn)$] (attn) {Attention\\(40n)};
+  % Row 2: Stimulus Source
+  \node[lobehub, below=1.0cm of visn] (stim) {Stimulus Source (40n)};
 
-  % Drive
-  \node[lobekey, left=1.5cm of verb] (drive) {Drive\\(20 needs)};
+  % Row 3: Combination
+  \node[lobekey, below=1.0cm of stim, minimum width=5.5cm, fill=orange!15] (comb) {Combination (440n)};
 
-  % Processing
-  \node[lobe, below=1.0cm of attn, minimum width=5cm, fill=green!8] (comb) {Combination (440n)};
+  % Row 4: Decision
+  \node[lobekey, below=1.0cm of comb, minimum width=3.0cm, fill=orange!15] (decn) {Decision (13n)};
 
-  % Decision
-  \node[lobekey, below=1.0cm of comb, minimum width=3.5cm, fill=orange!15] (decn) {Decision (13n)};
+  % === LEFT COLUMN: internal state ===
+  \node[lobekey, left=1.8cm of comb] (drive) {Drive\\(20 needs)};
+  \node[lobe, below=0.8cm of drive] (verb) {Verb\\(13n)};
 
-  % Arrows
-  \draw[arrow] (noun) -- (attn);
-  \draw[arrow] (visn) -- (attn);
-  \draw[arrow] (attn) -- (comb);
-  \draw[arrow] (drive) |- (comb);
-  \draw[arrow] (verb) -- (comb);
-  \draw[arrow] (smel) |- (comb);
+  % === RIGHT COLUMN: outputs and feedback ===
+  \node[lobe, right=1.8cm of comb] (attn) {Attention\\(40n)};
+  \node[lobe, right=1.8cm of decn] (resp) {Response\\(20n)};
+
+  % === ARROWS (all verified engine tracts) ===
+
+  % Sensory → Stimulus Source (straight down)
+  \draw[arrow] (noun) -- (stim);
+  \draw[arrow] (visn) -- (stim);
+  \draw[arrow] (smel) -- (stim);
+
+  % Stimulus Source → Combination (straight down)
+  \draw[arrow] (stim) -- (comb);
+
+  % Drive, Verb → Combination (straight right)
+  \draw[arrow] (drive) -- (comb);
+  \draw[arrow] (verb) -- (decn);
+
+  % Combination → Decision (straight down)
   \draw[arrow] (comb) -- (decn);
 
-  % Labels
-  \node[above=0.2cm of noun, label] {What the Norn perceives};
-  \node[right=0.3cm of decn, label, text width=3.5cm] {Highest score wins $\rightarrow$ Norn acts};
-  \node[left=0.3cm of drive, label, text width=2.5cm] {Internal body state (hunger, pain, etc.)};
+  % Combination → Attention (straight right)
+  \draw[arrow] (comb) -- (attn);
+
+  % Decision → Response (straight right)
+  \draw[arrow] (decn) -- (resp);
+
+  % Feedback: Response → Drive (routed below Verb to avoid crossing)
+  \draw[arrow] (resp.south) -- ++(0,-1.2) -| (drive.south);
+
+  % === LABELS ===
+  \node[above=0.2cm of visn, label] {What the Norn perceives};
+  \node[below=0.4cm of decn, label] {Highest score wins $\rightarrow$ Norn acts};
+  \node[left=0.2cm of drive, label, text width=2.2cm] {Internal body state (hunger, pain, etc.)};
+  \node[below=0.15cm of resp, label] {Feedback loop};
 
 \end{tikzpicture}
-\caption{\textbf{How a Norn's brain makes decisions (simplified).} Information flows top-to-bottom: sensory input (what the Norn sees, hears, and smells) enters at the top, combines with internal needs (hunger, pain, etc.) in the Combination lobe (the brain's largest region at 440 neurons), and converges on the Decision lobe where Winner-Takes-All competition selects a single action. Orange-highlighted lobes are the primary sites where our metabolic cost is applied. Not shown for clarity: Stimulus Source, Motor, Detail, Situation, Response, Friend-or-Foe, and Mood lobes (see Table~\ref{tab:lobes} for the complete 15-lobe architecture).}
+\caption{\textbf{How a Norn's brain makes decisions (simplified).} Information flows top-to-bottom through verified engine tracts. Sensory input (what the Norn sees and smells) converges on the Stimulus Source lobe, which acts as a routing hub, feeding into the Combination lobe (440 neurons, the brain's largest region) alongside internal drives and verb categories. The Combination lobe outputs to both the Decision lobe (where Winner-Takes-All competition selects a single action) and the Attention lobe. A feedback loop (Decision $\rightarrow$ Response $\rightarrow$ Drive) closes the perception-action cycle. Orange-highlighted lobes are the primary sites where our metabolic cost is applied. Not shown for clarity: Motor, Detail, Situation, Friend-or-Foe, and Mood lobes (see Table~\ref{tab:lobes} for the complete 15-lobe architecture).}
 \label{fig:brain-architecture}
 \end{figure}
 
@@ -722,7 +746,7 @@ The AI industry currently faces an energy crisis: training state-of-the-art mode
 The following resources provide additional context and full access to the experimental platform:
 
 \begin{itemize}[nosep]
-  \item \textbf{Engine source code:} \url{https://github.com/cyrilsadovsky/creatures3-engine-port}
+  \item \textbf{Engine source code:} \url{https://github.com/ugwun/creatures3-engine-port}
   \item \textbf{Video: AI Learning in Real Time (the ``limbic gap'' argument):}\\
     \url{https://www.youtube.com/watch?v=LyVzUs_rTQ4}
   \item \textbf{Video: 1997 Creatures Paper Breakdown (the biology behind Norns):}\\
