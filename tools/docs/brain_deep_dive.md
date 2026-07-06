@@ -126,15 +126,15 @@ A standard C3/DS Norn brain contains the following lobes, confirmed by live engi
 | 5 | `comb` | 440 | 40×11 | (5, 22) | Processing | Concept combination — the largest lobe, combining perception with drives |
 | 6 | `stim` | 40 | 40×1 | (5, 17) | Drive & State | [Stimulus](caos_events.md#involuntary-actions-6472) source tracking — which object caused the last stimulus |
 | 7 | `noun` | 40 | 40×1 | (0, 0) | Perception | Object [category](caos_categories.md) identification — "what am I looking at?" |
-| 8 | `verb` | 13 | 1×13 | (49, 3) | Perception | Available [actions](caos_events.md#creature-decision-scripts--on-agents-1631) — "what can I do?" |
-| 9 | `smel` | 40 | 40×1 | (5, 4) | Perception | Smell processing — [CA gradient](world_ecosystem.md#the-smell-to-brain-pipeline) detection |
-| 10 | `resp` | 40 | 40×1 | (60, 22) | Processing | Response formulation |
-| 11 | `detl` | 40 | 40×1 | (65, 22) | Processing | Object detail processing |
-| 12 | `situ` | 440 | 40×11 | (10, 35) | Processing | Situation assessment — context evaluation |
-| 13 | `forf` | 40 | 40×1 | (5, 50) | Processing | Friend-or-foe classification |
-| 14 | `mood` | 40 | 40×1 | (5, 60) | Drive & State | Aggregate emotional/mood state |
+| 8 | `verb` | 13 | 1×13 | (0, 22) | Perception | Available [actions](caos_events.md#creature-decision-scripts--on-agents-1631) — "what can I do?" |
+| 9 | `smel` | 40 | 40×1 | (3, 4) | Perception | Smell processing — [CA gradient](world_ecosystem.md#the-smell-to-brain-pipeline) detection |
+| 10 | `detl` | 16 | 1×16 | (0, 40) | Processing | Object detail processing |
+| 11 | `situ` | 16 | 1×16 | (3, 40) | Processing | Situation assessment — context evaluation |
+| 12 | `resp` | 20 | 20×1 | (30, 70) | Processing | Response formulation |
+| 13 | `forf` | 36 | 12×3 | (5, 64) | Processing | Friend-or-foe classification |
+| 14 | `mood` | 1 | 1×1 | (20, 72) | Drive & State | Aggregate emotional/mood state |
 
-> **Note:** The exact lobe count and layout varies between Norns, Grendels, and Ettins, and can change further through genetic mutation. The table above reflects the standard Norn genome shipped with Creatures 3 / Docking Station.
+> **Note:** The standard C3/DS genomes for Norns, Grendels, and Ettins all share this same 15-lobe layout (verified via live engine MCP queries). However, the layout is genome-defined and can change through genetic mutation. The table above reflects the standard genome shipped with Creatures 3 / Docking Station.
 
 ### Lobe Update Cycle
 
