@@ -205,10 +205,10 @@ In the mathematical formulation, complexity serves as a regularization penalty\f
 
 Each Norn possesses a remarkably detailed internal simulation:
 \begin{itemize}[nosep]
-  \item A \textbf{952-neuron brain} organized into 9 specialized regions (called ``lobes''), connected by approximately 5{,}000 synapses---a small but complete neural network.
+  \item A \textbf{815-neuron brain} organized into 15 specialized regions (called ``lobes''), connected by genetically defined synaptic tracts---a small but complete neural network.
   \item A full \textbf{biochemistry simulation} modeling 256 different chemicals, including hormones, nutrients, antigens, and energy molecules like ATP. The Norn has simulated organs (brain, liver, stomach) that process these chemicals.
-  \item \textbf{Three learning mechanisms}: connections that strengthen when useful (\emph{reinforcement}), weaken when unused (\emph{atrophy}), and physically detach and reattach to new neurons when they fail (\emph{migration}).
-  \item A \textbf{homeostatic drive system} with 13 needs: Hunger, Pain, Tiredness, Fear, Boredom, Loneliness, Anger, and more. These drives are the Norn's ``emotions''---they motivate behavior just as your hunger motivates you to eat.
+  \item \textbf{Three learning mechanisms}: connections that strengthen when useful (\emph{reinforcement}), gradually decay when unused (\emph{weight decay}), and physically detach and reattach to new neurons when they fail (\emph{migration}).
+  \item A \textbf{homeostatic drive system} with 20 needs---14 biological drives (three kinds of Hunger, Pain, Tiredness, Fear, Boredom, Loneliness, Anger, Sex Drive, Comfort, and more) plus 6 navigational drives. These drives are the Norn's ``emotions''---they motivate behavior just as your hunger motivates you to eat.
   \item \textbf{Genetic inheritance}: everything---brain structure, chemical reactions, drive sensitivities---is encoded in digital DNA that is passed to offspring with mutation and crossover, enabling Darwinian evolution.
 \end{itemize}
 
@@ -289,30 +289,45 @@ The experiment uses the open-source Creatures~3/Docking Station engine port~\cit
 \subsection{Brain Architecture}
 \label{sec:brain-arch}
 
-A Norn's brain is a small but complete neural network. Information flows from sensory input (what the Norn sees and hears) through several processing stages to a final decision (what the Norn does). Figure~\ref{fig:brain-architecture} shows this flow, and Table~\ref{tab:lobes} lists all nine brain regions.
+A Norn's brain is a small but complete neural network. Information flows from sensory input (what the Norn sees and hears) through several processing stages to a final decision (what the Norn does). Figure~\ref{fig:brain-architecture} shows this flow, and Table~\ref{tab:lobes} lists all fifteen brain regions.
 
 \begin{table}[H]
 \centering
-\caption{Norn brain lobe architecture. \textbf{WTA} (Winner-Takes-All) means only the single most active neuron in that region ``wins'' and influences downstream processing---like a vote where only the top candidate matters.}
+\caption{Norn brain lobe architecture (verified against live engine data). \textbf{WTA} (Winner-Takes-All) means only the single most active neuron in that region ``wins'' and influences downstream processing---like a vote where only the top candidate matters.}
 \label{tab:lobes}
 \begin{tabular}{@{}llcl@{}}
 \toprule
 \textbf{Lobe (Brain Region)} & \textbf{What It Does} & \textbf{Neurons} & \textbf{Selection} \\
 \midrule
-Stimulus Source & Recognizes objects the Norn sees or hears & 40 & WTA \\
-Noun            & Activates when an object name is spoken & 40 & WTA \\
-Attention       & Decides what to focus on & 40 & WTA \\
-Drive           & Tracks internal needs (hunger, pain, etc.) & 16 (13 active) & --- \\
-General Sense   & Represents physical events (being touched, etc.) & 32 & --- \\
-Verb            & Activates when an action word is spoken & 40 & WTA \\
-Perception      & Combines information from other regions & --- & Copy \\
-Concept         & Represents ``situations'' (combinations of needs + objects) & 256 & AND-gate \\
-Decision        & Chooses what action to perform & 16 (12 active) & WTA \\
+\multicolumn{4}{@{}l}{\textit{Perception}} \\
+\quad Noun (\texttt{noun})            & Identifies what object the Norn is looking at & 40 & WTA \\
+\quad Visual (\texttt{visn})           & Registers all currently visible objects        & 40 & --- \\
+\quad Verb (\texttt{verb})             & Tracks available actions                       & 13 & WTA \\
+\quad Smell (\texttt{smel})            & Processes environmental smell gradients        & 40 & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Processing}} \\
+\quad Combination (\texttt{comb})      & Combines percepts with drives (largest lobe)   & 440 & --- \\
+\quad Detail (\texttt{detl})           & Encodes fine-grained object properties         & 16 & --- \\
+\quad Situation (\texttt{situ})        & Evaluates context (object + drive combinations)& 16 & --- \\
+\quad Response (\texttt{resp})         & Formulates behavioral responses                & 20 & --- \\
+\quad Friend-or-Foe (\texttt{forf})   & Classifies agents as friend or threat          & 36 & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Decision \& Motor}} \\
+\quad Attention (\texttt{attn})        & Decides what to focus on                       & 40 & WTA \\
+\quad Decision (\texttt{decn})         & Chooses what action to perform                 & 13 & WTA \\
+\quad Motor (\texttt{move})            & Controls movement processing                   & 40 & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Drive \& State}} \\
+\quad Drive (\texttt{driv})            & Tracks internal needs (one neuron per drive)   & 20 & --- \\
+\quad Stimulus Source (\texttt{stim})  & Records which object caused the last stimulus  & 40 & --- \\
+\quad Mood (\texttt{mood})             & Aggregate emotional state                      & 1  & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Total: 815 neurons across 15 lobes}} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The Decision lobe is where behavior is chosen. Each of its 12 action neurons (``push,'' ``eat,'' ``walk left,'' etc.) accumulates evidence from the Concept lobe---some connections encourage the action, others discourage it. The action with the highest score wins:
+The Decision lobe is where behavior is chosen. Each of its 12 action neurons (``push,'' ``eat,'' ``walk west,'' etc.---plus a 13th ``quiescent'' neuron representing inaction) accumulates evidence from upstream lobes---some connections encourage the action, others discourage it. The action with the highest score wins:
 \begin{equation}
   \text{State}_t = \text{State}_{t-1} + \sum \text{Inputs}(D_0) - \sum \text{Inputs}(D_1)
   \label{eq:decision-sv}
@@ -322,12 +337,12 @@ The Decision lobe is where behavior is chosen. Each of its 12 action neurons (``
 This equation describes a simple voting system. Each action neuron keeps a running score. On every tick, excitatory inputs ($D_0$, think ``votes for'') are added and inhibitory inputs ($D_1$, think ``votes against'') are subtracted. The action with the highest score is what the Norn does next. It's like a debate where arguments for and against each option accumulate over time, and the strongest argument wins.
 \end{plainbox}
 
-\noindent \textbf{How the brain learns and adapts.} The brain has approximately 5{,}000 active connections, and they change through three mechanisms:
+\noindent \textbf{How the brain learns and adapts.} The brain's synaptic connections change through three mechanisms:
 \begin{itemize}[nosep]
   \item \textbf{Reinforcement}: when a Norn does something that reduces a drive (e.g., eating reduces hunger), ``Reward'' chemicals are released, strengthening the brain connections that led to that action. \emph{This is how Norns learn what works.}
-  \item \textbf{Atrophy}: connections that are rarely used gradually weaken and decay. \emph{This is how Norns forget what doesn't work.}
-  \item \textbf{Migration}: when a connection becomes too weak, it physically detaches from one neuron and reattaches to a different one, searching for more useful associations. \emph{This is how Norns restructure their understanding of the world.}
-  \item \textbf{Sleep consolidation}: major brain updates (like strengthening and weakening connections) happen during sleep, not while awake---just as in biological brains.
+  \item \textbf{Weight decay}: connections gradually weaken over time through a genetically defined leakage rate. Without reinforcement, even once-strong connections will fade. \emph{This is how Norns forget what doesn't work.}
+  \item \textbf{Migration}: when a connection becomes too weak, it physically detaches from one neuron and reattaches to a different one, guided by a Neural Growth Factor (NGF) signal. \emph{This is how Norns restructure their understanding of the world.}
+  \item \textbf{Instinct processing during sleep}: during REM sleep, genetically pre-wired associations (instincts) are processed---one per tick---priming neural pathways for survival behaviors before the Norn must discover them through trial and error.
 \end{itemize}
 
 % ─── Brain Architecture Diagram ──────────────────────────────────────────────
@@ -342,43 +357,39 @@ This equation describes a simple voting system. Each action neuron keeps a runni
   ]
 
   % Sensory input layer
-  \node[lobe] (stim) {Stimulus\\Source};
-  \node[lobe, right=2.5cm of stim] (noun) {Noun};
-  \node[lobe, below=0.8cm of stim] (gsense) {General\\Sense};
-  \node[lobe, right=2.5cm of gsense] (verb) {Verb};
+  \node[lobe] (noun) {Noun\\(40n)};
+  \node[lobe, right=2.0cm of noun] (visn) {Visual\\(40n)};
+  \node[lobe, below=0.6cm of noun] (verb) {Verb\\(13n)};
+  \node[lobe, right=2.0cm of verb] (smel) {Smell\\(40n)};
 
   % Attention
-  \node[lobe, below=1.5cm of $(stim)!0.5!(noun)$] (attn) {Attention};
+  \node[lobe, below=1.2cm of $(noun)!0.5!(visn)$] (attn) {Attention\\(40n)};
 
   % Drive
-  \node[lobekey, left=1.8cm of gsense] (drive) {Drive\\(13 needs)};
+  \node[lobekey, left=1.5cm of verb] (drive) {Drive\\(20 needs)};
 
-  % Perception buffer
-  \node[lobe, below=1.2cm of attn, minimum width=5cm] (perc) {Perception Buffer};
-
-  % Concept
-  \node[lobe, below=1.0cm of perc, minimum width=4cm, fill=green!8] (conc) {Concept (256n)};
+  % Processing
+  \node[lobe, below=1.0cm of attn, minimum width=5cm, fill=green!8] (comb) {Combination (440n)};
 
   % Decision
-  \node[lobekey, below=1.0cm of conc, minimum width=3.5cm, fill=orange!15] (decn) {Decision (12 actions)};
+  \node[lobekey, below=1.0cm of comb, minimum width=3.5cm, fill=orange!15] (decn) {Decision (13n)};
 
   % Arrows
-  \draw[arrow] (stim) -- (attn);
   \draw[arrow] (noun) -- (attn);
-  \draw[arrow] (attn) -- (perc);
-  \draw[arrow] (drive) |- (perc);
-  \draw[arrow] (gsense) -- (perc);
-  \draw[arrow] (verb) |- (perc);
-  \draw[arrow] (perc) -- (conc);
-  \draw[arrow] (conc) -- node[right, label] {128 ``for'' / 128 ``against''} (decn);
+  \draw[arrow] (visn) -- (attn);
+  \draw[arrow] (attn) -- (comb);
+  \draw[arrow] (drive) |- (comb);
+  \draw[arrow] (verb) -- (comb);
+  \draw[arrow] (smel) |- (comb);
+  \draw[arrow] (comb) -- (decn);
 
   % Labels
-  \node[above=0.2cm of stim, label] {What the Norn perceives};
+  \node[above=0.2cm of noun, label] {What the Norn perceives};
   \node[right=0.3cm of decn, label, text width=3.5cm] {Highest score wins $\rightarrow$ Norn acts};
   \node[left=0.3cm of drive, label, text width=2.5cm] {Internal body state (hunger, pain, etc.)};
 
 \end{tikzpicture}
-\caption{\textbf{How a Norn's brain makes decisions.} Information flows top-to-bottom: sensory input (what the Norn sees and hears) enters at the top, combines with internal needs (hunger, pain, etc.) in the Perception Buffer, generates ``situations'' in the Concept lobe, and finally selects an action in the Decision lobe. Orange-highlighted lobes are the primary sites where our metabolic cost is applied. Each connection between the Concept and Decision lobes carries a ``vote'' for or against an action.}
+\caption{\textbf{How a Norn's brain makes decisions (simplified).} Information flows top-to-bottom: sensory input (what the Norn sees, hears, and smells) enters at the top, combines with internal needs (hunger, pain, etc.) in the Combination lobe (the brain's largest region at 440 neurons), and converges on the Decision lobe where Winner-Takes-All competition selects a single action. Orange-highlighted lobes are the primary sites where our metabolic cost is applied. Not shown for clarity: Stimulus Source, Motor, Detail, Situation, Response, Friend-or-Foe, and Mood lobes (see Table~\ref{tab:lobes} for the complete 15-lobe architecture).}
 \label{fig:brain-architecture}
 \end{figure}
 
@@ -392,7 +403,7 @@ In the treatment condition, the following modifications are made at the C++ engi
 
 \begin{description}[style=nextline, font=\itshape]
   \item[Synaptic Firing Cost --- ``Thinking Costs Energy'']
-    On every engine tick, for every neuron in the Decision and Concept lobes whose activation exceeds a threshold $\theta_{\text{fire}} > 0$, a fixed amount $\delta_{\text{fire}}$ of ATP is deducted from the Norn's biochemistry:
+    On every engine tick, for every neuron in the Decision and Combination lobes whose activation exceeds a threshold $\theta_{\text{fire}} > 0$, a fixed amount $\delta_{\text{fire}}$ of ATP is deducted from the Norn's biochemistry:
     \begin{equation}
       \text{ATP}_{t+1} = \text{ATP}_t - \delta_{\text{fire}} \cdot |\{n \in \mathcal{L} : a_n(t) > \theta_{\text{fire}}\}|
       \label{eq:firing-cost}
@@ -425,20 +436,20 @@ In the treatment condition, the following modifications are made at the C++ engi
 We measure five quantities, three capturing brain efficiency and two capturing population-level survival:
 
 \subsubsection{Biochemical State Entropy ($\Hbio$) --- ``How Chaotic Is the Body?''}
-This metric measures how disordered the Norn's internal state is. It uses a standard information theory formula (Shannon entropy) applied to the 13 homeostatic drive levels:
+This metric measures how disordered the Norn's internal state is. It uses a standard information theory formula (Shannon entropy) applied to the 15 biological drive levels (Pain through Comfort, drives 0--14; the 5 navigational drives are excluded as they reflect spatial goals rather than homeostatic state):
 \begin{equation}
-  \Hbio = -\sum_{i=1}^{13} P(d_i) \log_2 P(d_i)
+  \Hbio = -\sum_{i=0}^{14} P(d_i) \log_2 P(d_i)
   \label{eq:Hbio}
 \end{equation}
 
 \begin{plainbox}
-Imagine a dashboard with 13 gauges---Hunger, Pain, Tiredness, Fear, and so on. If all gauges are fluctuating wildly and unpredictably, that's \textbf{high entropy} (disorder). If most gauges stay near comfortable levels with only small, predictable changes, that's \textbf{low entropy} (stability).
+Imagine a dashboard with 15 gauges---Hunger for Protein, Hunger for Carbohydrate, Hunger for Fat, Pain, Tiredness, Fear, Comfort, and so on. If all gauges are fluctuating wildly and unpredictably, that's \textbf{high entropy} (disorder). If most gauges stay near comfortable levels with only small, predictable changes, that's \textbf{low entropy} (stability).
 
 A healthy Norn should have low entropy: it eats when hungry, rests when tired, and keeps its internal chemistry balanced. A struggling Norn will have high entropy: its needs spike and crash erratically.
 \end{plainbox}
 
 \subsubsection{Synaptic Migration Rate ($\Rmig$) --- ``How Often Is the Brain Rewiring?''}
-The rate of synaptic detachment and re-allocation across the $\sim$5{,}000 active connections:
+The rate of synaptic detachment and re-allocation across the brain's active connections:
 \begin{equation}
   \Rmig = \frac{\Delta \text{Synapses Migrated}}{\Delta t}
   \label{eq:Rmig}
@@ -553,7 +564,7 @@ Because the simulation involves random elements (mutations during reproduction, 
   \item \textbf{Telemetry Snapshots.} Each snapshot records, for every living Norn:
     \begin{itemize}[nosep]
       \item Current tick number (timestamp).
-      \item All 13 drive levels (hunger, pain, tiredness, etc.).
+      \item All 20 drive levels (three kinds of hunger, pain, tiredness, fear, etc.).
       \item All 256 chemical concentrations in the bloodstream.
       \item Organ health status.
       \item Brain lobe activity---which neurons are firing and how strongly.
@@ -669,7 +680,7 @@ No experiment is without boundaries. We explicitly acknowledge the following:
 
   \item \textbf{The energy cost cannot evolve.} In this experiment, the metabolic cost of brain activity is the same for all Norns and does not change across generations. Future work may explore whether Norns can \emph{evolve} different levels of metabolic efficiency, with more efficient brains conferring a survival advantage that is passed to offspring.
 
-  \item \textbf{The brain is small.} The Creatures~3 brain has 952 neurons and $\sim$5{,}000 connections---vastly smaller than a biological brain (86 billion neurons) or a large AI model (billions of parameters). Our results demonstrate the \emph{principle} of metabolic grounding; whether the effect scales to larger architectures remains an open question.
+  \item \textbf{The brain is small.} The Creatures~3 brain has 815 neurons and 15 lobes---vastly smaller than a biological brain (86 billion neurons) or a large AI model (billions of parameters). Our results demonstrate the \emph{principle} of metabolic grounding; whether the effect scales to larger architectures remains an open question.
 
   \item \textbf{The environment is fixed.} All trials run in the standard Docking Station environment---a deliberately constrained habitat chosen over the larger Creatures~3 Shee Ark to minimize spatial confounds. We do not vary food scarcity, introduce predators, or change seasonal conditions. Testing the metabolic brain cost under varying environmental pressures is deferred to future experiments.
 
