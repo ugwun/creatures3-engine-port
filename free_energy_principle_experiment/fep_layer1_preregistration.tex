@@ -112,7 +112,7 @@ We run 20 simulated trials: 10 where brain activity costs energy (treatment) and
 
 \medskip
 \textbf{Why does it matter?}
-If making thinking expensive leads to more efficient brains and better survival, it suggests that the energy crisis facing modern AI (bigger models require exponentially more power) could be addressed not by adding more computing power, but by imposing the same kind of metabolic constraints that shaped biological intelligence over millions of years of evolution.
+If making thinking expensive leads to more efficient brains and better survival, it suggests that the energy crisis facing modern AI (bigger models require exponentially more power) could be addressed not by adding more computing power, but by imposing the same kind of metabolic constraints that shaped biological intelligence over millions of years of evolution. The urgency is underscored by recent benchmarks: when evaluated on real freelance projects drawn from the remote labor economy, the best AI agents automate only 2.5\% of tasks~\cite{mazeika2025rli}, suggesting that current scaling approaches alone will not bridge the gap between benchmark performance and practical, continuous real-world work.
 \end{tcolorbox}
 
 \bigskip
@@ -153,7 +153,7 @@ Modern large language models and artificial agents lack an underlying physiologi
 
 Imagine an employee who is brilliant at answering questions but has no sense of effort, fatigue, or cost. They will write a 10-page report whether you ask them a yes-or-no question or request a PhD thesis. They never learn to be concise, because being verbose doesn't tire them out. This is, in essence, the problem with modern AI.
 
-Large Language Models (LLMs) like ChatGPT and Claude achieve remarkable performance on benchmarks, yet they operate as ``smart amnesiacs'' in embodied, physical environments~\cite{grand1997creatures}. They lack what we call a \emph{limbic system}\footnote{In biological brains, the \emph{limbic system} is the set of brain structures responsible for emotions, motivation, and drives like hunger, fear, and pleasure. It acts as the brain's ``internal compass,'' guiding behavior based on bodily needs.}, an internal homeostatic drive system that would allow them to:
+Large Language Models (LLMs) like ChatGPT and Claude achieve remarkable performance on benchmarks, yet they operate as ``smart amnesiacs'' in embodied, physical environments~\cite{grand1997creatures, grand1998creatures}. When placed in control of a physical robot and asked to perform a simple household task (finding and delivering a stick of butter), the best LLM achieves a 40\% completion rate while untrained humans score 95\%, failing particularly at spatial reasoning and social understanding~\cite{sharrock2025butterbench}. They lack what we call a \emph{limbic system}\footnote{In biological brains, the \emph{limbic system} is the set of brain structures responsible for emotions, motivation, and drives like hunger, fear, and pleasure. It acts as the brain's ``internal compass,'' guiding behavior based on bodily needs.}, an internal homeostatic drive system that would allow them to:
 \begin{enumerate}[label=(\alph*), nosep]
   \item continuously learn from the \emph{consequences} of their actions (not just from training data),
   \item prioritize energy-efficient representations over brute-force compute, and
@@ -201,7 +201,7 @@ In the mathematical formulation, complexity serves as a regularization penalty\f
 % ─── 1.3 Creatures 3 as a Computational Substrate ───────────────────────────
 \subsection{Creatures 3: A Digital Terrarium for Artificial Life}
 
-\textit{Creatures~3} (1999) is not a typical video game. It is a \emph{digital terrarium}, an artificial life simulation where virtual creatures called ``Norns'' are born, learn, eat, sleep, socialize, reproduce, and die, all driven by their own internal biology rather than pre-scripted behaviors~\cite{grand1997creatures, zucconi2023creatures}.
+\textit{Creatures~3} (1999) is not a typical video game. It is a \emph{digital terrarium}, an artificial life simulation where virtual creatures called ``Norns'' are born, learn, eat, sleep, socialize, reproduce, and die, all driven by their own internal biology rather than pre-scripted behaviors~\cite{grand1997creatures, grand1998creatures, zucconi2020creatures}.
 
 Each Norn possesses a remarkably detailed internal simulation:
 \begin{itemize}[nosep]
@@ -211,6 +211,13 @@ Each Norn possesses a remarkably detailed internal simulation:
   \item A \textbf{homeostatic drive system} with 20 needs (14 biological drives (three kinds of Hunger, Pain, Tiredness, Fear, Boredom, Loneliness, Anger, Sex Drive, Comfort, and more, plus 6 navigational drives). These drives are the Norn's ``emotions''; they motivate behavior just as your hunger motivates you to eat.
   \item \textbf{Genetic inheritance}: everything (brain structure, chemical reactions, drive sensitivities) is encoded in digital DNA that is passed to offspring with mutation and crossover, enabling Darwinian evolution.
 \end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{interactions_within_creature.png}
+\caption{Summary of interactions within a creature and between the creature and its environment. Reproduced from Grand and Cliff~\cite{grand1998creatures}. The diagram traces a complete perception-action-metabolism cycle: sensory input flows through the brain's lobe hierarchy to produce a behavioral decision, while the biochemical consequences of that action (digestion, metabolic reactions, energy production) feed back into the drive system, closing the loop. This tight coupling between neural and metabolic systems is precisely what our experiment exploits by making brain activity deduct ATP.}
+\label{fig:creature-interactions}
+\end{figure}
 
 \begin{analogybox}
 If modern AI (like ChatGPT) is a calculator that can answer any question but has no body, no hunger, and no sense of effort, then a Norn is closer to a virtual hamster: it has a body that gets tired, a stomach that gets hungry, and a brain that must \emph{learn} what to do to stay alive. It's a much simpler system than a modern AI, but it has something modern AI lacks: a reason to care about efficiency.
@@ -289,20 +296,21 @@ The experiment uses the Creatures~3/Docking Station engine port~\cite{sadovsky20
 \subsection{Brain Architecture}
 \label{sec:brain-arch}
 
-A Norn's brain is a small but complete neural network. Information flows from sensory input (what the Norn sees and hears) through several processing stages to a final decision (what the Norn does). Figure~\ref{fig:brain-architecture} shows this flow, and Table~\ref{tab:lobes} lists all fifteen brain regions.
+A Norn's brain is a small but complete neural network~\cite{grand1998creatures}. Information flows from sensory input (what the Norn sees and hears) through several processing stages to a final decision (what the Norn does). Figure~\ref{fig:brain-architecture} shows this flow, and Table~\ref{tab:lobes} lists all fifteen brain regions.
 
 \begin{table}[H]
 \centering
 \caption{Norn brain lobe architecture (verified against live engine data). \textbf{WTA} (Winner-Takes-All) means only the single most active neuron in that region ``wins'' and influences downstream processing (like a vote where only the top candidate matters).}
 \label{tab:lobes}
-\begin{tabular}{@{}llcl@{}}
+\small
+\begin{tabular}{@{}lp{6.8cm}cl@{}}
 \toprule
-\textbf{Lobe (Brain Region)} & \textbf{What It Does} & \textbf{Neurons} & \textbf{Selection} \\
+\textbf{Lobe (Brain Region)} & \textbf{What It Does} & \textbf{Neurons} & \textbf{WTA} \\
 \midrule
 \multicolumn{4}{@{}l}{\textit{Perception}} \\
-\quad Noun (\texttt{noun})            & Identifies what object the Norn is looking at & 40 & WTA \\
+\quad Noun (\texttt{noun})            & Identifies what object the Norn is looking at & 40 & Yes \\
 \quad Visual (\texttt{visn})           & Registers all currently visible objects        & 40 & --- \\
-\quad Verb (\texttt{verb})             & Tracks available actions                       & 13 & WTA \\
+\quad Verb (\texttt{verb})             & Tracks available actions                       & 13 & Yes \\
 \quad Smell (\texttt{smel})            & Processes environmental smell gradients        & 40 & --- \\
 \midrule
 \multicolumn{4}{@{}l}{\textit{Processing}} \\
@@ -313,8 +321,8 @@ A Norn's brain is a small but complete neural network. Information flows from se
 \quad Friend-or-Foe (\texttt{forf})   & Classifies agents as friend or threat          & 36 & --- \\
 \midrule
 \multicolumn{4}{@{}l}{\textit{Decision \& Motor}} \\
-\quad Attention (\texttt{attn})        & Decides what to focus on                       & 40 & WTA \\
-\quad Decision (\texttt{decn})         & Chooses what action to perform                 & 13 & WTA \\
+\quad Attention (\texttt{attn})        & Decides what to focus on                       & 40 & Yes \\
+\quad Decision (\texttt{decn})         & Chooses what action to perform                 & 13 & Yes \\
 \quad Motor (\texttt{move})            & Controls movement processing                   & 40 & --- \\
 \midrule
 \multicolumn{4}{@{}l}{\textit{Drive \& State}} \\
@@ -337,7 +345,7 @@ The Decision lobe is where behavior is chosen. Each of its 12 action neurons (``
 This equation describes a simple voting system. Each action neuron keeps a running score. On every tick, excitatory inputs ($D_0$, think ``votes for'') are added and inhibitory inputs ($D_1$, think ``votes against'') are subtracted. The action with the highest score is what the Norn does next. It's like a debate where arguments for and against each option accumulate over time, and the strongest argument wins.
 \end{plainbox}
 
-\noindent \textbf{How the brain learns and adapts.} The brain's synaptic connections change through three mechanisms:
+\noindent \textbf{How the brain learns and adapts.} The brain's synaptic connections change through three mechanisms~\cite{grand1998creatures}:
 \begin{itemize}[nosep]
   \item \textbf{Reinforcement}: when a Norn does something that reduces a drive (e.g., eating reduces hunger), ``Reward'' chemicals are released, strengthening the brain connections that led to that action. \emph{This is how Norns learn what works.}
   \item \textbf{Weight decay}: connections gradually weaken over time through a genetically defined leakage rate. Without reinforcement, even once-strong connections will fade. \emph{This is how Norns forget what doesn't work.}
@@ -346,7 +354,7 @@ This equation describes a simple voting system. Each action neuron keeps a runni
 \end{itemize}
 
 % ─── Brain Architecture Diagram ──────────────────────────────────────────────
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
     node distance=1.2cm and 1.5cm,
@@ -403,13 +411,13 @@ This equation describes a simple voting system. Each action neuron keeps a runni
   % Decision → Response (straight right)
   \draw[arrow] (decn) -- (resp);
 
-  % Feedback: Response → Drive (routed below Verb to avoid crossing)
-  \draw[arrow] (resp.south) -- ++(0,-1.2) -| (drive.south);
+  % Feedback: Response → Drive (routed left, below Verb, entering Drive from the left)
+  \draw[arrow] (resp.south) -- ++(0,-1.2) -| ([xshift=-1.2cm]drive.west) -- (drive.west);
 
   % === LABELS ===
   \node[above=0.2cm of visn, label] {What the Norn perceives};
-  \node[below=0.4cm of decn, label] {Highest score wins $\rightarrow$ Norn acts};
-  \node[left=0.2cm of drive, label, text width=2.2cm] {Internal body state (hunger, pain, etc.)};
+  \node[below=0.25cm of decn, label] {Highest score wins $\rightarrow$ Norn acts};
+  \node[above=0.2cm of drive, label, text width=2.2cm, align=center] {Internal body state\\(hunger, pain, etc.)};
   \node[below=0.15cm of resp, label] {Feedback loop};
 
 \end{tikzpicture}
