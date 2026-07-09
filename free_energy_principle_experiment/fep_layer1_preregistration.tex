@@ -203,6 +203,13 @@ In the mathematical formulation, complexity serves as a regularization penalty\f
 
 \textit{Creatures~3} (1999) is not a typical video game. It is a \emph{digital terrarium}, an artificial life simulation where virtual creatures called ``Norns'' are born, learn, eat, sleep, socialize, reproduce, and die, all driven by their own internal biology rather than pre-scripted behaviors~\cite{grand1997creatures, grand1998creatures, zucconi2020creatures}.
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{creatures_3_docking_station.png}
+\caption{\textbf{The Creatures 3 / Docking Station environment.} Norns (the small bipedal creatures) inhabit a virtual spaceship ecosystem with multiple rooms, flora, and interactive objects. Each Norn is an autonomous agent driven entirely by its internal neural network and biochemistry; the player can teach and nurture them but never directly controls their behavior. The interface elements (top-left) display the selected Norn's health and drives.}
+\label{fig:creatures3-screenshot}
+\end{figure}
+
 Each Norn possesses a remarkably detailed internal simulation:
 \begin{itemize}[nosep]
   \item A \textbf{815-neuron brain} organized into 15 specialized regions (called ``lobes''), connected by genetically defined synaptic tracts, forming a small but complete neural network.
@@ -224,6 +231,13 @@ If modern AI (like ChatGPT) is a calculator that can answer any question but has
 \end{analogybox}
 
 This architecture (a metabolically embedded, genetically heritable neural network with homeostatic drives) provides a unique platform for testing whether the FEP's complexity penalty can be grounded in physical metabolic costs. The engine port~\cite{sadovsky2025creatures3} supports headless execution, speed multipliers, and native telemetry output, enabling fully automated batch experimentation with no external dependencies.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{developer_tools_brain.png}
+\caption{\textbf{Brain monitor from the Creatures~3 engine port developer tools}~\cite{sadovsky2025creatures3}. This web-based interface, developed specifically for the engine port, provides real-time visualization of a Norn's complete neural architecture. The central panel renders all 15 lobes with per-neuron activation states (dark cells indicate firing neurons) and inter-lobe tract connections (orange lines). The right panel lists every lobe with its neuron count and all 29 tracts with their dendrite counts, alongside a summary of the selected creature's vital statistics (species, age, health, top drive). The left panel shows the full population roster with life-state indicators. This tooling enables the fine-grained neural telemetry required for our experiment.}
+\label{fig:brain-monitor}
+\end{figure}
 
 % ─── 1.4 This Experiment ────────────────────────────────────────────────────
 \subsection{The Present Experiment}
@@ -574,7 +588,7 @@ Because the simulation involves random elements (mutations during reproduction, 
   \draw[arrow] (s4) -- (s5);
   \draw[arrow] (s5) -- (d1);
   \draw[arrow] (d1) -- node[right, font=\scriptsize] {Yes} (s6);
-  \draw[arrow] (d1.east) -- ++(2,0) node[above, font=\scriptsize] {No} |- (s5.east);
+  \draw[arrow] (d1.east) -| node[pos=0.1, above, font=\scriptsize] {No} ([xshift=1cm]s5.east) -- (s5.east);
   \draw[arrow] (s6) -- (s7);
 
 \end{tikzpicture}
