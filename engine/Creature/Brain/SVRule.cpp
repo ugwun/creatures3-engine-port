@@ -5,6 +5,7 @@
 
 #include "SVRule.h"
 #include "BrainIO.h"
+#include <cstring>
 #include "../Genome.h"
 #include "Tract.h"
 

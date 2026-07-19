@@ -21,6 +21,8 @@
 
 
 #include "../PersistentObject.h"
+#include <cstring>
+#include <strings.h>
 #include <string>
 
 class MusicNamedItem : public PersistentObject {
@@ -64,7 +66,6 @@ public:
   // Description:	Compares given string with name of variable
   // ----------------------------------------------------------------------
   bool MatchName(const char* compare) const {
-#include <strings.h>
     return (strcasecmp(name.data(), compare) == 0);
   }
 

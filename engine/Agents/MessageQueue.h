@@ -12,7 +12,7 @@ class CreaturesArchive;
 
 struct CompareMessageTimes
 {
-	bool operator()( Message const & msg1, Message const & msg2 )
+	bool operator()( Message const & msg1, Message const & msg2 ) const
 	{
 		return msg1.GetTime() < msg2.GetTime();
 	}

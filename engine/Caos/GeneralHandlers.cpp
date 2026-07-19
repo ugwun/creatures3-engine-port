@@ -1104,6 +1104,19 @@ void GeneralHandlers::StringRV_CSTK(CAOSMachine &vm, std::string &str) {
   char mangledBuf[512];
   
   for (int i = 0; i < frameCount; ++i) {
+    // Extract mangled name: platform-specific backtrace_symbols() format
+    const char *start = nullptr;
+    const char *end = nullptr;
+#ifdef __linux__
+    // Linux glibc format: "binary(mangled+0xoffset) [0xaddress]"
+    const char *openParen = strchr(symbols[i], '(');
+    if (openParen) {
+      start = openParen + 1;
+      end = strchr(start, '+');
+      if (!end) end = strchr(start, ')');
+    }
+#else
+    // macOS format: "<frame>  <binary>  <address>  <mangled> + <offset>"
     const char *p = symbols[i];
     while (*p == ' ') ++p;
     while (*p && *p != ' ') ++p;
@@ -1112,12 +1125,13 @@ void GeneralHandlers::StringRV_CSTK(CAOSMachine &vm, std::string &str) {
     while (*p == ' ') ++p;
     while (*p && *p != ' ') ++p;
     while (*p == ' ') ++p;
-    
-    const char *start = p;
+    start = p;
     while (*p && *p != ' ' && *p != '+') ++p;
-    size_t len = (size_t)(p - start);
+    end = p;
+#endif
     
     bool demangled = false;
+    size_t len = (start && end && end > start) ? (size_t)(end - start) : 0;
     if (len > 0 && len < sizeof(mangledBuf)) {
       memcpy(mangledBuf, start, len);
       mangledBuf[len] = '\0';
@@ -1531,7 +1545,7 @@ void GeneralHandlers::SubCommand_FILE_OOPE(CAOSMachine &vm) {
   std::string basepath = ResolveJournalPath(directory, true);
 
   filename = basepath + filename;
-  vm.SetOutputStream(new std::ofstream(filename.c_str(), mode), true);
+  vm.SetOutputStream(new std::ofstream(filename.c_str(), static_cast<std::ios_base::openmode>(mode)), true);
 }
 
 void GeneralHandlers::SubCommand_FILE_OCLO(CAOSMachine &vm) {

@@ -12,7 +12,9 @@
 
 #include "../File.h"	// platform independent header.
 //#include "Display/ErrorMessageHandler.h"
+#include "FileFuncs.h"
 
+#include <cstring>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -148,7 +150,23 @@ bool File::FileExists(std::string& filename)
 {
 	struct stat s;
 	if( stat( filename.c_str(), &s) == -1)
+	{
+#ifdef __linux__
+		// Case-insensitive fallback for Linux (ext4 is case-sensitive,
+		// but game assets come from Windows/macOS with mixed-case filenames).
+		char buf[4096];
+		if (filename.size() < sizeof(buf)) {
+			memcpy(buf, filename.c_str(), filename.size() + 1);
+			if (ResolveCaseInsensitive(buf, sizeof(buf))) {
+				if (stat(buf, &s) == 0) {
+					filename = buf; // fix the string in-place
+					return true;
+				}
+			}
+		}
+#endif
 		return false;
+	}
 	return true;
 }
 

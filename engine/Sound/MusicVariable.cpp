@@ -17,6 +17,7 @@
 
 #include "MusicVariable.h"
 #include "MusicScript.h"
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		Parse

@@ -7,6 +7,7 @@
 
 #include "Lobe.h"
 #include "BrainIO.h"
+#include <cstring>
 #include "../Genome.h"
 
 

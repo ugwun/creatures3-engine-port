@@ -26,6 +26,7 @@
 #include "MusicLoopLayer.h"
 #include "MusicAleotoricLayer.h"
 #include "MusicScript.h"
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		MusicTrack

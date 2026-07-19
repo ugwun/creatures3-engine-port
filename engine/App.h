@@ -20,7 +20,7 @@
 #ifndef SmallFurryCreatures_h
 #define SmallFurryCreatures_h
 
-
+#include <cstring>
 #include "../common/C2eTypes.h"
 #include "resource.h"
 #include "AppConstants.h"

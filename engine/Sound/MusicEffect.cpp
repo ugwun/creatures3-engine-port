@@ -21,6 +21,7 @@
 #include "MusicEffect.h"
 #include "MusicScript.h"
 #include "MusicTypes.h"
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		MusicEffect

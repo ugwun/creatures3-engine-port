@@ -32,6 +32,7 @@
 #include "MusicScript.h"
 #include "MusicAction.h"
 #include "MusicManager.h"
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		MusicAleotoricLayer

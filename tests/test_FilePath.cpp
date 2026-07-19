@@ -115,6 +115,10 @@ InputManager::InputManager() {}
 
 // FileFunc dependencies
 bool FileExists(char const *) { return false; }
+bool FileExistsMutable(char *, size_t) { return false; }
+#ifdef __linux__
+bool ResolveCaseInsensitive(char *, size_t) { return false; }
+#endif
 
 // General dependencies
 char *BuildFsp(unsigned int, char const *, int, bool) { return nullptr; }

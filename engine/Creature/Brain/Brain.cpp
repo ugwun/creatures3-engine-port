@@ -4,6 +4,7 @@
 
 #include "Brain.h"
 #include <algorithm>
+#include <cstring>
 #include "../Genome.h"
 
 #ifdef _DEBUG

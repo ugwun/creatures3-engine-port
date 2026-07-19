@@ -22,6 +22,7 @@
 #include "Display/ErrorMessageHandler.h"
 
 #include <arpa/inet.h>
+#include <cstdarg>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <string.h> // for memset

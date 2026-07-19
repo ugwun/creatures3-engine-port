@@ -24,7 +24,10 @@
 #include <cstdlib> // atof
 #include <time.h>
 #include <unistd.h> // chdir / getcwd
+#ifdef __APPLE__
 #include <mach-o/dyld.h> // _NSGetExecutablePath
+#endif
+#include <climits> // PATH_MAX
 
 // --- In-process crash reporter -----------------------------------------
 #include <cstring>    // strsignal()
@@ -37,14 +40,32 @@ static uint8_t sCrashStack[65536];
 
 // -----------------------------------------------------------------------
 // ExtractMangledName()
-// Parses the mangled C++ symbol from a macOS backtrace_symbols() string.
-// Format: "<frame>  <binary>  <address>  <mangled> + <offset>"
-// Returns a pointer into `sym` (no allocation), or nullptr on failure.
+// Parses the mangled C++ symbol from a backtrace_symbols() string.
+// macOS format: "<frame>  <binary>  <address>  <mangled> + <offset>"
+// Linux format: "binary(mangled+0xoffset) [0xaddress]"
+// Returns a pointer to `out` with the mangled name, or nullptr on failure.
 // -----------------------------------------------------------------------
 static const char *ExtractMangledName(const char *sym, char *out,
                                       size_t outLen) {
-  // Walk past: frame number, whitespace, binary name, whitespace, address,
-  // whitespace
+#ifdef __linux__
+  // Linux glibc format: "binary(mangled+0xoffset) [0xaddress]"
+  const char *openParen = strchr(sym, '(');
+  if (!openParen)
+    return nullptr;
+  const char *start = openParen + 1;
+  const char *end = strchr(start, '+');
+  if (!end)
+    end = strchr(start, ')');
+  if (!end || end == start)
+    return nullptr;
+  size_t len = (size_t)(end - start);
+  if (len == 0 || len >= outLen)
+    return nullptr;
+  memcpy(out, start, len);
+  out[len] = '\0';
+  return out;
+#else
+  // macOS format: "<frame>  <binary>  <address>  <mangled> + <offset>"
   const char *p = sym;
   while (*p == ' ')
     ++p; // skip leading spaces
@@ -70,6 +91,7 @@ static const char *ExtractMangledName(const char *sym, char *out,
   memcpy(out, start, len);
   out[len] = '\0';
   return out;
+#endif
 }
 
 // -----------------------------------------------------------------------
@@ -113,7 +135,7 @@ static void CrashSignalHandler(int sig) {
   // Give UDP packets 200ms to transmit before the process dies.
   usleep(200000);
 
-  // Re-raise so macOS still generates the .ips crash report.
+  // Re-raise so the OS generates a core dump / crash report.
   signal(sig, SIG_DFL);
   raise(sig);
 }
@@ -336,6 +358,7 @@ int main(int argc, char *argv[]) {
           toolsDir = toolsPathOverride;
         } else {
           // Resolve relative to the executable: <exe_dir>/../tools/
+#ifdef __APPLE__
           char exePath[1024];
           uint32_t exeSize = sizeof(exePath);
           if (_NSGetExecutablePath(exePath, &exeSize) == 0) {
@@ -345,6 +368,18 @@ int main(int argc, char *argv[]) {
               exeDir = exeDir.substr(0, lastSlash);
             toolsDir = exeDir + "/../tools";
           }
+#elif defined(__linux__)
+          char exePath[PATH_MAX];
+          ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+          if (len > 0) {
+            exePath[len] = '\0';
+            std::string exeDir(exePath);
+            size_t lastSlash = exeDir.rfind('/');
+            if (lastSlash != std::string::npos)
+              exeDir = exeDir.substr(0, lastSlash);
+            toolsDir = exeDir + "/../tools";
+          }
+#endif
           // Fallback: ./tools/ relative to cwd
           if (toolsDir.empty()) {
             toolsDir = "./tools";

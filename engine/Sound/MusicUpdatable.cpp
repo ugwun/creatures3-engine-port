@@ -27,6 +27,7 @@
 #include "MusicGlobals.h"
 
 #include <float.h>
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		~MusicUpdatable

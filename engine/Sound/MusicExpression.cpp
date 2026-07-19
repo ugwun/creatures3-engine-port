@@ -51,6 +51,7 @@
 #include "MusicScript.h"
 
 #include <math.h>
+#include <cstring>
 
 #define PI 3.14159265359
 

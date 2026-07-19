@@ -50,6 +50,7 @@
 
 #include "MusicTypes.h"
 #include "MusicErrors.h"
+#include <cstddef>
 #include <vector>
 
 class MusicManager;

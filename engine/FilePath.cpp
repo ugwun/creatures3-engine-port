@@ -4,6 +4,8 @@
 #include "CreaturesArchive.h"
 #include "Display/ErrorMessageHandler.h"
 #include <algorithm>
+#include <cstring>
+#include <unistd.h>
 
 #include "unix/FileFuncs.h"
 
@@ -183,8 +185,21 @@ bool FilePath::GetWorldDirectoryVersionOfTheFile(std::string &path,
     std::string tempPath = path;
     path += myName;
 
-    if (access(path.data(), F_OK) == 0)
-      return true;
+    // Check if the file exists (with case-insensitive fallback on Linux)
+    {
+      char buf[4096];
+      if (path.size() < sizeof(buf)) {
+        memcpy(buf, path.c_str(), path.size() + 1);
+#ifdef __linux__
+        if (access(buf, F_OK) != 0)
+          ResolveCaseInsensitive(buf, sizeof(buf));
+#endif
+        if (access(buf, F_OK) == 0) {
+          path = buf;
+          return true;
+        }
+      }
+    }
 
     // now check for C16 version as the call would have
     // sent S16 by default

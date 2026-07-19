@@ -25,6 +25,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "../../unix/FileFuncs.h"
+#include <cstring>
+
 MemoryMappedFile::MemoryMappedFile()
     : myFile(0), myLength(0), myBasePtr(NULL), myPosition(0) {}
 
@@ -56,10 +59,24 @@ void MemoryMappedFile::Open(
   else if (desiredAccessFlags & GENERIC_WRITE)
     oflags |= O_WRONLY;
 
-  myFile = open(filename.c_str(), oflags, S_IREAD | S_IWRITE);
+  // On Linux, resolve case-insensitive filename before open().
+  // Game assets from Windows/macOS may have mixed-case extensions.
+  std::string resolvedFilename = filename;
+#ifdef __linux__
+  {
+    char buf[4096];
+    if (resolvedFilename.size() < sizeof(buf)) {
+      memcpy(buf, resolvedFilename.c_str(), resolvedFilename.size() + 1);
+      if (ResolveCaseInsensitive(buf, sizeof(buf)))
+        resolvedFilename = buf;
+    }
+  }
+#endif
+
+  myFile = open(resolvedFilename.c_str(), oflags, S_IREAD | S_IWRITE);
   if (myFile == -1) {
     throw MemoryMappedFileException(
-        "MemoryMappedFile::Open() - open failed: " + filename, __LINE__);
+        "MemoryMappedFile::Open() - open failed: " + resolvedFilename, __LINE__);
   }
 
   if (fileSize == 0) {

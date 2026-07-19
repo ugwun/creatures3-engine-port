@@ -21,6 +21,7 @@
 #include "MusicManager.h"
 #include "MusicTrack.h"
 #include "MusicScript.h"
+#include <cstring>
 
 // ----------------------------------------------------------------------
 // Method:		MusicLoopLayer

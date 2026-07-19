@@ -11,6 +11,7 @@
 
 
 #include "TimeFuncs.h"
+#include <cstring>
 #include <time.h>
 
 
