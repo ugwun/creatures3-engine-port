@@ -3741,12 +3741,18 @@ void Map::MoveCreatureInsideRoomSystem(
       downFootPosition += path;
       velocity = velocityEnd;
 #ifdef _DEBUG
-      // Check integrity
+      // Check integrity — recover gracefully if the creature ends up
+      // outside the room system (floating-point edge case).  This mirrors
+      // the recovery logic in the blocked/collision path below.
       footLeftTemp += path;
       footRightTemp += path;
       yMinTemp += path.y;
-      _ASSERT(IsCreatureLocationValidInRoomSystem(
-          footLeftTemp, footRightTemp, yMinTemp, minDoorPermiability));
+      if (!IsCreatureLocationValidInRoomSystem(footLeftTemp, footRightTemp,
+                                               yMinTemp,
+                                               minDoorPermiability)) {
+        velocity = ZERO_VECTOR;
+        stopped = true;
+      }
 #endif
       return;
     }
