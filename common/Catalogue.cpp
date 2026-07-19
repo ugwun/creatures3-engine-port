@@ -30,6 +30,7 @@
 #include "FileLocaliser.h"
 #include "SimpleLexer.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -76,6 +77,11 @@ void Catalogue::AddDir(const std::string &dir, const std::string &langid) {
   if (!small_yellow_and_leechlike.LocaliseDirContents(dir, langid, files,
                                                       "*.catalogue"))
     throw Err("CLE0002: Error reading directory \"%s\"", dir.c_str());
+
+  // Sort so that base files are loaded before override/patch files.
+  // readdir() order is filesystem-dependent; the original Windows engine
+  // relied on FindFirstFile returning alphabetical order.
+  std::sort(files.begin(), files.end());
 
   for (it = files.begin(); it != files.end(); ++it)
     AddLocalisedFile(*it);
