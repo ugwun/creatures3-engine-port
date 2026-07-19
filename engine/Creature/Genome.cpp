@@ -69,7 +69,7 @@ Genome::Genome()
 // destructor - doesn't affect genome data file
 Genome::~Genome()
 {
-	delete myGenes;  
+	delete[] myGenes;  
 }
 
 

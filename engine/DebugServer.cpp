@@ -1397,9 +1397,10 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 	});
 
 static const char* OPCODE_NAMES[] = {
-	"stop", "nop", "store", "load", "if=0", "if!=0", "add", "sub", "mul", "div",
-	"absDiff", "thresh_add", "thresh_set", "rnd", "min", "max",
-	"if<0", "if>0", "if<=0", "if>=0",
+	"stop", "blank", "store", "load",
+	"if==", "if!=", "if>", "if<", "if>=", "if<=",
+	"if0", "if!0", "if>0", "if<0", "if>=0", "if<=0",
+	"add", "sub", "subFrom", "mul", "div", "divInto", "min", "max",
 	"setRate", "tend", "neg", "abs", "dist", "flip",
 	"nop", "setSpr", "bound01", "bound±1", "addStore", "tendStore",
 	"threshold", "leak", "rest", "gain", "persist", "noise", "wta", "setSTLT",
@@ -1411,6 +1412,7 @@ static const char* OPCODE_NAMES[] = {
 	"preserve", "restore", "preserveSpr", "restoreSpr",
 	"if<0Goto", "if>0Goto"
 };
+static const int NUM_OPCODE_NAMES = sizeof(OPCODE_NAMES) / sizeof(OPCODE_NAMES[0]);
 static const char* OPERAND_NAMES[] = {
 	"acc", "input", "dend", "neuron", "spare",
 	"random",
@@ -1434,7 +1436,7 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 		if (!first) out << ",";
 		first = false;
 
-		std::string opName = (opCode < 69) ? OPCODE_NAMES[opCode] : "???";
+		std::string opName = (opCode < NUM_OPCODE_NAMES) ? OPCODE_NAMES[opCode] : "???";
 		std::string operandName = (operandVariable < 16) ? OPERAND_NAMES[operandVariable] : "???";
 
 		// convert float approximation (logic from Genome::GetFloat/SVRuleEntry)

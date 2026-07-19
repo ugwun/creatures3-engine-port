@@ -503,12 +503,18 @@ TEST(GenomeTest, AdjustGenePointerBy_MovesPointerCorrectly) {
 static byte *MakeMatchingGenome(int numGenes, byte bodyValue, int &outLength) {
   const int headerSize = GH_LENGTH; // = 12
   const int bodySize = 4;
+  // Cross() writes parent monikers (32 bytes each) at offsets GO_MUM and
+  // GO_DAD into the first gene.  GO_DAD + 32 - GH_LENGTH = 65 body bytes
+  // minimum, rounded to 68.
+  const int firstBodySize = 68;
   const int geneSize = headerSize + bodySize;
-  const int totalSize = geneSize * numGenes + 4; // genes + 'gend'
+  const int firstGeneSize = headerSize + firstBodySize;
+  const int totalSize = firstGeneSize + geneSize * (numGenes - 1) + 4; // genes + 'gend'
 
   byte *buf = new byte[totalSize]();
   int off = 0;
   for (int i = 0; i < numGenes; ++i) {
+    int thisBody = (i == 0) ? firstBodySize : bodySize;
     WriteToken(buf, off, GENETOKEN);
     buf[off + GH_TYPE] = BIOCHEMISTRYGENE;
     buf[off + GH_SUB] = G_RECEPTOR;
@@ -518,12 +524,10 @@ static byte *MakeMatchingGenome(int numGenes, byte bodyValue, int &outLength) {
     buf[off + GH_FLAGS] = MUT | DUP | CUT;
     buf[off + GH_MUTABILITY] = 0; // fully mutable (0 = no suppression)
     buf[off + GH_VARIANT] = 0;
-    // 4-byte body: fill with sentinel
-    buf[off + headerSize + 0] = bodyValue;
-    buf[off + headerSize + 1] = bodyValue;
-    buf[off + headerSize + 2] = bodyValue;
-    buf[off + headerSize + 3] = bodyValue;
-    off += geneSize;
+    // body: fill with sentinel
+    for (int b = 0; b < thisBody; ++b)
+      buf[off + headerSize + b] = bodyValue;
+    off += headerSize + thisBody;
   }
   WriteToken(buf, off, ENDGENOMETOKEN);
   outLength = totalSize;
