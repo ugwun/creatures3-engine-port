@@ -534,6 +534,16 @@ static byte *MakeMatchingGenome(int numGenes, byte bodyValue, int &outLength) {
   return buf;
 }
 
+// Keep buffer construction and LoadRaw() in separate statements.  Passing
+// outLength both as an output argument to MakeMatchingGenome() and as another
+// argument to LoadRaw() leaves their evaluation order unspecified, so GCC may
+// read an uninitialised length before MakeMatchingGenome() sets it.
+static void LoadMatchingGenome(TestGenome &genome, int numGenes,
+                               byte bodyValue, int &outLength) {
+  byte *buf = MakeMatchingGenome(numGenes, bodyValue, outLength);
+  genome.LoadRaw(buf, outLength);
+}
+
 // ==========================================================================
 // Cross — moniker stored in child
 // ==========================================================================
@@ -541,8 +551,8 @@ static byte *MakeMatchingGenome(int numGenes, byte bodyValue, int &outLength) {
 TEST(GenomeTest, Cross_ChildMoniker_IsSet) {
   int mumLen, dadLen;
   TestGenome mum, dad, child;
-  mum.LoadRaw(MakeMatchingGenome(3, 0xAA, mumLen), mumLen);
-  dad.LoadRaw(MakeMatchingGenome(3, 0xBB, dadLen), dadLen);
+  LoadMatchingGenome(mum, 3, 0xAA, mumLen);
+  LoadMatchingGenome(dad, 3, 0xBB, dadLen);
   mum.SetMoniker("mum-1234");
   dad.SetMoniker("dad-5678");
 
@@ -579,8 +589,10 @@ TEST(GenomeTest, Cross_ParentMonikersWrittenIntoHeaderGene) {
 
   int mumLen, dadLen;
   TestGenome mum, dad, child;
-  mum.LoadRaw(MakeLargeHeaderGenome(0xAA, mumLen), mumLen);
-  dad.LoadRaw(MakeLargeHeaderGenome(0xBB, dadLen), dadLen);
+  byte *mumBuffer = MakeLargeHeaderGenome(0xAA, mumLen);
+  mum.LoadRaw(mumBuffer, mumLen);
+  byte *dadBuffer = MakeLargeHeaderGenome(0xBB, dadLen);
+  dad.LoadRaw(dadBuffer, dadLen);
   // Cross() writes moniker[i] for i in [0,32), padding with 0.
   // Use exactly 30-char monikers so reads are unambiguous.
   mum.SetMoniker("MUM123456789012345678901234567"); // 30 chars
@@ -605,15 +617,15 @@ TEST(GenomeTest, Cross_ChildLength_WithinBounds) {
   // and must be at least 8 bytes (one gene marker + endgenome).
   int mumLen, dadLen;
   TestGenome mum, dad, child;
-  mum.LoadRaw(MakeMatchingGenome(5, 0x11, mumLen), mumLen);
-  dad.LoadRaw(MakeMatchingGenome(5, 0x22, dadLen), dadLen);
+  LoadMatchingGenome(mum, 5, 0x11, mumLen);
+  LoadMatchingGenome(dad, 5, 0x22, dadLen);
 
   for (unsigned int seed = 1; seed <= 10; ++seed) {
     TestGenome c;
     int mL, dL;
     TestGenome m, d;
-    m.LoadRaw(MakeMatchingGenome(5, 0x11, mL), mL);
-    d.LoadRaw(MakeMatchingGenome(5, 0x22, dL), dL);
+    LoadMatchingGenome(m, 5, 0x11, mL);
+    LoadMatchingGenome(d, 5, 0x22, dL);
     RandQD1::seed(seed);
     c.Cross("test", &m, &d, 0, 0, 0, 0);
 
@@ -632,8 +644,8 @@ TEST(GenomeTest, Cross_ZeroMutationChance_NeverMutates) {
   int mumLen, dadLen;
   for (unsigned int seed = 1; seed <= 10; ++seed) {
     TestGenome mum, dad, child;
-    mum.LoadRaw(MakeMatchingGenome(4, 0xCC, mumLen), mumLen);
-    dad.LoadRaw(MakeMatchingGenome(4, 0xDD, dadLen), dadLen);
+    LoadMatchingGenome(mum, 4, 0xCC, mumLen);
+    LoadMatchingGenome(dad, 4, 0xDD, dadLen);
     mum.SetMoniker("mum");
     dad.SetMoniker("dad");
 
@@ -669,8 +681,8 @@ TEST(GenomeTest, Cross_MaxMutationChance_ProducesMutations) {
   for (int s = 1; s <= numSeeds; ++s) {
     int mumLen, dadLen;
     TestGenome mum, dad, child;
-    mum.LoadRaw(MakeMatchingGenome(3, 0x00, mumLen), mumLen);
-    dad.LoadRaw(MakeMatchingGenome(3, 0xFF, dadLen), dadLen);
+    LoadMatchingGenome(mum, 3, 0x00, mumLen);
+    LoadMatchingGenome(dad, 3, 0xFF, dadLen);
     mum.SetMoniker("m");
     dad.SetMoniker("d");
 
@@ -681,8 +693,8 @@ TEST(GenomeTest, Cross_MaxMutationChance_ProducesMutations) {
     // So we might not always see one. Use a larger genome instead:
     int mL2, dL2;
     TestGenome m2, d2, c2;
-    m2.LoadRaw(MakeMatchingGenome(10, 0x00, mL2), mL2);
-    d2.LoadRaw(MakeMatchingGenome(10, 0xFF, dL2), dL2);
+    LoadMatchingGenome(m2, 10, 0x00, mL2);
+    LoadMatchingGenome(d2, 10, 0xFF, dL2);
     m2.SetMoniker("m");
     d2.SetMoniker("d");
     RandQD1::seed((unsigned int)s);
@@ -716,8 +728,8 @@ TEST(GenomeTest, Cross_ZeroMutation_ChildBodyBytesFromParents) {
   for (unsigned int seed = 1; seed <= 5; ++seed) {
     int mumLen, dadLen;
     TestGenome mum, dad, child;
-    mum.LoadRaw(MakeMatchingGenome(6, 0xAA, mumLen), mumLen);
-    dad.LoadRaw(MakeMatchingGenome(6, 0xBB, dadLen), dadLen);
+    LoadMatchingGenome(mum, 6, 0xAA, mumLen);
+    LoadMatchingGenome(dad, 6, 0xBB, dadLen);
     mum.SetMoniker("mum");
     dad.SetMoniker("dad");
 
@@ -769,8 +781,8 @@ TEST(GenomeTest, Cross_IdenticalParents_ChildMatchesParent) {
   for (unsigned int seed = 1; seed <= 3; ++seed) {
     int mumLen, dadLen;
     TestGenome mum, dad, child;
-    mum.LoadRaw(MakeMatchingGenome(5, sentinel, mumLen), mumLen);
-    dad.LoadRaw(MakeMatchingGenome(5, sentinel, dadLen), dadLen);
+    LoadMatchingGenome(mum, 5, sentinel, mumLen);
+    LoadMatchingGenome(dad, 5, sentinel, dadLen);
     mum.SetMoniker("same");
     dad.SetMoniker("same");
 
@@ -811,8 +823,8 @@ TEST(GenomeTest, Cross_CrossoverCount_IsNonNegative) {
   for (unsigned int seed = 1; seed <= 5; ++seed) {
     int mL, dL;
     TestGenome m, d, c;
-    m.LoadRaw(MakeMatchingGenome(4, 0x10, mL), mL);
-    d.LoadRaw(MakeMatchingGenome(4, 0x20, dL), dL);
+    LoadMatchingGenome(m, 4, 0x10, mL);
+    LoadMatchingGenome(d, 4, 0x20, dL);
     m.SetMoniker("m");
     d.SetMoniker("d");
 
@@ -832,13 +844,13 @@ TEST(GenomeTest, Cross_DeterministicWithSameSeed) {
   int mL1, dL1, mL2, dL2;
   TestGenome m1, d1, child1;
   TestGenome m2, d2, child2;
-  m1.LoadRaw(MakeMatchingGenome(4, 0xAA, mL1), mL1);
-  d1.LoadRaw(MakeMatchingGenome(4, 0xBB, dL1), dL1);
+  LoadMatchingGenome(m1, 4, 0xAA, mL1);
+  LoadMatchingGenome(d1, 4, 0xBB, dL1);
   m1.SetMoniker("mum");
   d1.SetMoniker("dad");
 
-  m2.LoadRaw(MakeMatchingGenome(4, 0xAA, mL2), mL2);
-  d2.LoadRaw(MakeMatchingGenome(4, 0xBB, dL2), dL2);
+  LoadMatchingGenome(m2, 4, 0xAA, mL2);
+  LoadMatchingGenome(d2, 4, 0xBB, dL2);
   m2.SetMoniker("mum");
   d2.SetMoniker("dad");
 
@@ -866,8 +878,8 @@ TEST(GenomeTest, Cross_DifferentSeeds_CanProduceDifferentChildren) {
   for (unsigned int seed = 1; seed <= 30 && !sawDifference; ++seed) {
     int mL, dL;
     TestGenome m, d, c;
-    m.LoadRaw(MakeMatchingGenome(15, 0xAA, mL), mL);
-    d.LoadRaw(MakeMatchingGenome(15, 0xBB, dL), dL);
+    LoadMatchingGenome(m, 15, 0xAA, mL);
+    LoadMatchingGenome(d, 15, 0xBB, dL);
     m.SetMoniker("mum");
     d.SetMoniker("dad");
 

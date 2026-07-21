@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/mman.h>
 
 #ifdef __linux__
 #include <cstring>
@@ -73,17 +73,19 @@ bool DeleteFile( const char* filename )
 
 
 // win32 replacement
-// hmmm... thought there would be a better way...
 bool CopyFile( const char* src, const char* dest, bool overwrite )
 {
 	int infd = -1;
 	int outfd = -1;
-	void* p = NULL;
 	struct stat statbuf;
+	struct stat deststat;
 	bool success = false;	// positive attitude.
-	int flags;
+	bool destinationCreated = false;
+	bool destinationExisted = false;
+	int flags = O_CREAT | O_WRONLY;
 
-	// open input file and map it into memory
+	// Open the source first so a failed source lookup never creates a
+	// destination file.
 	infd = open( src, O_RDONLY );
 	if( infd == -1 )
 		goto cleanup;
@@ -91,34 +93,72 @@ bool CopyFile( const char* src, const char* dest, bool overwrite )
 	if( fstat( infd, &statbuf ) != 0 )
 		goto cleanup;
 
-	p = mmap( 0, statbuf.st_size, PROT_READ, MAP_PRIVATE, infd, 0 );
-	if( p == MAP_FAILED )
-		goto cleanup;
+	// CopyFile(path, path, true) must not truncate its own source.  This also
+	// catches different paths (for example hard links) to the same inode.
+	if( stat( dest, &deststat ) == 0 )
+	{
+		destinationExisted = true;
+		if( deststat.st_dev == statbuf.st_dev && deststat.st_ino == statbuf.st_ino )
+			goto cleanup;
+	}
 
-
-	// create output file
-	flags = O_CREAT|O_WRONLY;
 	if( overwrite )
 		flags |= O_TRUNC;
 	else
 		flags |= O_EXCL;	// fail if file exists
 
-	outfd = open( dest, O_WRONLY );
+	outfd = open( dest, flags, statbuf.st_mode & 0777 );
 	if( outfd == -1 )
 		goto cleanup;
+	destinationCreated = true;
 
-	// blam.
-	if( write( outfd, p, statbuf.st_size ) == statbuf.st_size )
-		success = true; 
+	// read() and write() are allowed to complete only part of a request, and
+	// can be interrupted by a signal.  Loop until EOF so large and empty files
+	// are both copied correctly.
+	for( ;; )
+	{
+		char buffer[64 * 1024];
+		ssize_t bytesRead;
+		do
+		{
+			bytesRead = read( infd, buffer, sizeof(buffer) );
+		}
+		while( bytesRead == -1 && errno == EINTR );
 
+		if( bytesRead == 0 )
+		{
+			success = true;
+			break;
+		}
+		if( bytesRead == -1 )
+			break;
+
+		ssize_t written = 0;
+		while( written < bytesRead )
+		{
+			ssize_t result;
+			do
+			{
+				result = write( outfd, buffer + written, bytesRead - written );
+			}
+			while( result == -1 && errno == EINTR );
+
+			if( result <= 0 )
+				goto cleanup;
+			written += result;
+		}
+	}
 
 cleanup:
 	if( outfd != -1 )
-		close( outfd );
-	if( p )
-		munmap( p, statbuf.st_size );
+	{
+		if( close( outfd ) != 0 )
+			success = false;
+	}
 	if( infd != -1 )
 		close( infd );
+	if( !success && destinationCreated && !destinationExisted )
+		unlink( dest );
 
 	return success;
 }

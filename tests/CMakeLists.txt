@@ -380,6 +380,21 @@ target_link_libraries(test_GetFilesInDirectory PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_GetFilesInDirectory)
 
 # ---------------------------------------------------------------------------
+# test_FileFuncs — POSIX file-operation compatibility helpers
+# ---------------------------------------------------------------------------
+add_executable(test_FileFuncs
+  test_FileFuncs.cpp
+  ../engine/unix/FileFuncs.cpp
+)
+target_include_directories(test_FileFuncs PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_FileFuncs PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_FileFuncs)
+
+# ---------------------------------------------------------------------------
 # test_InputManager — key state tracking for IsKeyDown() polling
 # ---------------------------------------------------------------------------
 add_executable(test_InputManager
