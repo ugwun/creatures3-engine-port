@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -136,6 +137,29 @@ static bool WaitForAPI(int port, int timeoutSeconds) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	}
 	return false;
+}
+
+static std::string ExtractJsonString(const std::string& json,
+                                     const std::string& key) {
+	std::string searchKey = "\"" + key + "\":\"";
+	size_t pos = json.find(searchKey);
+	if (pos == std::string::npos) return "";
+	pos += searchKey.size();
+	std::string result;
+	for (size_t i = pos; i < json.size(); ++i) {
+		if (json[i] == '\\' && i + 1 < json.size()) {
+			char next = json[i + 1];
+			if (next == '"') { result += '"'; ++i; }
+			else if (next == '\\') { result += '\\'; ++i; }
+			else if (next == 'n') { result += '\n'; ++i; }
+			else { result += json[i]; }
+		} else if (json[i] == '"') {
+			break;
+		} else {
+			result += json[i];
+		}
+	}
+	return result;
 }
 
 // Send SIGTERM to a process and wait for it to exit (with timeout).
@@ -397,7 +421,57 @@ TEST_F(IntegrationTier1, CaosArithmetic) {
 }
 
 // ---------------------------------------------------------------------------
-// Test 6: CAOS syntax error returns ok:false
+// Test 6: POSIX timing commands expose live clock and calendar values
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier1, CaosTimingCommandsReturnLiveValues) {
+	enginePid = LaunchEngine();
+	ASSERT_GT(enginePid, 0) << "Failed to fork engine process";
+
+	ASSERT_TRUE(WaitForAPI(apiPort, 20))
+	    << "REST API did not become available within 20s";
+
+	httplib::Client cli("localhost", apiPort);
+	cli.set_connection_timeout(2, 0);
+	cli.set_read_timeout(10, 0);
+
+	auto ExecuteInteger = [&cli](const std::string& caos) -> std::string {
+		auto res = cli.Post("/api/execute",
+		                    "{\"caos\":\"" + caos + "\"}",
+		                    "application/json");
+		if (!res || res->status != 200 ||
+		    res->body.find("\"ok\":true") == std::string::npos)
+			return "";
+		return ExtractJsonString(res->body, "output");
+	};
+
+	std::string msecBeforeText = ExecuteInteger("outv msec");
+	ASSERT_FALSE(msecBeforeText.empty());
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	std::string msecAfterText = ExecuteInteger("outv msec");
+	ASSERT_FALSE(msecAfterText.empty());
+
+	long long msecBefore = 0;
+	long long msecAfter = 0;
+	ASSERT_NO_THROW(msecBefore = std::stoll(msecBeforeText));
+	ASSERT_NO_THROW(msecAfter = std::stoll(msecAfterText));
+	EXPECT_GT((uint32_t)msecAfter - (uint32_t)msecBefore, 0u);
+
+	std::string dayText = ExecuteInteger("outv dayt");
+	std::string monthText = ExecuteInteger("outv mont");
+	ASSERT_FALSE(dayText.empty());
+	ASSERT_FALSE(monthText.empty());
+	int day = 0;
+	int month = 0;
+	ASSERT_NO_THROW(day = std::stoi(dayText));
+	ASSERT_NO_THROW(month = std::stoi(monthText));
+	EXPECT_GE(day, 1);
+	EXPECT_LE(day, 31);
+	EXPECT_GE(month, 1);
+	EXPECT_LE(month, 12);
+}
+
+// ---------------------------------------------------------------------------
+// Test 7: CAOS syntax error returns ok:false
 // ---------------------------------------------------------------------------
 TEST_F(IntegrationTier1, CaosSyntaxError) {
 	enginePid = LaunchEngine();

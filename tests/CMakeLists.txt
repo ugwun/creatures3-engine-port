@@ -46,6 +46,17 @@ add_executable(test_Maths test_Maths.cpp ../engine/Maths.cpp)
 add_executable(test_TickRate test_TickRate.cpp)
 
 # ---------------------------------------------------------------------------
+# test_TimeFuncs — POSIX monotonic and local calendar clocks
+# ---------------------------------------------------------------------------
+add_executable(test_TimeFuncs test_TimeFuncs.cpp ../engine/TimeFuncs.cpp)
+target_include_directories(test_TimeFuncs PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_TimeFuncs PRIVATE GTest::gtest_main)
+
+# ---------------------------------------------------------------------------
 # test_SimpleLexer
 # ---------------------------------------------------------------------------
 add_executable(test_SimpleLexer test_SimpleLexer.cpp ../common/SimpleLexer.cpp)
@@ -284,6 +295,7 @@ gtest_discover_tests(test_HistoryHandlers)
 gtest_discover_tests(test_AppHandlers)
 gtest_discover_tests(test_PointerAgent)
 gtest_discover_tests(test_TickRate)
+gtest_discover_tests(test_TimeFuncs)
 
 # ---------------------------------------------------------------------------
 # test_V39Serialization — v39-specific deserialization branch tests
