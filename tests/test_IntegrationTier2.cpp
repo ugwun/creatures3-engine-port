@@ -604,3 +604,88 @@ TEST_F(IntegrationTier2, WorldSaveAndReloadPreservesState) {
 	    << "Game variable did not persist across save/reload. "
 	    << "Expected '77777', got: '" << output << "'";
 }
+
+// ---------------------------------------------------------------------------
+// Test 9: Headless saves retain a usable virtual viewport across reloads
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier2, HeadlessViewportSurvivesSaveAndReload) {
+	ASSERT_TRUE(LaunchAndWaitForAPI())
+	    << "Engine failed to boot or API unavailable";
+
+	auto cli = MakeClient();
+	cli.set_read_timeout(20, 0);
+
+	auto expectVirtualViewport = [&]() {
+		std::string result =
+		    ExecuteCAOS(cli, "inst outv wndw outs \\\"x\\\" outv wndh");
+		ASSERT_FALSE(result.empty()) << "CAOS execute returned empty";
+		ASSERT_NE(result.find("\"ok\":true"), std::string::npos)
+		    << "Failed to query viewport dimensions: " << result;
+		EXPECT_EQ(ExtractJsonString(result, "output"), "800x600")
+		    << "Headless worlds must use a portable virtual viewport";
+	};
+
+	expectVirtualViewport();
+
+	auto saveRes = cli.Post("/api/world/save", "", "application/json");
+	ASSERT_NE(saveRes, nullptr);
+	ASSERT_NE(saveRes->body.find("\"ok\":true"), std::string::npos)
+	    << "Save failed: " << saveRes->body;
+
+	auto loadRes = cli.Post("/api/world/load",
+	                        "{\"name\":\"Startup\"}",
+	                        "application/json");
+	ASSERT_NE(loadRes, nullptr);
+	ASSERT_NE(loadRes->body.find("\"ok\":true"), std::string::npos)
+	    << "Reload failed: " << loadRes->body;
+
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	ASSERT_TRUE(WaitForAPI(apiPort, 15))
+	    << "API not available after world reload";
+
+	expectVirtualViewport();
+}
+
+// ---------------------------------------------------------------------------
+// Test 10: Typed world creation writes GUI-compatible metadata
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier2, CreateWorldPersistsUndockedTypeAndBuild) {
+	ASSERT_TRUE(LaunchAndWaitForAPI())
+	    << "Engine failed to boot or API unavailable";
+
+	auto cli = MakeClient();
+	std::string body =
+	    "{\"name\":\"Typed API World\",\"world_type\":\"undocked\"}";
+	auto createRes = cli.Post("/api/world/create", body, "application/json");
+	ASSERT_NE(createRes, nullptr);
+	ASSERT_NE(createRes->body.find("\"ok\":true"), std::string::npos)
+	    << createRes->body;
+	EXPECT_NE(createRes->body.find("\"worldType\":\"undocked\""),
+	          std::string::npos);
+
+	std::string journal = tempDir + "/My Worlds/Typed API World/Journal/";
+	std::ifstream typeFile((journal + "wtype").c_str());
+	std::string worldType;
+	std::getline(typeFile, worldType);
+	EXPECT_EQ(worldType, "undocked");
+
+	std::ifstream buildFile((journal + "build").c_str());
+	std::string buildNumber;
+	std::getline(buildFile, buildNumber);
+	EXPECT_FALSE(buildNumber.empty());
+
+	// The isolated fixture intentionally has no Creatures 3 sibling data, so
+	// docked creation must fail clearly instead of creating a partial world.
+	body = "{\"name\":\"Unavailable Docked World\","
+	       "\"world_type\":\"docked\"}";
+	auto dockedRes = cli.Post("/api/world/create", body, "application/json");
+	ASSERT_NE(dockedRes, nullptr);
+	EXPECT_NE(dockedRes->body.find("\"ok\":false"), std::string::npos);
+	EXPECT_NE(dockedRes->body.find("Creatures 3 data is not available"),
+	          std::string::npos);
+
+	struct stat info;
+	EXPECT_NE(stat((tempDir + "/My Worlds/Unavailable Docked World").c_str(),
+	               &info),
+	          0);
+}

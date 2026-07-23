@@ -57,6 +57,21 @@ target_include_directories(test_TimeFuncs PRIVATE
 target_link_libraries(test_TimeFuncs PRIVATE GTest::gtest_main)
 
 # ---------------------------------------------------------------------------
+# test_WorldManagement — typed world metadata and migrated path resolution
+# ---------------------------------------------------------------------------
+add_executable(test_WorldManagement
+  test_WorldManagement.cpp
+  ../engine/ConfiguredPath.cpp
+  ../engine/WorldMetadata.cpp
+)
+target_include_directories(test_WorldManagement PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_WorldManagement PRIVATE GTest::gtest_main)
+
+# ---------------------------------------------------------------------------
 # test_SimpleLexer
 # ---------------------------------------------------------------------------
 add_executable(test_SimpleLexer test_SimpleLexer.cpp ../common/SimpleLexer.cpp)
@@ -296,6 +311,7 @@ gtest_discover_tests(test_AppHandlers)
 gtest_discover_tests(test_PointerAgent)
 gtest_discover_tests(test_TickRate)
 gtest_discover_tests(test_TimeFuncs)
+gtest_discover_tests(test_WorldManagement)
 
 # ---------------------------------------------------------------------------
 # test_V39Serialization — v39-specific deserialization branch tests

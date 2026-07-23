@@ -72,12 +72,13 @@ bool MainCamera::StartUp(
   myWorldPosition.SetY(viewy);
   myFullScreenFlag = fullScreen;
 
+  // Start() also establishes the virtual 800x600 surface used by headless
+  // worlds.  Skipping it leaves the main camera with a zero-sized view which
+  // is then persisted in the world archive.
+  DisplayEngine::theRenderer().SetFlags(DISPLAY_BACKGROUND | DISPLAY_SPRITES);
+  StartDisplayEngine();
+
   if (!IsHeadlessMode()) {
-    // start up the display engine
-    DisplayEngine::theRenderer().SetFlags(DISPLAY_BACKGROUND | DISPLAY_SPRITES);
-
-    StartDisplayEngine();
-
     SharedGallery::theSharedGallery().PreloadBackgrounds();
   }
 

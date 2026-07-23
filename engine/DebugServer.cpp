@@ -2762,7 +2762,8 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 	});
 
 	// ── POST /api/world/create ──────────────────────────────────────
-	// Create a new empty world.  Body: { "name": "..." }
+	// Create a new empty world.
+	// Body: { "name": "...", "world_type": "undocked"|"docked" }
 	myImpl->svr.Post("/api/world/create", [this](const httplib::Request& req, httplib::Response& res) {
 		std::string body = req.body;
 		auto* item = new WorkItem();
@@ -2771,9 +2772,14 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				auto j = nlohmann::json::parse(body);
 				std::string name = j.value("name", "");
 				if (name.empty()) return "{\"ok\":false,\"error\":\"Missing 'name'\"}";
-				bool ok = theApp.CreateNewWorld(name);
-				if (ok) return "{\"ok\":true,\"world\":\"" + JsonEscape(name) + "\"}";
-				else return "{\"ok\":false,\"error\":\"CreateNewWorld failed\"}";
+				std::string worldType = j.value("world_type", "undocked");
+				std::string error;
+				bool ok = theApp.CreateNewWorldWithType(name, worldType, error);
+				if (ok) {
+					return "{\"ok\":true,\"world\":\"" + JsonEscape(name) +
+						"\",\"worldType\":\"" + JsonEscape(worldType) + "\"}";
+				}
+				return "{\"ok\":false,\"error\":\"" + JsonEscape(error) + "\"}";
 			} catch (std::exception& e) {
 				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
 			}
@@ -2799,8 +2805,13 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				auto j = nlohmann::json::parse(body);
 				std::string name = j.value("name", "");
 				if (name.empty()) return "{\"ok\":false,\"error\":\"Missing 'name'\"}";
+				std::string worldType;
+				std::string error;
+				if (!theApp.ValidateWorldForLoad(name, worldType, error))
+					return "{\"ok\":false,\"error\":\"" + JsonEscape(error) + "\"}";
 				theApp.myLoadThisWorldNextTick = name;
-				return "{\"ok\":true,\"loading\":\"" + JsonEscape(name) + "\"}";
+				return "{\"ok\":true,\"loading\":\"" + JsonEscape(name) +
+					"\",\"worldType\":\"" + JsonEscape(worldType) + "\"}";
 			} catch (std::exception& e) {
 				return std::string("{\"ok\":false,\"error\":\"") + JsonEscape(e.what()) + "\"}";
 			}

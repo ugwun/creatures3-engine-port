@@ -177,6 +177,11 @@ public:
   bool GetDirectories();
   bool InitLocalisation() override;
   bool CreateNewWorld(std::string &worldName) override;
+  bool CreateNewWorldWithType(const std::string &worldName,
+                              const std::string &worldType,
+                              std::string &error);
+  bool ValidateWorldForLoad(const std::string &worldName,
+                            std::string &worldType, std::string &error);
 
   void BeginWaitCursor();
   void EndWaitCursor();
@@ -266,6 +271,8 @@ public:
   Configurator &MachineSettings() { return myMachineSettings; }
 
 private:
+  bool PrepareWorldForLoad(const std::string &worldName, std::string &error);
+  bool Creatures3IsAvailable();
   void DoLoadWorld(std::string worldName);
   void internalWindowHasResized();
   void internalWindowHasMoved();

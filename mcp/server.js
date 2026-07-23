@@ -320,11 +320,15 @@ server.tool(
 // ── create_world ───────────────────────────────────────────────────────
 server.tool(
   "create_world",
-  "Create a new empty world with the given name. The world becomes available for loading.",
-  { name: z.string().describe("Name for the new world") },
-  async ({ name }) => {
+  "Create a new empty undocked (Docking Station only) or docked (Docking Station plus Creatures 3) world. The world becomes available for loading.",
+  {
+    name: z.string().describe("Name for the new world"),
+    world_type: z.enum(["undocked", "docked"]).optional()
+      .describe("World content type; defaults to undocked")
+  },
+  async ({ name, world_type = "undocked" }) => {
     try {
-      return textResult(await apiPost("/api/world/create", { name }));
+      return textResult(await apiPost("/api/world/create", { name, world_type }));
     } catch (e) {
       return errorResult(e.message);
     }

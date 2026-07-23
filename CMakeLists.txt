@@ -189,7 +189,9 @@ set(SRC_FILES
   engine/Sound/stub/stub_Soundlib.cpp
   engine/Stimulus.cpp
   engine/TimeFuncs.cpp
+  engine/ConfiguredPath.cpp
   engine/World.cpp
+  engine/WorldMetadata.cpp
   engine/md5.cpp
   engine/mfchack.cpp
   engine/unix/File.cpp

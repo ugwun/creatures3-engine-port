@@ -143,8 +143,8 @@ Any MCP client that supports stdio transport can connect. The server expects:
 | Tool | Description |
 |---|---|
 | `list_worlds` | List all available worlds, current world name, and world tick |
-| `create_world` | Create a new empty world with the given name |
-| `load_world` | Load an existing world by name (world switches on next tick) |
+| `create_world` | Create a new empty world; optional `world_type` is `undocked` (default, DS only) or `docked` (DS + C3) |
+| `load_world` | Load an existing world by name and apply its persisted world type (world switches on next tick) |
 | `save_world` | Save the current world state to disk |
 | `get_world_tick` | Get current world tick, system tick, and world name |
 

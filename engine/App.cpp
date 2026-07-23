@@ -25,6 +25,7 @@
 #include "Sound/MusicTimer.h"
 
 #include "AgentManager.h"
+#include "ConfiguredPath.h"
 
 #include "Creature/SensoryFaculty.h"
 
@@ -32,6 +33,7 @@
 #include "Caos/AutoDocumentationTable.h"
 #include "Creature/Brain/BrainScriptFunctions.h"
 #include "TimeFuncs.h"
+#include "WorldMetadata.h"
 
 // VK_ scancodes
 #include "unix/KeyScan.h"
@@ -40,6 +42,7 @@
 #include <unistd.h>
 #include "Display/SDL/SDL_Main.h"
 
+#include <cerrno>
 #include <fstream>
 // #include <sstream>
 ////////////////////// GLOBALS ////////////////////////
@@ -385,50 +388,7 @@ bool App::GetDirectories() {
 
     std::string buffer;
     if (!relPath.empty()) {
-      // Paths in machine.cfg may be absolute Windows paths like
-      // "C:\Games\Creatures Docking Station\Docking Station\Images\"
-      // Convert backslashes to forward slashes first.
-      for (size_t i = 0; i < relPath.size(); ++i)
-        if (relPath[i] == '\\')
-          relPath[i] = '/';
-
-      if (relPath.find(':') == std::string::npos) {
-        // Relative path (no drive letter): prepend machine base directly.
-        if (relPath == ".")
-          buffer = machineBase;
-        else
-          buffer = machineBase + relPath;
-        // Ensure trailing slash.
-        if (buffer.empty() || buffer[buffer.size() - 1] != '/')
-          buffer += '/';
-      } else {
-        // Absolute Windows path (contains ":"): strip drive + everything up to
-        // the Docking Station root, then use just the trailing subdir name.
-        // e.g. "C:/Games/Creatures Docking Station/Docking Station/Images/"
-        //   -> last trailing component = "Images"  -> machineBase + "Images/"
-        // Strip trailing slashes for find logic.
-        std::string trimmed = relPath;
-        while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
-          trimmed.resize(trimmed.size() - 1);
-
-        size_t lastSlash = trimmed.find_last_of('/');
-        if (lastSlash != std::string::npos) {
-          std::string subdir = trimmed.substr(lastSlash + 1);
-          if (!subdir.empty() && subdir != "." && subdir != "Docking Station") {
-            buffer = machineBase + subdir + "/";
-          } else {
-            // The last component IS the base dir itself (Main Directory = ".").
-            buffer = machineBase;
-          }
-        } else {
-          // Couldn't parse — fall back to key name without " Directory" suffix.
-          std::string k = key;
-          size_t suf = k.rfind(" Directory");
-          if (suf != std::string::npos)
-            k = k.substr(0, suf);
-          buffer = machineBase + k + "/";
-        }
-      }
+      buffer = ConfiguredPath::ResolvePrimary(relPath, machineBase);
     } else {
       // Key not in machine.cfg: construct from key name, stripping "
       // Directory".
@@ -488,28 +448,8 @@ bool App::GetDirectories() {
         continue;
       foundAny = true;
 
-      // Normalise path separators.
-      for (size_t i = 0; i < relPath.size(); ++i)
-        if (relPath[i] == '\\')
-          relPath[i] = '/';
-
-      std::string auxBuf;
-      if (relPath.find(':') == std::string::npos) {
-        // Relative path.
-        auxBuf = "./" + relPath;
-      } else {
-        // Absolute Windows path — extract last component.
-        std::string trimmed = relPath;
-        while (!trimmed.empty() && trimmed[trimmed.size() - 1] == '/')
-          trimmed.resize(trimmed.size() - 1);
-        size_t lastSl = trimmed.find_last_of('/');
-        if (lastSl != std::string::npos)
-          auxBuf = "./" + trimmed.substr(lastSl + 1);
-        else
-          auxBuf = "./" + trimmed;
-      }
-      if (auxBuf.empty() || auxBuf[auxBuf.size() - 1] != '/')
-        auxBuf += '/';
+      std::string auxBuf =
+          ConfiguredPath::ResolveAuxiliary(relPath, d == MAIN_DIR, "./");
 
       struct stat inf2;
       if (stat(auxBuf.c_str(), &inf2) == 0 && S_ISDIR(inf2.st_mode)) {
@@ -817,36 +757,18 @@ bool App::InitLocalisation() {
     // corrupts the ID mapping used by SensoryFaculty and brain init,
     // resulting in an AHE0009 crash during DoLoadWorld("Startup").
     //
-    // machine.cfg lists e.g.:
-    //   "Auxiliary 1 Catalogue Directory" "../Creatures 3/Catalogue"
+    // Resolve both native paths and Windows installation paths migrated to a
+    // sibling auxiliary-game directory.
     {
-      std::string base = catpath;
-      if (!base.empty() && base[base.size() - 1] == '/')
-        base.resize(base.size() - 1);
-      size_t slash = base.find_last_of('/');
-      if (slash != std::string::npos)
-        base = base.substr(0, slash + 1);
-
       for (int n = 1; n <= 9; ++n) {
         char key[64];
         snprintf(key, sizeof(key), "Auxiliary %d Catalogue Directory", n);
-        std::string relPath;
-        MachineSettings().Get(std::string(key), relPath);
-        if (relPath.empty())
+        std::string configuredAuxPath;
+        MachineSettings().Get(std::string(key), configuredAuxPath);
+        if (configuredAuxPath.empty())
           break;
-
-        for (size_t i = 0; i < relPath.size(); ++i)
-          if (relPath[i] == '\\')
-            relPath[i] = '/';
-
-        std::string auxCatPath;
-        if (!relPath.empty() && relPath[0] == '/')
-          auxCatPath = relPath;
-        else
-          auxCatPath = base + relPath;
-
-        if (auxCatPath.empty() || auxCatPath[auxCatPath.size() - 1] != '/')
-          auxCatPath += '/';
+        std::string auxCatPath = ConfiguredPath::ResolveAuxiliary(
+            configuredAuxPath, false, "./");
 
         // Load only Patch.catalogue — needed for C3 detection (REAQ
         // "patch_level").  Loading the full ~80 C3 catalogue files causes
@@ -999,6 +921,126 @@ bool App::CreateNewWorld(std::string &worldName) {
   ret = mkdir(path.GetFullPath().c_str(), 0755) == 0;
 
   return ret;
+}
+
+bool App::Creatures3IsAvailable() {
+  const char *bootstrap = GetAuxiliaryDirectory(BOOTSTRAP_DIR);
+  const char *catalogue = GetAuxiliaryDirectory(CATALOGUE_DIR);
+  if (!bootstrap || !catalogue)
+    return false;
+
+  struct stat info;
+  if (stat(bootstrap, &info) != 0 || !S_ISDIR(info.st_mode))
+    return false;
+
+  std::string patchCatalogue = std::string(catalogue) + "Patch.catalogue";
+  return stat(patchCatalogue.c_str(), &info) == 0 && S_ISREG(info.st_mode);
+}
+
+bool App::CreateNewWorldWithType(const std::string &worldName,
+                                 const std::string &worldType,
+                                 std::string &error) {
+  error.clear();
+  WorldMetadata::Type type;
+  if (!WorldMetadata::IsValidWorldName(worldName)) {
+    error = "Invalid world name";
+    return false;
+  }
+  if (!WorldMetadata::ParseType(worldType, type)) {
+    error = "world_type must be 'undocked' or 'docked'";
+    return false;
+  }
+  if (type == WorldMetadata::Docked && !Creatures3IsAvailable()) {
+    error = "Creatures 3 data is not available";
+    return false;
+  }
+
+  std::string buildNumber;
+  try {
+    if (theCatalogue.TagPresent("build_number"))
+      buildNumber = theCatalogue.Get("build_number", 0);
+  } catch (Catalogue::Err &) {
+    buildNumber.clear();
+  }
+  if (buildNumber.empty()) {
+    error = "Could not determine Docking Station build number";
+    return false;
+  }
+
+  std::string worldPath = std::string(GetDirectory(WORLDS_DIR)) + worldName;
+  if (mkdir(worldPath.c_str(), 0755) != 0) {
+    error = errno == EEXIST ? "World already exists"
+                            : "Could not create world directory";
+    return false;
+  }
+
+  if (!WorldMetadata::Write(GetDirectory(WORLDS_DIR), worldName, type,
+                            buildNumber, error)) {
+    // Only remove paths created by this call, and only if they are empty.
+    std::string journalPath = worldPath + "/Journal";
+    unlink((journalPath + "/wtype").c_str());
+    unlink((journalPath + "/build").c_str());
+    rmdir(journalPath.c_str());
+    rmdir(worldPath.c_str());
+    return false;
+  }
+  return true;
+}
+
+bool App::ValidateWorldForLoad(const std::string &worldName,
+                               std::string &worldType, std::string &error) {
+  error.clear();
+  worldType.clear();
+  if (worldName == "Startup")
+    return true;
+  if (!WorldMetadata::IsValidWorldName(worldName)) {
+    error = "Invalid world name";
+    return false;
+  }
+
+  std::string worldPath = std::string(GetDirectory(WORLDS_DIR)) + worldName;
+  struct stat info;
+  if (stat(worldPath.c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
+    error = "World does not exist";
+    return false;
+  }
+
+  WorldMetadata::Type type = WorldMetadata::Docked;
+  bool found = false;
+  if (!WorldMetadata::ReadType(GetDirectory(WORLDS_DIR), worldName, type,
+                               found, error))
+    return false;
+
+  // Worlds predating Journal/wtype are legacy Creatures 3 worlds.  Preserve
+  // the historical engine behaviour (auxiliary bootstrap enabled) rather than
+  // inheriting the flag from whichever world happened to be loaded before.
+  if (!found) {
+    type = WorldMetadata::Docked;
+    theFlightRecorder.Log(
+        4, "World '%s' has no Journal/wtype; treating it as legacy docked",
+        worldName.c_str());
+  }
+
+  worldType = WorldMetadata::TypeName(type);
+  if (type == WorldMetadata::Docked && !Creatures3IsAvailable()) {
+    error = "Creatures 3 data is required to load docked world '" +
+            worldName + "'";
+    return false;
+  }
+  return true;
+}
+
+bool App::PrepareWorldForLoad(const std::string &worldName,
+                              std::string &error) {
+  std::string worldType;
+  if (!ValidateWorldForLoad(worldName, worldType, error))
+    return false;
+  if (worldName == "Startup")
+    return true;
+
+  GetEameVar("engine_no_auxiliary_bootstrap_1")
+      .SetInteger(worldType == "undocked" ? 1 : 0);
+  return true;
 }
 
 void App::HandleAdditionalRegistrySettings() {
@@ -1619,18 +1661,41 @@ void App::GameEndHelper(SYSTEMTIME &dest, SYSTEMTIME &source) {
 }
 
 void App::DoLoadWorld(std::string worldName) {
+  std::string error;
+  if (!PrepareWorldForLoad(worldName, error)) {
+    theFlightRecorder.Log(1, "Cannot load world '%s': %s", worldName.c_str(),
+                          error.c_str());
+    // A failed API/GUI switch retains the current world.  During initial
+    // --world loading there is no current world to retain, so fall back to the
+    // Startup switcher rather than continuing App::Init with a null world.
+    if (!myWorld && worldName != "Startup")
+      DoLoadWorld("Startup");
+    return;
+  }
+
   // try loading main world
   if (myWorld)
     delete myWorld;
   myWorld = new World;
   myWorld->Init();
-  if (!myWorld->Load(worldName, false)) {
+  bool loaded = myWorld->Load(worldName, false);
+  if (!loaded) {
     // failed to load main world, try backup
     if (myWorld)
       delete myWorld;
     myWorld = new World;
     myWorld->Init();
-    myWorld->Load(worldName, true);
+    loaded = myWorld->Load(worldName, true);
+  }
+
+  if (loaded) {
+    // Camera enablement and viewport dimensions are runtime state.  In
+    // particular, archives written by older headless runs contain a disabled
+    // main camera with a 0x0 view.  World::Read restores that state and its
+    // metaroom refresh cannot repair the dimensions because Camera::Update
+    // returns while disabled.  Re-enable after every successful load; the SDL
+    // renderer itself remains a no-op in headless mode.
+    theMainView.Enable();
   }
 }
 
