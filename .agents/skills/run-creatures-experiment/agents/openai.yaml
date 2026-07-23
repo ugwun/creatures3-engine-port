@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Creatures Experiment"
+  short_description: "Run reproducible four-Norn engine experiments"
+  default_prompt: "Use $run-creatures-experiment to create a fresh four-Norn world, run a controlled simulation, and report the results."

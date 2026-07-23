@@ -1,0 +1,75 @@
+* Inject a repeatable four-Norn test cohort into Docking Station's Norn Meso.
+* Sex values passed to NEW: CREA are 1 = male and 2 = female.
+* The world marker makes this script safe to pass on subsequent launches.
+
+inst
+
+doif game "c3_test_four_norns_injected" = 0
+
+    * Astro male
+    new: simp 1 1 1 "blnk" 1 0 0
+    gene load targ 1 "norn.astro.48"
+    setv va00 unid
+    new: crea 4 targ 1 1 0
+    born
+    accg game "c3_creature_accg"
+    attr game "c3_creature_attr"
+    bhvr game "c3_creature_bhvr"
+    perm game "c3_creature_perm"
+    setv va01 unid
+    targ agnt va00
+    kill targ
+    targ agnt va01
+    mvsf 1000 8900
+
+    * Bondi male
+    new: simp 1 1 1 "blnk" 1 0 0
+    gene load targ 1 "norn.bondi.48"
+    setv va00 unid
+    new: crea 4 targ 1 1 0
+    born
+    accg game "c3_creature_accg"
+    attr game "c3_creature_attr"
+    bhvr game "c3_creature_bhvr"
+    perm game "c3_creature_perm"
+    setv va01 unid
+    targ agnt va00
+    kill targ
+    targ agnt va01
+    mvsf 1000 8900
+
+    * Harlequin female
+    new: simp 1 1 1 "blnk" 1 0 0
+    gene load targ 1 "norn.harlequin.48"
+    setv va00 unid
+    new: crea 4 targ 1 2 0
+    born
+    accg game "c3_creature_accg"
+    attr game "c3_creature_attr"
+    bhvr game "c3_creature_bhvr"
+    perm game "c3_creature_perm"
+    setv va01 unid
+    targ agnt va00
+    kill targ
+    targ agnt va01
+    mvsf 1000 8900
+
+    * Zebra female
+    new: simp 1 1 1 "blnk" 1 0 0
+    gene load targ 1 "norn.zebra.48"
+    setv va00 unid
+    new: crea 4 targ 1 2 0
+    born
+    accg game "c3_creature_accg"
+    attr game "c3_creature_attr"
+    bhvr game "c3_creature_bhvr"
+    perm game "c3_creature_perm"
+    setv va01 unid
+    targ agnt va00
+    kill targ
+    targ agnt va01
+    mvsf 1000 8900
+
+    setv game "c3_test_four_norns_injected" 1
+
+endi
