@@ -19,6 +19,8 @@ CMake requires SDL2, SDL2_mixer, Zlib, pthreads, and network access on first con
 
 ## Developer Tools & MCP Runtime
 
+Read the [`Eat elevator bug fix`](README.md#eat-elevator-bug-fix) section before changing targetless `APPR`, linked-room CA navigation, or smell recovery.
+
 Use an isolated game-data copy or disposable world for experiments; developer tools can execute CAOS, save worlds, and modify or delete user genomes.
 
 ```bash

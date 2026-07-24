@@ -212,7 +212,7 @@ For setup instructions and full tool reference, see [`mcp/MCP.md`](./mcp/MCP.md)
 
 ## Testing
 
-The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **409 tests**.
+The project uses [GoogleTest](https://github.com/google/googletest). Test executables are built automatically as part of the normal CMake build. The suite currently has **472 tests**.
 
 ### Running the tests
 
@@ -428,6 +428,39 @@ To explicitly exclude integration tests in CI:
 ```bash
 ctest --test-dir build -LE integration --output-on-failure
 ```
+
+## Eat elevator bug fix
+
+This fix applies specifically to this engine. Hungry Norns could congregate around
+the Norn Meso elevator button and pace across the same room boundaries for long
+periods. The visible behaviour was sometimes called the **“eat elevator” bug**:
+the Norn selected Eat for a food smell without a concrete food agent in `IT`,
+then remained blocked in `APPR` while following the room-level cellular
+automata (CA) gradient.
+
+The CA gradient was meaningful—food existed on another lift level—but
+`Map::WhichDirectionToFollowCA()` inferred directions for linked rooms from
+their centre points. The link from Meso room 658 to lower room 621 is offset
+both right and down. Because its horizontal displacement is slightly larger,
+the engine classified it as `GO_RIGHT` rather than the semantically useful
+`GO_DOWN`. The Norn therefore received no Down drive to make the existing
+button-and-lift affordance chain compete with Eat.
+
+The engine now classifies linked rooms with non-overlapping vertical bounds as
+Up or Down, regardless of horizontal offset. Links within overlapping vertical
+bands retain the original centre-angle classification. This is a generic
+geometry rule: it does not hard-code Meso room IDs, elevator agents, creature
+actions, or targets, so Norns remain responsible for choosing and learning the
+next action.
+
+The implementation is in
+[`engine/Map/MapCA.cpp`](engine/Map/MapCA.cpp) and
+[`engine/Map/MapCA_Logic.h`](engine/Map/MapCA_Logic.h), with exact Meso,
+reverse-link, horizontal-link, and fallback regression coverage in
+[`tests/test_MapCALogic.cpp`](tests/test_MapCALogic.cpp). In MCP validation,
+all five Norns already caught in the loop autonomously left the area within
+2,000 ticks. Subsequent multi-hour manual testing showed broader exploration,
+a more stable population, and improved survival.
 
 ## Known Issues
 

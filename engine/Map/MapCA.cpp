@@ -3,6 +3,7 @@
 
 
 #include "Map.h"
+#include "MapCA_Logic.h"
 #include "../Maths.h"
 #include "../Agents/Agent.h"
 #include "RoomCA.h"
@@ -631,16 +632,12 @@ bool Map::WhichDirectionToFollowCA(int currentRoomID, int caIndex, int &mapDirec
 
 
 
-	// handle vehicle movement lifts cable cars etc
-	Vector2D deltaToHighestRoom = highestRoom->centre - currentRoom->centre;
-
-	float sideOfForwardSlashLine = deltaToHighestRoom.x + deltaToHighestRoom.y;	// up-left is neg, right-down is pos
-	float sideOfBackSlashLine = deltaToHighestRoom.x - deltaToHighestRoom.y;	// down-left is neg, up-right is pos
-
-	mapDirection = 
-		sideOfForwardSlashLine>0.0f ?
-			sideOfBackSlashLine>0.0f ? GO_RIGHT : GO_DOWN :
-			sideOfBackSlashLine>0.0f ? GO_UP : GO_LEFT;
+	// Handle vehicle movement, lifts, cable cars, etc. Prefer vertical
+	// semantics for links between distinct levels, even when their centres
+	// are offset horizontally.
+	mapDirection = MapCALogic::ClassifyLinkedRoomDirection(
+		currentRoom->positionMin, currentRoom->positionMax, currentRoom->centre,
+		highestRoom->positionMin, highestRoom->positionMax, highestRoom->centre);
 
 //	OutputFormattedDebugString("CA direction: %d\n", mapDirection);
 
