@@ -26,11 +26,11 @@ void UpdateDoorCA(float tempValue1, CARates const &rates1, float relativeDoorSiz
 				  float tempValue2, CARates const &rates2, float relativeDoorSize2,
 				  float &newValue1, float &newValue2 )
 {
-	register float diffusionRate =
+	float diffusionRate =
 		rates1.GetDiffusionRoot()*rates2.GetDiffusionRoot()/* * opening*/;
-	register float averageValue = (tempValue1+tempValue2)/2.0f;
-	register float diffusionRateInverted = 1.0f-diffusionRate;
-	register float temp = averageValue*diffusionRate;
+	float averageValue = (tempValue1+tempValue2)/2.0f;
+	float diffusionRateInverted = 1.0f-diffusionRate;
+	float temp = averageValue*diffusionRate;
 	newValue1 +=
 		relativeDoorSize1*(tempValue1*diffusionRateInverted + temp);
 	newValue2 +=

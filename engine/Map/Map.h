@@ -417,7 +417,7 @@ private:
   static inline bool IsPointAboveLine(const Vector2D &position,
                                       const Vector2D &start,
                                       const Vector2D &delta, float &yAbove) {
-    register float y = start.y + (delta.y / delta.x) * (position.x - start.x);
+    float y = start.y + (delta.y / delta.x) * (position.x - start.x);
     yAbove = y - position.y;
     return (position.y < (y + 0.0001f));
   }
@@ -425,7 +425,7 @@ private:
   static inline bool IsPointBelowLine(const Vector2D &position,
                                       const Vector2D &start,
                                       const Vector2D &delta, float &yBelow) {
-    register float y = start.y + (delta.y / delta.x) * (position.x - start.x);
+    float y = start.y + (delta.y / delta.x) * (position.x - start.x);
     yBelow = position.y - y;
     return (position.y > (y - 0.0001f));
   }
