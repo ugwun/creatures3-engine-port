@@ -36,10 +36,6 @@
     "file": "observatory_release_validation.md"
   },
   {
-    "title": "Developer Tools Observatory — Owner Hand-off",
-    "file": "developer-tools-observatory-handoff.md"
-  },
-  {
     "title": "Observatory Migration & Rollback",
     "file": "observatory_migration_and_rollback.md"
   },

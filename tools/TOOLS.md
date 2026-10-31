@@ -2,7 +2,6 @@
 
 Browser-based developer tools for the Creatures 3 / Docking Station engine, served directly from the `lc2e` binary. No external dependencies — no Node.js, no relay scripts, no separate processes.
 
-![Developer Tools — Log Tab](developer_tools_logs.png)
 
 ---
 
@@ -97,9 +96,6 @@ the end-to-end, semantic, safety, performance, accessibility, resilience, API,
 documentation, and Firefox checks for this build. Supported retention and
 request limits are explicit; exceeding one produces truncation, eviction, or a
 gap indicator instead of an invented complete result.
-Repository owners should begin with the
-[complete Observatory owner hand-off](docs/developer-tools-observatory-handoff.md)
-for a step-by-step tour of all changed workspaces and controls.
 
 Keep the built `lc2e` binary and its `tools/` directory at the same revision.
 Existing flat hashes and legacy endpoints remain documented compatibility
@@ -160,7 +156,6 @@ guide for schema, provenance, retention, and tracing details.
 
 ### Evaluate-now Scratchpad
 
-![Developer Tools — Scratchpad](developer_tools_console.png)
 
 The **Scratchpad** is the compact expert route for short read-only CAOS. It
 compiles the exact source first, binds it to the current world/tick, and
@@ -248,7 +243,6 @@ reason, TARG, IT, capture tick, and full installed source are behind
 
 ### Debugger
 
-![Developer Tools — Debugger Tab](developer_tools_debugger.png)
 
 The **Debugger** tab is an interactive CAOS source-level debugger. A persistent **agent list panel** on the left shows all agents with running scripts, grouped by classifier. Select an agent to see its source code, set breakpoints, and step through execution.
 
@@ -417,7 +411,6 @@ saved world is a useful baseline, not a deterministic replay guarantee. See
 
 **Drives Sub-Tab:**
 
-![Developer Tools — Drives View](developer_tools_drives.png)
 
 - 20 horizontal bars for all creature drives (Pain, Hunger, Tiredness, Sex Drive, etc.)
 - Colour gradient: green (low) → yellow (mid) → red (high)
@@ -431,7 +424,6 @@ The Chemistry inspector is split into two modes: **Monitoring** and
 
 **Monitoring:**
 
-![Developer Tools — Chemistry View](developer_tools_chemistry.png)
 
 - All 256 biochemical concentrations displayed as colour-coded bars
 - Stable canonical chemical-ID order by default, with explicit alternative
@@ -473,7 +465,6 @@ See [Safe Chemical Interventions](docs/safe_chemical_interventions.md).
 
 **Genome Sub-Tab:**
 
-![Developer Tools — Genome Inspector](developer_tools_genome_inspector.png)
 
 The Genome sub-tab is a fully immersive, real-time binary parser for inspecting the root genetics data loaded into any creature running in the engine. It maps exactly to the C++ binary structure of the `.gen` files and visually renders all 19 unique subsets across the 4 major genetic blocks.
 
@@ -927,7 +918,6 @@ The CAOS Workbench allows you to set breakpoints on source lines, then **choose 
 
 ### Developer Documentation (Wiki & Architecture Graph)
 
-![Developer Tools — Wiki](developer_tools_wiki.png)
 
 The **Docs** tab acts as the built-in knowledge base for the project, featuring two integrated sub-views accessible via toolbar toggles:
 
