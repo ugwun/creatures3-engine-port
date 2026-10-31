@@ -4,7 +4,7 @@ The Developer Tools are powered by an embedded HTTP/SSE server running on port *
 
 If you wish to interact with the engine programmatically, you can query these endpoints directly. For a general introduction, see the [Developer Tools Overview](tools_overview.md).
 
-> **Note on Concurrency:** Endpoints that modify engine state are executed on the main thread via a thread-safe `WorkItem` queue to prevent data races. See `ARCHITECTURE.md` for details.
+> **Note on Concurrency:** Endpoints that modify engine state are executed on the main thread via a thread-safe `WorkItem` queue to prevent data races. See the repository's `developer-tools` skill for details.
 
 ## Compatibility and Evidence Contract
 

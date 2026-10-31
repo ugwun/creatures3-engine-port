@@ -7,13 +7,13 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 ```
 ┌──────────────┐      stdio (JSON-RPC)      ┌───────────────┐      HTTP REST       ┌──────────────┐
 │   AI Agent   │ ◄─────────────────────────► │  MCP Server   │ ◄──────────────────► │  lc2e engine │
-│  (Antigrav)  │   Model Context Protocol    │  (server.js)  │   localhost:9980     │   (--mcp)    │
+│  (any MCP)   │   Model Context Protocol    │  (server.js)  │   localhost:9980     │   (--mcp)    │
 └──────────────┘                             └───────────────┘                      └──────────────┘
 ```
 
 The MCP server is a lightweight Node.js adapter that translates MCP tool calls into HTTP requests to the engine's `DebugServer` REST API. It runs as a subprocess spawned by the MCP client, communicating via stdin/stdout JSON-RPC. The engine must be running with `--mcp` or `--tools` to expose the API.
 
-All engine state access is thread-safe: API requests are queued by the `DebugServer` and executed on the main engine thread via a work queue + future pattern (see [`tools/ARCHITECTURE.md`](../tools/ARCHITECTURE.md) for details).
+All engine state access is thread-safe: API requests are queued by the `DebugServer` and executed on the main engine thread via a work queue + future pattern (see the `developer-tools` skill in `.agents/skills/` for details).
 
 ---
 
@@ -47,52 +47,21 @@ Both `--mcp` and `--tools` expose the same REST API on port 9980. The difference
 
 ### 3. Configure your MCP client
 
-The MCP server uses **stdio transport** — the MCP client spawns it as a subprocess and communicates via stdin/stdout.
+The adapter uses **stdio transport**: the client spawns it as a subprocess and
+talks JSON-RPC over stdin/stdout.
 
-#### Antigravity (Google)
+The repository root contains `.mcp.json`, which Claude Code (and other clients
+that read that file) picks up automatically when opened in this directory.
+It runs `node mcp/server.js` with `ENGINE_URL=http://127.0.0.1:9980`.
 
-Edit `.gemini/antigravity/mcp_config.json` (click "Open MCP Config" in the MCP Servers panel):
+Any other MCP client with stdio support needs the equivalent:
 
-```json
-{
-  "mcpServers": {
-    "creatures3": {
-      "command": "node",
-      "args": ["/absolute/path/to/creatures3/mcp/server.js"],
-      "env": {
-        "ENGINE_URL": "http://127.0.0.1:9980"
-      }
-    }
-  }
-}
-```
-
-Then click **Refresh** in the MCP Servers panel. The `creatures3` server should appear with 25 tools.
-
-#### Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "creatures3": {
-      "command": "node",
-      "args": ["/absolute/path/to/creatures3/mcp/server.js"],
-      "env": {
-        "ENGINE_URL": "http://127.0.0.1:9980"
-      }
-    }
-  }
-}
-```
-
-#### Other MCP Clients
-
-Any MCP client that supports stdio transport can connect. The server expects:
 - **Command:** `node`
-- **Args:** `["/path/to/creatures3/mcp/server.js"]`
-- **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, and the default)
+- **Args:** `["/absolute/path/to/repo/mcp/server.js"]`
+- **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, the default)
+  and `ENGINE_TOKEN` only for an engine started with `--allow-remote-tools`
+
+After the client refreshes, the `creatures3` server exposes 25 tools.
 
 ---
 
@@ -225,8 +194,7 @@ cd mcp && git status
 |---|---|
 | `server.js` | MCP server — 25 tools wrapping the engine REST API, stdio transport |
 | `package.json` | Node.js package definition (depends on `@modelcontextprotocol/sdk`) |
-| `README.md` | This file |
-| `.gitignore` | Excludes `node_modules/` |
+| `MCP.md` | This file |
 
 ---
 

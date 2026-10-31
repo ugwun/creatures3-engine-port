@@ -992,7 +992,7 @@ Rules](docs/contextual_help_authoring.md).
 
 ## API Reference
 
-All API endpoints are served on port 9980 alongside the static files. Endpoints that modify engine state are executed on the main thread via a work queue (see [ARCHITECTURE.md](./ARCHITECTURE.md)).
+All API endpoints are served on port 9980 alongside the static files. Endpoints that modify engine state are executed on the main thread via a work queue (see the `developer-tools` skill in `.agents/skills/`).
 
 ### `POST /api/caos/validate`
 

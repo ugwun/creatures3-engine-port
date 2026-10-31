@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "creatures3": {
+      "command": "node",
+      "args": ["mcp/server.js"],
+      "env": {
+        "ENGINE_URL": "http://127.0.0.1:9980"
+      }
+    }
+  }
+}
