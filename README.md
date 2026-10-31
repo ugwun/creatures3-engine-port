@@ -1,21 +1,9 @@
 # Creatures 3 / Docking Station engine port (Linux and macOS)
 
-A C++ port of the Creatures 3 / Docking Station engine (`lc2e`) that runs
-natively on Linux and macOS, including Apple Silicon. The engine ships with
-browser-based developer tools for watching creatures live and an MCP server
-so AI agents can observe and control the simulation.
-
-#### 📺 1997 Paper Breakdown — Creatures & Artificial Life Agents *(YouTube)*
-
-[![Watch on YouTube](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
-
-[![AI agents in the '90s?! 1997 Creatures paper breakdown](creatures_paper_breakdown_thumbnail.jpg)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
-
-Before LLMs and modern AI agents, there were Norns. In this video Cyril
-Sadovsky unpacks the 1997 paper *Creatures: Entertainment Software Agents
-with Artificial Life* by Cliff and Grand, and uses this port's developer
-tools to show the biochemistry, drives and bottom-up neural network running
-in real time.
+An open-source C++ port of the Creatures 3 / Docking Station engine (`lc2e`)
+for Linux and macOS, including Apple Silicon, with a difference: the engine
+carries its own Developer Tools, served to your browser, and an MCP server so
+AI agents can observe and control the running world.
 
 > [!IMPORTANT]
 > **This repository contains only the engine. No game data is included.**
@@ -27,7 +15,164 @@ in real time.
 | Steam | [Creatures: Docking Station + Creatures 3](https://store.steampowered.com/app/1797350/Creatures_Docking_Station__Creatures_3/) |
 | GOG | [Creatures Exodus](https://www.gog.com/en/game/creatures_exodus) |
 
-Windows users do not need this port; the game runs natively there.
+## Why this port
+
+Other builds let you play Docking Station on Linux and macOS, and Windows
+runs the original. This repository is about what you can do *with* the
+running game:
+
+- **A bridge to the living world.** Start the engine with `--tools` and open
+  a browser. You watch a Norn's drives, chemistry, organs and brain update
+  live, step through the CAOS scripts its world runs on, edit genomes and
+  read the map, all while the game keeps going.
+- **Ready for AI agents.** The engine speaks the
+  [Model Context Protocol](https://modelcontextprotocol.io/), so Claude Code,
+  Codex or any MCP client can pause, inspect, run CAOS and resume. The
+  repository ships `AGENTS.md` and skills that teach an agent the engine,
+  the CAOS language and the tools, so it can dig into the internals with
+  you for engineering or research.
+- **Readable, tested C++.** The whole engine is source you can read and
+  change. Behaviour changes come with regression tests, and the suite runs
+  on Linux and macOS in CI.
+
+It suits people who want to try the Creatures idea, and engineering or
+research enthusiasts who want to see how it works inside.
+
+## A tour of the Developer Tools
+
+```bash
+./build/lc2e -d "/path/to/Docking Station" --tools
+# open http://localhost:9980
+```
+
+Everything below is a screenshot of the tools attached to a running world.
+Every value is labelled **Observed** (reported by the engine), **Derived**
+(computed from observed values) or **Inferred** (an interpretation), so you
+always know how much to trust a number.
+
+### Watch a creature live
+
+![Creature drives](docs/screenshots/01-creature-drives.png)
+
+Pick a creature and its drives update as the world ticks: hunger, pain,
+tiredness, boredom and the rest, with the change since the previous sample
+and the baseline. The summary column shows life stage, position, room, the
+current top drive and the raw vitality chemicals.
+
+![Creature chemistry](docs/screenshots/02-creature-chemistry.png)
+
+The chemistry tab lists every non-zero chemical with a sparkline of its
+recent history. The Intervene tab lets you inject a chemical on purpose,
+with the dose recorded as an intervention so an experiment stays honest.
+
+### See the brain think
+
+![Creature brain](docs/screenshots/04-creature-brain.png)
+
+Lobes and tracts are drawn from the creature's expressed genome and neuron
+activity updates live. Genome anatomy shows the exact lobe geometry; the
+functional flow view rearranges it around the combination lobe so you can
+follow perception to decision. The lobe list on the right marks the winning
+neuron in each lobe that has one.
+
+### Record behaviour tick by tick
+
+![Ethology timeline](docs/screenshots/05-ethology-timeline.png)
+
+The ethology timeline records perception, neural, action, physiology and
+lifecycle changes for a creature. Each event is marked observed or derived,
+transitions between samples state their uncertainty, you can annotate
+events, and a session exports to JSON.
+
+### Read the world map
+
+![World ecology map](docs/screenshots/06-world-ecology-map.png)
+
+The world ecology view draws the current metaroom with rooms, doors and
+links, the CA (smell) field of your choice, agents, vehicles, creatures and
+the selected creature's trace. A connectivity query shows which agents a
+creature can actually reach from where it stands.
+
+### Experiment with genetics safely
+
+![Genetics kit](docs/screenshots/07-genetics-kit.png)
+
+The genetics kit opens the original genome files read-only. You create an
+experimental copy, edit genes with the decoded fields in front of you,
+review the diff against the source and inject the result as a hatched
+creature.
+
+### Write and debug CAOS at source level
+
+![CAOS workbench](docs/screenshots/08-caos-workbench.png)
+
+The CAOS workbench compiles your script on the engine side, shows the exact
+execution context (world, tick, owner, target) and evaluates it against the
+live world or installs it as an event script. Output lands below with the
+ticks it ran on.
+
+![CAOS debugger](docs/screenshots/09-caos-debugger.png)
+
+The debugger lists the scripts running on agents right now and shows their
+source. Step, step over, continue, set a breakpoint by clicking a line
+number, and inspect `OWNR`, `TARG`, `IT` and every VA and OV variable at
+that point.
+
+### Understand the tools themselves
+
+![Architecture graph](docs/screenshots/10-architecture-graph.png)
+
+The architecture graph maps how engine, API, browser state and workspaces
+connect, with recently observed activity highlighted. It is the place to
+start when you, or your agent, want to extend the tools.
+
+[`tools/TOOLS.md`](tools/TOOLS.md) is the entry point to the tools; the
+workspace guides and the REST API reference live in the wiki under
+`tools/docs/`, which is also served inside the tools. The tools can execute
+CAOS, save worlds and write genomes, so use a copy of your game data for
+experiments.
+
+## AI agents
+
+### Controlling the game (MCP)
+
+An MCP client can execute CAOS, list creatures, read chemistry and brain
+state, set breakpoints, step scripts, create or load worlds and control
+simulation speed.
+
+```bash
+cd mcp && npm install                                   # once
+./build/lc2e -d "/path/to/Docking Station" --mcp       # or --tools, or --headless
+```
+
+Claude Code picks up the adapter from `.mcp.json` when opened in this
+repository. Any other stdio MCP client runs `node mcp/server.js` with
+`ENGINE_URL=http://127.0.0.1:9980`. Details and the full tool list are in
+[`mcp/MCP.md`](mcp/MCP.md).
+
+`--headless` runs the engine without display or audio with both the tools
+and the MCP API on, so an agent can run experiments on a server or in CI.
+
+### Working on the repository
+
+`AGENTS.md` is the agent guide, read by Claude Code (through `CLAUDE.md`),
+Codex and other tools that honour it. Task-specific knowledge lives in
+skills under `.agents/skills/`: `caos-mcp` (writing CAOS), `developer-tools`
+(tools architecture and extension), `engine-testing` (unit, link-seam and
+integration testing) and `run-creatures-experiment` (controlled four-Norn
+experiments). Point an agent at the repository and it knows what is what.
+
+## 📺 1997 paper breakdown: Creatures and artificial life agents
+
+[![Watch on YouTube](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
+
+[![AI agents in the '90s?! 1997 Creatures paper breakdown](creatures_paper_breakdown_thumbnail.jpg)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
+
+Before LLMs and modern AI agents, there were Norns. In this video Cyril
+Sadovsky unpacks the 1997 paper *Creatures: Entertainment Software Agents
+with Artificial Life* by Cliff and Grand, and uses this port's developer
+tools to show the biochemistry, drives and bottom-up neural network running
+in real time.
 
 ## Prerequisites
 
@@ -139,50 +284,6 @@ WindowTop 100
 | `--allow-remote-tools` | Token-protected access to the API from other machines |
 | `--no-music`, `--no-sound` | Disable music or all sound |
 | `--help`, `-h` | Print usage |
-
-## Developer tools
-
-`--tools` embeds a browser Observatory in the engine: live creature
-observation, drives, biochemistry, organs, brain lobes and tracts, an
-ethology timeline, cohort comparison, world ecology, a CAOS workbench with a
-source-level debugger, structured logs, a copy-first genetics kit, and an
-in-app wiki. There are no external dependencies on the engine side.
-
-```bash
-./build/lc2e -d "/path/to/Docking Station" --tools
-# open http://localhost:9980
-```
-
-[`tools/TOOLS.md`](tools/TOOLS.md) is the entry point; the full workspace
-guides and the REST API reference live in the wiki under `tools/docs/`, which
-is also served inside the tools. The tools can execute CAOS, save
-worlds and write genomes, so use a copy of your game data for experiments.
-
-## AI agent access (MCP)
-
-The engine exposes its API through the
-[Model Context Protocol](https://modelcontextprotocol.io/). An agent can
-execute CAOS, list creatures, read chemistry and brain state, set breakpoints,
-step scripts, create or load worlds and control simulation speed.
-
-```bash
-cd mcp && npm install                                   # once
-./build/lc2e -d "/path/to/Docking Station" --mcp       # or --tools, or --headless
-```
-
-Claude Code picks up the adapter from `.mcp.json` when opened in this
-repository. Any other stdio MCP client runs `node mcp/server.js` with
-`ENGINE_URL=http://127.0.0.1:9980`. Details and the full tool list are in
-[`mcp/MCP.md`](mcp/MCP.md).
-
-## Working with AI agents on this repository
-
-`AGENTS.md` is the agent guide, read by Claude Code (through `CLAUDE.md`),
-Codex and other tools that honour it. Task-specific knowledge lives in
-skills under `.agents/skills/`: `caos-mcp` (writing CAOS), `developer-tools`
-(tools architecture and extension), `engine-testing` (unit, link-seam and
-integration testing) and `run-creatures-experiment` (controlled four-Norn
-experiments).
 
 ## Testing
 
