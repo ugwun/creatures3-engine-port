@@ -5,7 +5,7 @@ natively on Linux and macOS, including Apple Silicon. The engine ships with
 browser-based developer tools for watching creatures live and an MCP server
 so AI agents can observe and control the simulation.
 
-[![1997 Paper Breakdown — Creatures & Artificial Life Agents](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
+[![AI agents in the '90s?! 1997 Creatures paper breakdown](creatures_paper_breakdown_thumbnail.jpg)](https://www.youtube.com/watch?v=Ymm6pWf1W0Q)
 
 Before LLMs and modern AI agents, there were Norns. In this video Cyril
 Sadovsky unpacks the 1997 paper *Creatures: Entertainment Software Agents
