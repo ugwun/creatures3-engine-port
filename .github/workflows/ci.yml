@@ -34,7 +34,9 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --parallel
+        # A bare --parallel lets Make start every compile at once, which swaps
+        # the 3-core macOS runner for 40 minutes. Cap it at the core count.
+        run: cmake --build build --parallel "$(getconf _NPROCESSORS_ONLN)"
 
       - name: Test
         # Integration tiers need proprietary game data and are not built here.
