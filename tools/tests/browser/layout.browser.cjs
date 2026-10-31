@@ -74,6 +74,8 @@ test("subtabs stay reachable with both evidence strips open",
 test("a collapsed strip stays collapsed after reload", { skip }, async () => {
   const { browser, baseUrl } = suite;
   await browser.click("#crt-bio-monitor > summary");
+  await browser.waitFor(
+    "return !document.getElementById('crt-bio-monitor').open;");
   await open(browser, baseUrl);
   await selectFirstCreature(browser);
   assert.equal(await browser.evaluate(
