@@ -262,7 +262,13 @@ Returns a measure of the agent heap size. 0 for VM, 1 for creature (returns -1 i
 **Syntax:** `CSTK`
 **Type:** String R-Value
 
-Returns a formatted string containing the C++ stack trace from where the CAOS command was evaluated. For debugging purposes.
+Returns a formatted string containing the demangled C++ call stack of the CAOS
+virtual machine from where the command was evaluated, one frame per line
+(`0 GeneralHandlers::StringRV_CSTK(...)`, `1 GeneralHandlers::Command_OUTS(...)`,
+`2 CAOSMachine::UpdateVM(int)`, ...). It follows nested VM creation such as
+inline `caos` evaluation. Consume it with `outs cstk` or `sets va00 cstk`.
+This port adds the command for engine reverse-engineering; it does not exist
+in the original release.
 
 ---
 

@@ -153,8 +153,9 @@ in-app wiki. There are no external dependencies on the engine side.
 # open http://localhost:9980
 ```
 
-The UI guide and REST API reference are in [`tools/TOOLS.md`](tools/TOOLS.md);
-the same wiki is served inside the tools. The tools can execute CAOS, save
+[`tools/TOOLS.md`](tools/TOOLS.md) is the entry point; the full workspace
+guides and the REST API reference live in the wiki under `tools/docs/`, which
+is also served inside the tools. The tools can execute CAOS, save
 worlds and write genomes, so use a copy of your game data for experiments.
 
 ## AI agent access (MCP)

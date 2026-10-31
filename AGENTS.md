@@ -43,7 +43,7 @@ gracefully.
 - Changing `engine/DebugServer*`, anything in `tools/`, or adding an endpoint, workspace or help entry: `.agents/skills/developer-tools/SKILL.md`.
 - Adding a test, fixing a link error in a test target, or running integration tiers: `.agents/skills/engine-testing/SKILL.md`.
 - Running a controlled creature experiment: `.agents/skills/run-creatures-experiment/SKILL.md`.
-- The in-app wiki under `tools/docs/` is the reference for CAOS, biochemistry, brain and genetics; `tools/TOOLS.md` documents the tools UI and REST API; `mcp/MCP.md` documents the adapter.
+- The in-app wiki under `tools/docs/` is the reference for CAOS, biochemistry, brain and genetics; `tools/TOOLS.md` is the short entry point to the tools and their REST endpoints, with the detail in `tools/docs/`; `mcp/MCP.md` documents the adapter.
 
 ## Live engine access
 

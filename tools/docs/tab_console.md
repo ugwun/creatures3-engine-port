@@ -58,6 +58,28 @@ The legacy `POST /api/execute` endpoint remains available for compatible
 external clients, but the Scratchpad no longer uses it because it does not
 carry reviewed context.
 
+## Advanced: C++ stack tracer (`cstk`)
+
+The engine adds a CAOS string r-value, `cstk`, that returns the demangled
+native C++ call stack of the CAOS virtual machine at the point of evaluation.
+It shows which engine handlers are executing your script and follows nested
+VM creation such as inline `caos` string evaluation.
+
+```caos
+outs cstk
+```
+
+```
+0 GeneralHandlers::StringRV_CSTK(...)
+1 GeneralHandlers::Command_OUTS(...)
+2 CAOSMachine::UpdateVM(int)
+...
+```
+
+`cstk` evaluates to a string, so it must be consumed by `outs` or stored with
+`sets`; used as a standalone command it is a syntax error. See
+[CAOS: Debug](caos_debug.md#cstk-c-stack-trace).
+
 ## See also
 
 - [CAOS Workbench](tab_caos_ide.md)

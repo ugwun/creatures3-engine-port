@@ -104,6 +104,28 @@ The gene cards preserve the existing `dna3` editor:
 - add, duplicate, remove, or reorder genes;
 - edit the 48-byte Lobe and Tract SVRules in the visual instruction grid.
 
+The workspace uses a split-pane layout, a **Genome Library** sidebar on the
+left and the **Genetics Inspector** on the right, and hides the global toolbar
+while active to maximise vertical space.
+
+Structural controls on each gene card **Duplicate**, **Delete**, or **Move**
+it along the strand; **Add Gene** appends a blank gene of any subtype. No raw
+byte patching is needed.
+
+Each Lobe or Tract SVRule is edited in a **16-row visual grid**, one row per
+3-byte instruction of the 48-byte buffer, with three columns:
+
+- **Opcode**, a searchable combobox over the engine's 69 SVRule opcodes
+  (`store`, `load`, `if=0`, `tend`, `wta`, ...);
+- **Operand**, a searchable combobox over the 16 data-source abstractions
+  (`acc`, `neuron`, `input`, `dend`, `chem`, `float`, ...);
+- **Value**, rendered as an integer `0–255`, a decoded float, or a
+  256-chemical combobox depending on the operand.
+
+The human-readable rule above the grid (for example `store neuron[0]` →
+`stop`) updates as you edit; no-operand opcodes such as `stop`, `nop`, and
+`wta` hide the operand and value columns.
+
 Only a verified experimental copy or browser draft is interactive. The
 serializer refuses unknown layouts, out-of-range fixed fields, malformed
 arrays, more than one active Genus gene, or more than one active Half-lives

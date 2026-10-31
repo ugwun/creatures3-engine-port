@@ -24,7 +24,9 @@ The interface uses a three-panel design:
 ### Creature List
 * Lists all creatures with their species icon (🐣 Norn, 🦎 Grendel, 🔧 Ettin).
 * Displays the creature's name (or genus + moniker), life state badge (alert, asleep, unconscious, dead), and a compact **Gly** bar for glycogen reserve (chemical 4).
-* **Search & Filters:** Use the text box to search by name/moniker, and toggle buttons to filter by species.
+* **Search & Filters:** Use the text box to search by name/moniker, and the
+  **All / 🐣 Norns / 🦎 Grendels / 🔧 Ettins** toggles to filter by genus. Both
+  combine: selecting Norns and typing a name shows only Norns matching it.
 * Selecting a creature publishes its world-qualified moniker, agent ID and
   classifier, room, and metaroom to the shared context. The summary's
   **Active script**, **Brain**, **Chemistry**, **Organs**, and **Genome**
@@ -262,23 +264,37 @@ The Brain tab provides a real-time spatial visualization of the creature's neura
   * **Dark/transparent:** Inactive. Faint inner boundaries maintain the grid.
   * **Bright orange:** Highly active (activity ≈ 1).
 * **Winning Neuron:** The neuron with the highest activation in Winner-Takes-All (WTA) lobes is highlighted with an orange border and glow.
-* Zoom in/out using the controls or Ctrl/⌘+Scroll.
+* **Noise floor:** a baseline visual noise floor of `0.07` is applied only to
+  SV-rule-noisy lobes such as `noun` and `verb`, so low-activation WTA lobes
+  stay visible without hiding tiny fluctuations elsewhere.
+* Lobe names appear above each lobe in a darkened version of the genome colour,
+  over a subtle dot grid that helps gauge distances.
+* Zoom from 40% to 300% using the **−**, **+**, and **⟲** controls in the
+  viewport corner or Ctrl/⌘+Scroll. Lobes, cells, tract lines, and labels
+  re-render at the new scale.
 
 ### Neuron Inspection
 * **Hover** over a neuron to see a tooltip with its lobe name, ID, semantic label, and all non-zero SVRule state variables (S1–S7).
 * **Click** a neuron to open the **Deep Neuron Detail** panel:
-  * Shows State Variables as visual bars that can be pinned into the shared
+  * Shows all eight SVRule state variables as visual bars (orange for
+    positive, magenta for negative) that can be pinned into the shared
     monitor; the selected neuron's values continue sampling while Brain is
     visible.
-  * Displays decompiled Lobe and Tract SVRules.
-  * Lists tabular Dendrite Connections (incoming and outgoing) with weights.
-  * Clicking dormant lines visualizes zero-weight anatomical pathways.
+  * Displays the neuron's Lobe initialisation/update SVRules and the Tract
+    rules of every connected tract, decompiled into CAOS-like pseudo-code.
+  * Lists tabular Dendrite Connections (incoming and outgoing) with weight
+    bars, labels, and dormant markers.
+  * Draws dormant zero-weight anatomical pathways as faint dashed white lines
+    across the brain map, exposing innate wiring before reinforcement.
+  * Click the neuron again to dismiss the panel and return to the lobe list.
 
 ### Tract Connection Lines
 * Orange SVG lines connect lobes linked by neural tracts. Thickness indicates dendrite count.
 * **Click** a tract line to fetch its dendrite data and draw individual neuron-to-neuron connections as magenta lines.
 
-*Note: While the overall brain state is polled every 2 seconds, dendrite data is fetched **on-demand** only due to its size.*
+*Note: While the overall brain state is polled every 2 seconds while the Brain
+sub-tab is visible, dendrite data is fetched **on-demand** only due to its
+size. Switching creatures clears the view and loads the new subject.*
 
 ## Summary and Vitality Indicators
 

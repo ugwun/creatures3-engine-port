@@ -76,7 +76,24 @@ without touching another event.
 
 The Scriptorium Browser groups installed events by Family/Genus/Species,
 labels known event numbers, supports text search, and loads exact source plus
-its checksum.
+its checksum. Group headers show the catalogue agent name when one exists
+(`2 3 16` → "Tuba seed"); event entries show the number and its name (`1`
+Push, `9` Timer, `10` Constructor, `12` Eat, about 40 standard events).
+Groups collapse on click, search matches classifier, event number, event
+name, or agent name with every word of a multi-word query, and **⟳ Scripts**
+refreshes the list.
+
+The editor is a plain `<textarea>` overlaid with a highlighted `<pre>`; there
+is no bundled editor library. Completion triggers on **Ctrl+Space** or after
+three typed characters, shows type badge, signature, and description, and is
+navigated with ↑/↓, accepted with Enter/Tab, and dismissed with Escape. The
+command dictionary is fetched once from `GET /api/caos-commands`. **Enter**
+keeps the current indent and indents one level after `doif`, `elif`, `else`,
+`enum`, `esee`, `etch`, `epas`, `econ`, `loop`, `reps`, or `subr`;
+**Backspace** in leading whitespace snaps to the previous four-space stop;
+**Tab** inserts four spaces and **Shift+Tab** removes up to four. **Save .cos**
+names the download after a loaded classifier (`2_18_16_9.cos`); **Load .cos**
+accepts `.cos`, `.txt`, or `.caos`.
 
 ## Results and handoffs
 
@@ -101,6 +118,30 @@ source-to-bytecode breakpoint. The breakpoint panel can bind that address to
 matching live agents. Editing source clears only that script's invalidated
 breakpoint mapping. Use **Inspect running** or a result handoff to continue in
 the [Debugger](tab_debugger.md); use [Scripts](tab_scripts.md) to find live VMs.
+
+The **Breakpoint Panel** below the classifier header lists every breakpoint
+with its line number and bytecode IP, a remove button, **Clear All**, and a
+count in the form `N bp · M/T agents`. Each breakpoint shows a clickable tag
+per agent currently running the same classifier/event: orange means the
+breakpoint is bound to that agent, grey means it is not. The panel polls
+`GET /api/scripts` every three seconds, so agents that start the script later
+appear as new tags; with none running it says "no agents running" and the
+markers stay until an agent can be bound.
+
+A typical session: load a script from the sidebar, click a line number, check
+which agents run it, bind the tags you want, switch to the Debugger where
+those agents pause, then step or continue there. Breakpoints use source
+character offsets as their coordinate system. Clicking line N compiles the
+editor text through `POST /api/compile-map` to confirm the line holds an
+instruction, then sends the offset through `POST /api/breakpoint`; the
+Debugger uses the same coordinates, so the marker lands on the same line.
+
+Breakpoints live only in the browser session: editing the source, loading
+another script, or refreshing the page clears them. A line without CAOS
+instructions (blank or comment-only) shows an info message instead of a
+marker. Scripts compiled without debug info, for example from binary-only
+worlds, may report "No source available". The completion dropdown uses
+approximate font metrics and can drift slightly at unusual zoom levels.
 
 ## Failure semantics
 

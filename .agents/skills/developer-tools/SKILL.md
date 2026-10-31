@@ -89,9 +89,10 @@ myImpl->svr.Get("/api/newtool", [this](const httplib::Request& req, httplib::Res
 });
 ```
 
-Then document the endpoint in `tools/docs/api_reference.md` (the in-app
-reference) and in the API section of `tools/TOOLS.md`, and add a model test or
-`test_DebugServerLogic` case for any pure logic you extract. Endpoints that
+Then document the endpoint in `tools/docs/api_reference.md` (the single API
+reference, served in the in-app wiki), add it to the endpoint index in
+`tools/TOOLS.md`, and add a model test or `test_DebugServerLogic` case for any
+pure logic you extract. Endpoints that
 mutate state follow the existing contracts: world/tick review, checksum
 binding, explicit confirmation, and refusal on stale targets instead of
 silent retargeting. Read the existing `/api/caos/*` and `/api/genetics/*`
@@ -211,12 +212,23 @@ To add help:
 
 `tooltips.js` provides optional short hover/focus tips (`aria-describedby`);
 register durable help first and add a tip only when it helps scanning.
-Editorial rules: `tools/docs/contextual_help_authoring.md`.
+Editorial rules: `tools/docs/contextual_help_authoring.md`. Tips are
+`{ selector, text }` entries in the `TIPS` array, matched by walking up from
+the hovered node so dynamic elements work; hover waits 500 ms with 120 ms
+fades, the tooltip flips and clamps to stay in the viewport, and native
+`title` attributes on the hovered chain are suppressed while a tip is shown
+and restored on mouse-out. The **💡 Tips** preference persists in
+`localStorage`.
 
 The in-app wiki (`tools/docs/*.md`, `index.json`) is product documentation
-rendered by `docs.js`. `architecture_model.js` is maintained documentation of
-components and relationships, not a runtime call graph; its Node test checks
-every declared source path and documentation target.
+rendered by `docs.js` with the vendored `marked.min.js`: pages load without a
+reload, internal `.md` links are intercepted by the router, heading IDs are
+URL-safe slugs of the heading text, the table of contents is built from
+`h2`/`h3`, and `#observe?route=guides&tab=docs&view=wiki&doc=<file>` (or the
+legacy `#docs/<file>[:slug]`) deep-links a page or section.
+`architecture_model.js` is maintained documentation of components and
+relationships, not a runtime call graph; its Node test checks every declared
+source path and documentation target.
 
 ## CAOS breakpoints
 
@@ -244,6 +256,51 @@ and rolled back if metadata cannot be committed. A `.gxp.json` sidecar is
 trusted only when schema, derived filename, algorithm and checksum match the
 binary. Injection takes identity/checksum review fields, not gene content
 from the browser.
+
+Layers: `tools/genetics.js` (browser state, editing, diff, crossover modal,
+`fetch()` only) → `/api/genetics/*` in `DebugServer.cpp` → `Genome`
+(`ReadFromFile`/`WriteToFile`, `Cross`/`CrossLoop`) and `GenomeStore`
+(slots, monikers, history events) → the CAOS construction path.
+
+**Two mirrored binary codecs live in `DebugServer.cpp`.** The reader
+(`parseGenomeFileToJson`) validates the `dna3` header, walks `gene`/`gend`
+markers, reads the 8-byte gene header, and dispatches on type/subtype;
+48-byte SVRule buffers go through `decompileSVRuleByBytes()`. The writers in
+the save handlers emit `dna3`/`gene`/`gend` with `writeU8`, `writeU16BE` and
+`writeFloat8`, omitting genes with `active:false`. There is no shared schema:
+any change to a gene layout in `engine/Creature/Genome.cpp` must be applied to
+both codecs by hand, or saved files corrupt and displays lie. The byte layout
+itself is documented in `tools/docs/genome_deep_dive.md`.
+
+Injection copies the reviewed binary to a private collision-free template,
+then runs this macro on the main thread (creature mode; egg mode spawns a
+`3 4 1` egg agent, sets `ov01` to the sex, and applies egg physics and an
+incubation timer instead):
+
+```caos
+new: simp 1 1 1 "blnk" 1 0 0      * temporary genome carrier
+gene load targ 1 "<template>"     * GENE LOAD needs an agent to own the slot
+setv va00 unid
+new: crea 4 targ 1 <sex> 0        * AgentManager::CreateCreature from slot 1
+born                              * LifeFaculty::SetProperlyBorn + history events
+accg game "c3_creature_accg"      * creature physics as in creatureBreeding.cos
+attr game "c3_creature_attr"
+bhvr game "c3_creature_bhvr"
+perm game "c3_creature_perm"
+seta va01 targ
+targ agnt va00
+kill targ                         * drop the carrier
+targ va01
+mvsf 1000 8900                    * nearest valid floor in the Norn Meso
+```
+
+Without the explicit `accg`/`attr`/`bhvr`/`perm` the creature inherits agent
+defaults (`accg` 0.3) and floats. Because `CAOSMachine` clears `TARG` when
+the script ends, the handler diffs the agent map before and after the macro to
+find the new agent, removes the template, and reports the engine-generated
+live moniker. Using the same `GENE LOAD`, `NEW: CREA` and `BORN` path as the
+game's own hatching keeps injected creatures authentic in the in-game panels
+and history.
 
 ## Design system (Bright-Fi)
 

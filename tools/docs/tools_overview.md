@@ -122,5 +122,19 @@ The grouped routes lead to these detailed workspaces:
   terminology](observatory_glossary.md). You are reading this built-in
   knowledge base.
 
+### The built-in wiki
+
+The Docs workspace renders the Markdown pages listed in `tools/docs/index.json`
+entirely in the browser. The left list filters pages by title as you type; the
+right sidebar is a table of contents generated from the page's headings, whose
+IDs are URL-safe slugs of the heading text (`## Brain Sub-Tab` →
+`brain-sub-tab`). Links between pages are routed without a reload, and images
+scale to the reading pane. A page or section can be deep-linked with the
+shared route form, for example
+`#observe?route=guides&tab=docs&view=wiki&doc=tools_overview.md`; the older
+`#docs/file.md` and `#docs/file.md:section` forms still work. Opening a page
+keeps the current world and subject context. See
+[Welcome to the Wiki](intro.md) for how to add a page.
+
 ## API Reference
 The developer tools are powered by an embedded HTTP/SSE server. If you want to interact with the engine programmatically, you can refer to the [API Reference](api_reference.md).
