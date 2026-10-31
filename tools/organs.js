@@ -27,11 +27,8 @@
     24: 'Dissolved carbon dioxide',
     25: 'Urea',
     26: 'Ammonia',
-    27: 'Antibody 3',
-    28: 'Antibody 4',
     29: 'Air',
     30: 'Oxygen',
-    31: 'Antibody 7',
     33: 'Water',
     34: 'Energy',
     35: 'ATP',
@@ -177,7 +174,6 @@
     211: 'Brain chemical 14',
     212: 'Pre-REM sleep',
     213: 'REM sleep',
-    247: 'Alcohol',
     248: 'Defibrillator',
     249: 'Medicine One',
     250: 'Medicine Two',
@@ -237,90 +233,64 @@
     return ORGAN_NAMES[organId] + ':' + tissue + ':' + locus;
   }
 
-  // ── Biochemical Duck Typing ────────────────────────────────────────
-  function guessOrganName(organ) {
-    if (organ.index === 0) return "Brain";
-    
-    const chemicals = new Set();
-    if (organ.reactions) {
-        for (const r of organ.reactions) {
-            chemicals.add(r.r1); chemicals.add(r.r2); chemicals.add(r.p1); chemicals.add(r.p2);
-        }
-    }
-    if (organ.emitters) {
-        for (const e of organ.emitters) chemicals.add(e.chemical);
-    }
-    if (organ.receptors) {
-        for (const r of organ.receptors) chemicals.add(r.chemical);
-    }
-    chemicals.delete(0); // Ignore '(none)'
-
-    // Lungs: Exchanging Air (29) / Oxygen (30)
-    if (chemicals.has(29) && chemicals.has(30)) return "Lungs";
-    
-    // Stomach: Starch (5)/Protein (12) to Glucose (3)/Amino Acid (13)
-    if (chemicals.has(5) && chemicals.has(3)) return "Stomach / Digestion";
-    if (chemicals.has(12) && chemicals.has(13)) return "Stomach / Digestion";
-    
-    // Liver: Detoxes Heavy Metals (66), Belladonna (68), Glycotoxin (70), Alcohol (75, 247)
-    if (chemicals.has(66) || chemicals.has(68) || chemicals.has(70) || chemicals.has(75) || chemicals.has(247)) return "Liver / Detox";
-    
-    // Immune System: Antibodies (102-109, 27, 28, 31)
-    for (const c of [27, 28, 31, 102, 103, 104, 105, 106, 107, 108, 109]) {
-        if (chemicals.has(c)) return "Immune System / Bone Marrow";
-    }
-    
-    // Muscle: ATP (35) to ADP (36)
-    if (chemicals.has(35) && chemicals.has(36)) return "Muscle Tissue";
-    
-    // Reproductive: Testosterone (53), Oestrogen (46, 47), Progesterone (48)
-    if (chemicals.has(53) || chemicals.has(46) || chemicals.has(47) || chemicals.has(48)) return "Reproductive System";
-
-    // Skin/Adipose: Adipose Tissue (9)
-    if (chemicals.has(9)) return "Adipose (Fat Stores)";
-    
-    // Spleen/Blood: Antigens (82-89)
-    for (let c=82; c<=89; c++) {
-        if (chemicals.has(c)) return "Blood / Spleen";
-    }
-    
-    if (organ.index === 1) return "Heart / Core";
-
-    return null;
-  }
-
   // ── State ──────────────────────────────────────────────────────────
   let organsData = null;
-  let selectedCreatureId = null;
+  const initialCreatureSelection = ObservatoryState.getState().selection.creature;
+  let selectedCreatureId = initialCreatureSelection ? initialCreatureSelection.id : null;
   let expandedOrgans = new Set();
+  let organRequestSerial = 0;
 
   const contentEl = document.getElementById('crt-organs-content');
 
+  function selectedCreatureDescriptor() {
+    const selection = ObservatoryState.getState().selection.creature;
+    if (!selection) return null;
+    return {
+      agentId: selection.id,
+      moniker: selection.moniker || null,
+      name: selection.name || null
+    };
+  }
+
   // ── Fetch organs ───────────────────────────────────────────────────
-  async function fetchOrgans(agentId) {
+  async function fetchOrgans(agentId, quiet) {
     if (!agentId) return;
+    const requestSerial = ++organRequestSerial;
     
     // Show a loading text indicator so the user knows duck-typing is underway
-    contentEl.innerHTML = '<div class="crt-empty-hint">Loading biological systems...<br><small style="color:rgba(255,255,255,0.4);display:block;margin-top:8px;">Running Biochemical Heuristics</small></div>';
+    if (!quiet) {
+      contentEl.innerHTML = '<div class="crt-empty-hint">Loading biological systems...<br><small style="color:rgba(255,255,255,0.4);display:block;margin-top:8px;">Running Biochemical Heuristics</small></div>';
+    }
     
     try {
       const resp = await fetch('/api/creature/' + agentId + '/organs');
       if (!resp.ok) {
+        if (requestSerial !== organRequestSerial ||
+            agentId !== selectedCreatureId) return;
         contentEl.innerHTML = '<div class="crt-empty-hint">Failed to load from engine</div>';
         return;
       }
-      organsData = await resp.json();
+      const data = await resp.json();
+      if (requestSerial !== organRequestSerial ||
+          agentId !== selectedCreatureId) return;
+      organsData = data;
       if (organsData.error) { 
         organsData = null; 
         contentEl.innerHTML = '<div class="crt-empty-hint">Organ data unavailable</div>';
         return; 
       }
+      BiologicalMonitor.ingestOrgans(
+        selectedCreatureDescriptor(),
+        organsData.organs
+      );
       
       // Delay render by 1 frame to allow the "Loading" UI to actually paint to the screen
       requestAnimationFrame(() => {
          renderOrgans();
       });
     } catch (e) {
+      if (requestSerial !== organRequestSerial ||
+          agentId !== selectedCreatureId) return;
       console.warn('DevTools: organs fetch failed', e);
       contentEl.innerHTML = '<div class="crt-empty-hint">Organ fetch threw an exception</div>';
     }
@@ -336,31 +306,55 @@
     let html = '<div class="org-list">';
     for (const organ of organsData.organs) {
       const isExpanded = expandedOrgans.has(organ.index);
-      const status = organ.failed ? 'failed' : (organ.functioning ? 'ok' : 'impaired');
-      const statusCls = 'org-status--' + status;
-      const healthPct = organ.initialLifeForce > 0
+      const status = organ.failed
+        ? { key: 'failed', label: 'FAILED', title: 'Observed: long-term life force is at or below the engine failure threshold.' }
+        : organ.functioning
+          ? { key: 'atp-available', label: 'ATP AVAILABLE', title: "Observed: ATP was available at this organ's most recent activation." }
+          : { key: 'atp-unavailable', label: 'ATP UNAVAILABLE', title: "Observed: ATP was unavailable at this organ's most recent activation; this is not a diagnosis." };
+      const statusCls = 'org-status--' + status.key;
+      const lifeForcePct = organ.initialLifeForce > 0
         ? Math.round((organ.longTermLifeForce / organ.initialLifeForce) * 100)
         : 0;
+      const inference = BiologicalSemantics.inferOrganRole(organ);
 
-      html += '<div class="org-card' + (isExpanded ? ' org-card--expanded' : '') + '" data-organ="' + organ.index + '">';
+      html += '<div class="org-card' + (isExpanded ? ' org-card--expanded' : '') + '" data-patch-key="organ-' + organ.index + '" data-organ="' + organ.index + '">';
 
       // Card header
-      const guessedName = guessOrganName(organ);
-      const titleStr = guessedName ? `Organ ${organ.index}: ${guessedName}` : `Organ ${organ.index}`;
-
       html += '<div class="org-card-header" data-organ-toggle="' + organ.index + '">';
       html += '<span class="org-expand-icon">' + (isExpanded ? '▾' : '▸') + '</span>';
-      html += '<span class="org-card-title">' + titleStr + '</span>';
-      html += '<span class="org-status-badge ' + statusCls + '">' + status.toUpperCase() + '</span>';
-      html += '<span class="org-health-mini">';
-      html += '<span class="org-health-bar-mini"><span class="org-health-fill-mini" style="width:' + healthPct + '%"></span></span>';
-      html += healthPct + '%</span>';
+      html += '<span class="org-card-title">Organ ' + organ.index + '</span>';
+      html += '<span class="org-status-badge ' + statusCls + '" title="' +
+        status.title + '">' + status.label + '</span>';
+      html += '<span class="org-life-force-mini" title="Derived: long-term life force divided by initial life force">';
+      html += '<span class="org-life-force-bar-mini"><span class="org-life-force-fill-mini" style="width:' +
+        Math.min(100, Math.max(0, lifeForcePct)) + '%"></span></span>';
+      html += 'LT life force ' + lifeForcePct + '%';
+      html += '<button type="button" class="evidence-badge evidence-badge--derived" data-organ-evidence>Derived</button></span>';
       html += '<span class="org-counts">';
       html += '<span class="org-count-badge org-count-r" title="Receptors">R:' + organ.receptorCount + '</span>';
       html += '<span class="org-count-badge org-count-e" title="Emitters">E:' + organ.emitterCount + '</span>';
       html += '<span class="org-count-badge org-count-x" title="Reactions">X:' + organ.reactionCount + '</span>';
       html += '</span>';
       html += '</div>';
+      if (inference) {
+        const evidenceChemicals = inference.chemicalIds
+          .map(id => chemName(id) + ' (#' + id + ')')
+          .join(', ');
+        html += '<div class="org-role">';
+        html += '<span><strong>Likely role:</strong> ' + inference.role + '</span>';
+        html += '<button type="button" class="evidence-badge evidence-badge--inferred" data-organ-evidence>Inferred</button>';
+        html += '<span class="org-role-evidence"><strong>Inference:</strong> ' + inference.explanation +
+          '. Supporting chemicals: ' + evidenceChemicals +
+          '. Method: ' + inference.method + '. Confidence: ' +
+          inference.confidenceLabel + '.</span>';
+        html += '</div>';
+      } else {
+        html += '<div class="org-role org-role--unknown">';
+        html += '<span><strong>Likely role:</strong> not classified</span>';
+        html += '<button type="button" class="evidence-badge evidence-badge--unknown" data-organ-evidence>Unknown</button>';
+        html += '<span class="org-role-evidence">No chemical-participation rule matched. Inspect the exact reactions, receptors, and emitters below.</span>';
+        html += '</div>';
+      }
 
       // Expanded detail
       if (isExpanded) {
@@ -368,12 +362,22 @@
 
         // Organ stats
         html += '<div class="org-stats">';
-        html += '<div class="org-stat"><span class="org-stat-label">Clock Rate</span><span class="org-stat-value">' + organ.clockRate.toFixed(3) + '</span></div>';
-        html += '<div class="org-stat"><span class="org-stat-label">Energy Cost</span><span class="org-stat-value">' + organ.energyCost.toFixed(4) + '</span></div>';
-        html += '<div class="org-stat"><span class="org-stat-label">Life Force (ST)</span><span class="org-stat-value">' + organ.shortTermLifeForce.toFixed(0) + '</span></div>';
-        html += '<div class="org-stat"><span class="org-stat-label">Life Force (LT)</span><span class="org-stat-value">' + organ.longTermLifeForce.toFixed(0) + '</span></div>';
-        html += '<div class="org-stat"><span class="org-stat-label">Rate of Repair</span><span class="org-stat-value">' + organ.longTermRateOfRepair.toFixed(4) + '</span></div>';
-        html += '<div class="org-stat"><span class="org-stat-label">Damage (0 ATP)</span><span class="org-stat-value">' + organ.damageDueToZeroEnergy.toFixed(0) + '</span></div>';
+        [
+          ['clockRate', 'Clock Rate', organ.clockRate, 3],
+          ['energyCost', 'Energy Cost', organ.energyCost, 4],
+          ['shortTermLifeForce', 'Life Force (ST)', organ.shortTermLifeForce, 0],
+          ['longTermLifeForce', 'Life Force (LT)', organ.longTermLifeForce, 0],
+          ['longTermRateOfRepair', 'Rate of Repair', organ.longTermRateOfRepair, 4],
+          ['damageDueToZeroEnergy', 'Damage (0 ATP)', organ.damageDueToZeroEnergy, 0]
+        ].forEach(([field, label, value, digits]) => {
+          const metricId = 'organ:' + organ.index + ':' + field;
+          html += '<div class="org-stat">' +
+            BiologicalMonitor.pinButtonHtml(metricId, 'Organ ' + organ.index + ' · ' + label) +
+            '<span class="org-stat-label">' + label + '</span>' +
+            '<span class="org-stat-value">' + Number(value).toFixed(digits) + '</span>' +
+            BiologicalMonitor.trendHtml(metricId, digits) +
+            '</div>';
+        });
         html += '</div>';
 
         // Reactions
@@ -436,18 +440,22 @@
       html += '</div>';
     }
     html += '</div>';
-    contentEl.innerHTML = html;
-
-    // Wire up expand/collapse toggles
-    contentEl.querySelectorAll('[data-organ-toggle]').forEach(el => {
-      el.addEventListener('click', () => {
-        const idx = parseInt(el.dataset.organToggle);
-        if (expandedOrgans.has(idx)) expandedOrgans.delete(idx);
-        else expandedOrgans.add(idx);
-        renderOrgans();
-      });
-    });
+    DomPatch.update(contentEl, html);
   }
+
+  contentEl.addEventListener('click', event => {
+    const badge = event.target.closest('[data-organ-evidence]');
+    if (badge) {
+      ObservatoryState.openEvidenceHelp(badge);
+      return;
+    }
+    const toggle = event.target.closest('[data-organ-toggle]');
+    if (!toggle) return;
+    const idx = parseInt(toggle.dataset.organToggle);
+    if (expandedOrgans.has(idx)) expandedOrgans.delete(idx);
+    else expandedOrgans.add(idx);
+    renderOrgans();
+  });
 
   // ── Render a single reaction as a formula ──────────────────────────
   function renderReaction(rn, index) {
@@ -487,13 +495,13 @@
     return html;
   }
 
-  // ── Listen for creature selection ──────────────────────────────────
-  DevToolsEvents.on('creature:selected', (agentId) => {
-    selectedCreatureId = agentId;
+  // ── Listen for shared creature selection ───────────────────────────
+  ObservatoryState.subscribe(state => state.selection.creature, selection => {
+    selectedCreatureId = selection ? selection.id : null;
     // Only fetch if Organs sub-tab is currently visible
     const organsView = document.getElementById('crt-organs');
-    if (organsView && !organsView.hidden) {
-      fetchOrgans(agentId);
+    if (organsView && !organsView.hidden && selectedCreatureId) {
+      fetchOrgans(selectedCreatureId);
     }
   });
 
@@ -504,6 +512,36 @@
         fetchOrgans(selectedCreatureId);
       }
     });
+  });
+
+  let organTimer = null;
+
+  function organsVisible() {
+    const view = document.getElementById('crt-organs');
+    return view && !view.hidden;
+  }
+
+  function restartOrganPolling() {
+    if (organTimer) clearInterval(organTimer);
+    organTimer = setInterval(() => {
+      if (organsVisible() && selectedCreatureId) {
+        fetchOrgans(selectedCreatureId, true);
+      }
+    }, BiologicalMonitor.intervalMs());
+  }
+
+  DevToolsEvents.on('tab:activated', tab => {
+    if (tab === 'creatures') restartOrganPolling();
+  });
+  DevToolsEvents.on('tab:deactivated', tab => {
+    if (tab === 'creatures' && organTimer) {
+      clearInterval(organTimer);
+      organTimer = null;
+    }
+  });
+  window.addEventListener('biological-monitor:interval', restartOrganPolling);
+  window.addEventListener('biological-monitor:changed', () => {
+    if (organsVisible() && organsData) renderOrgans();
   });
 
 })();

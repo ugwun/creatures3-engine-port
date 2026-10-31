@@ -38,7 +38,7 @@ mesg wrt+ targ 0 42 "hello" 10
 
 ## Stimuli (STIM)
 
-Stimuli affect creature neuroscience — they trigger chemical reactions and learning in creatures. The specific chemical effects of each stimulus are defined by [Stimulus genes](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus) in the creature's genome. The stimulus-to-chemical ID offset mapping (`STIMTOBIOCHEMOFFSET = 148`) and the full 256-chemical reference table are documented in [Biochemistry — Chemical ID Map](biochemistry_deep_dive.md#the-256-chemical-id-space).
+Stimuli affect creature neuroscience — they trigger chemical reactions and learning in creatures. The specific chemical effects of each stimulus are defined by [Stimulus genes](genome_deep_dive.md#subtype-0-stimulus-gene-g_stimulus) in the creature's genome. The stimulus-to-chemical ID offset mapping (`STIMTOBIOCHEMOFFSET = 148`) and the full 256-chemical reference table are documented in [Biochemistry — Chemical ID Map](biochemistry_deep_dive.md#the-complete-chemical-id-reference).
 
 > **Deep Dive:** For the complete 99-event stimulus table, the stimulus gene format, the reinforcement learning pipeline, and how stimuli connect to drives and brain learning, see [Drives & Reinforcement Learning](drives_and_learning.md).
 

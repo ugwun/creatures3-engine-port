@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <string>
 #include <sys/stat.h>
@@ -23,9 +24,11 @@ protected:
   std::string tmpDir;
 
   void SetUp() override {
-    tmpDir = "/tmp/test_getfiles_dir/";
-    system(("rm -rf " + tmpDir).c_str());
-    mkdir(tmpDir.c_str(), 0755);
+    // ctest runs each case in its own process, possibly in parallel, so a
+    // fixed directory lets one case delete another's files.
+    char pattern[] = "/tmp/test_getfiles_dir_XXXXXX";
+    ASSERT_NE(mkdtemp(pattern), nullptr);
+    tmpDir = std::string(pattern) + "/";
   }
 
   void TearDown() override {

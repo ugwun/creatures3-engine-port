@@ -1,6 +1,6 @@
-// caos_ide.js — Creatures 3 Developer Tools — CAOS IDE Tab
+// caos_ide.js — Creatures 3 Developer Tools — CAOS Workbench
 // Lightweight CAOS script editor with scriptorium browser, syntax highlighting,
-// run/inject/remove, and file save/load.
+// explicit execution/install/debug modes, reviewed context, and file save/load.
 "use strict";
 
 (() => {
@@ -17,15 +17,28 @@
         event: document.getElementById("ide-event"),
     };
 
-    const btnRun = document.getElementById("btn-ide-run");
-    const btnInject = document.getElementById("btn-ide-inject");
-    const btnRemove = document.getElementById("btn-ide-remove");
+    const btnApply = document.getElementById("btn-ide-apply");
     const btnSave = document.getElementById("btn-ide-save");
     const btnLoad = document.getElementById("btn-ide-load");
     const btnClearOutput = document.getElementById("btn-ide-clear");
     const btnRefresh = document.getElementById("btn-ide-refresh");
     const fileInput = document.getElementById("ide-file-input");
     const searchInput = document.getElementById("ide-search");
+    const modeButtons = [...document.querySelectorAll(".ide-mode-button")];
+    const modeDescription = document.getElementById("ide-mode-description");
+    const contextSummary = document.getElementById("ide-context-summary");
+    const previewStatus = document.getElementById("ide-preview-status");
+    const diffPreview = document.getElementById("ide-diff-preview");
+    const evaluateOptions = document.getElementById("ide-evaluate-options");
+    const bindTarget = document.getElementById("ide-bind-target");
+    const pauseBeforeRun = document.getElementById("ide-pause-before-run");
+    const toolbarStatus = document.getElementById("ide-toolbar-status");
+    const confirmDialog = document.getElementById("ide-confirm-dialog");
+    const confirmTitle = document.getElementById("ide-confirm-title");
+    const confirmSummary = document.getElementById("ide-confirm-summary");
+    const confirmCheckbox = document.getElementById("ide-confirm-checkbox");
+    const confirmError = document.getElementById("ide-confirm-error");
+    const confirmApply = document.getElementById("ide-confirm-apply");
 
     if (!editorTextarea || !sidebarList) return;
 
@@ -59,8 +72,15 @@
     let scriptoriumData = [];    // Array of { family, genus, species, event }
     let agentNames = {};         // Map of "F G S" → agent name from catalogue
     let loadedClassifier = null; // Which script is loaded from scriptorium
+    let loadedScript = null;     // Raw source + checksum reviewed from engine
     let isActive = false;
     let searchTerm = "";
+    let authoringMode = "evaluate";
+    let validationResult = null;
+    let validationSerial = 0;
+    let currentReview = null;
+    let reviewSerial = 0;
+    let applyInFlight = false;
 
     // Validation state
     let validateTimer = null;
@@ -87,6 +107,218 @@
     let bpAgentBindings = new Map();    // line index → Set of agent IDs bound
     let bpSourceHash = "";             // Hash of source when address map was fetched
     let bpAgentPollTimer = null;        // Timer for polling agent list
+
+    const Workbench = window.CaosWorkbenchModel;
+    if (!Workbench) return;
+
+    function currentClassifier() {
+        return {
+            family: Number(classifierInputs.family.value),
+            genus: Number(classifierInputs.genus.value),
+            species: Number(classifierInputs.species.value),
+            event: Number(classifierInputs.event.value)
+        };
+    }
+
+    function sameClassifier(left, right) {
+        return left && right &&
+            ["family", "genus", "species", "event"].every(
+                field => Number(left[field]) === Number(right[field]));
+    }
+
+    function liveContext() {
+        const state = ObservatoryState.getState();
+        const selectedScript = state.selection && state.selection.script;
+        return Workbench.contextSnapshot(
+            state,
+            selectedScript && !selectedScript.missing
+                ? {
+                    agentId: Number(selectedScript.agentId),
+                    family: Number(selectedScript.family),
+                    genus: Number(selectedScript.genus),
+                    species: Number(selectedScript.species),
+                    event: Number(selectedScript.event)
+                }
+                : null,
+            window.ExperimentWorkspace &&
+                window.ExperimentWorkspace.isRecording());
+    }
+
+    function existingForClassifier() {
+        const context = liveContext();
+        return loadedScript &&
+            sameClassifier(loadedScript.classifier, currentClassifier()) &&
+            loadedScript.worldName === context.worldName
+            ? loadedScript
+            : null;
+    }
+
+    function buildReview() {
+        return Workbench.plan({
+            mode: authoringMode,
+            context: liveContext(),
+            source: editorTextarea.value,
+            classifier: currentClassifier(),
+            existingScript: existingForClassifier(),
+            validation: validationResult
+        });
+    }
+
+    function contextRow(label, value) {
+        const dt = document.createElement("dt");
+        const dd = document.createElement("dd");
+        dt.textContent = label;
+        dd.textContent = value == null || value === "" ? "—" : String(value);
+        return [dt, dd];
+    }
+
+    function renderReview() {
+        const review = buildReview();
+        const context = review.context;
+        modeDescription.textContent = review.modeDefinition.description;
+        btnApply.textContent = review.modeDefinition.action;
+        evaluateOptions.hidden = authoringMode !== "evaluate";
+
+        contextSummary.replaceChildren(
+            ...contextRow("World", context.worldName),
+            ...contextRow("Ticks",
+                context.worldTick == null ? null :
+                    context.worldTick + " world / " +
+                    (context.systemTick == null ? "—" : context.systemTick) +
+                    " system"),
+            ...contextRow("Engine",
+                context.connectionStatus + " · " +
+                (context.enginePaused ? "paused" : "running")),
+            ...contextRow("Owner", "none (fresh VM)"),
+            ...contextRow("Selected TARG",
+                context.targetAgentId
+                    ? "#" + context.targetAgentId +
+                        (context.targetAgentClassifier
+                            ? " · " + [
+                                context.targetAgentClassifier.family,
+                                context.targetAgentClassifier.genus,
+                                context.targetAgentClassifier.species
+                              ].join(" ")
+                            : "")
+                    : "none"),
+            ...contextRow("Running script",
+                context.runningScript
+                    ? "#" + context.runningScript.agentId + " · " + [
+                        context.runningScript.family,
+                        context.runningScript.genus,
+                        context.runningScript.species,
+                        context.runningScript.event
+                      ].join(" ")
+                    : "none selected"),
+            ...contextRow("Experiment",
+                context.experimentRecording ? "recording" : "not recording")
+        );
+        bindTarget.disabled = !context.targetAgentId;
+        if (!context.targetAgentId) bindTarget.checked = false;
+
+        previewStatus.replaceChildren();
+        const lines = [];
+        if (validationResult && !["debug", "remove"].includes(authoringMode)) {
+            lines.push({
+                className: validationResult.ok
+                    ? "ide-preview-ok" : "ide-preview-error",
+                text: validationResult.ok
+                    ? "✓ Engine compilation passed · " +
+                        validationResult.sourceChecksum
+                    : "✗ " + (validationResult.error ||
+                        "Engine compilation failed")
+            });
+        }
+        review.errors.forEach(text =>
+            lines.push({ className: "ide-preview-error", text: "✗ " + text }));
+        review.warnings.forEach(text =>
+            lines.push({ className: "ide-preview-warning", text: "⚠ " + text }));
+        if (!lines.length) {
+            lines.push({
+                className: "ide-preview-ok",
+                text: "✓ Exact context and operation are ready for review."
+            });
+        }
+        lines.forEach(line => {
+            const item = document.createElement("div");
+            item.className = line.className;
+            item.textContent = line.text;
+            previewStatus.appendChild(item);
+        });
+
+        if (review.mode === "replace" && review.diff.length) {
+            diffPreview.hidden = false;
+            diffPreview.textContent = review.diff.map(row =>
+                (row.type === "add" ? "+ " :
+                    row.type === "remove" ? "− " : "  ") + row.text
+            ).join("\n");
+        } else {
+            diffPreview.hidden = true;
+            diffPreview.textContent = "";
+        }
+
+        btnApply.disabled = applyInFlight || !review.canApply;
+        toolbarStatus.textContent = review.canApply
+            ? (review.requiresConfirmation
+                ? "Ready for final confirmation"
+                : "Ready · no mutation confirmation required")
+            : (review.errors[0] || "Waiting for review");
+        return review;
+    }
+
+    async function fetchExactScriptForClassifier() {
+        const serial = ++reviewSerial;
+        const target = Workbench.classifier(currentClassifier());
+        if (!target.valid) {
+            if (!sameClassifier(
+                loadedScript && loadedScript.classifier,
+                currentClassifier())) {
+                loadedScript = null;
+            }
+            renderReview();
+            return null;
+        }
+        if (existingForClassifier()) {
+            renderReview();
+            return loadedScript;
+        }
+        try {
+            const value = target.value;
+            const response = await fetch(
+                `/api/scriptorium/${value.family}/${value.genus}/` +
+                `${value.species}/${value.event}`);
+            const data = await response.json();
+            if (serial !== reviewSerial) return null;
+            loadedScript = data.error ? null : {
+                classifier: value,
+                source: data.source,
+                checksum: data.checksum ||
+                    Workbench.fingerprint(data.source),
+                worldName: data.worldName || liveContext().worldName
+            };
+        } catch (_) {
+            if (serial === reviewSerial) loadedScript = null;
+        }
+        renderReview();
+        return loadedScript;
+    }
+
+    function setMode(mode) {
+        if (!Workbench.MODES[mode]) return;
+        authoringMode = mode;
+        modeButtons.forEach(button => {
+            const selected = button.dataset.mode === mode;
+            button.classList.toggle("ide-mode-button--active", selected);
+            button.setAttribute("aria-checked", selected ? "true" : "false");
+        });
+        if (["install", "replace", "remove"].includes(mode))
+            fetchExactScriptForClassifier();
+        else
+            renderReview();
+    }
+
+    modeButtons.forEach(button =>
+        button.addEventListener("click", () => setMode(button.dataset.mode)));
 
     // Build a classifier key string for breakpoint store lookups
     function classifierKey(f, g, s, e) {
@@ -257,10 +489,22 @@
         }
     }
 
+    let scriptLoadSerial = 0;
+
     async function loadScript(entry) {
+        const serial = ++scriptLoadSerial;
+        const editorAtRequest = editorTextarea.value;
+        const modeAtRequest = authoringMode;
         try {
             const resp = await fetch(`/api/scriptorium/${entry.family}/${entry.genus}/${entry.species}/${entry.event}`);
             const data = await resp.json();
+            // Only the latest choice may fill the editor, and only if the user
+            // has not moved on. Comparing contents covers every way of editing,
+            // since autocomplete and indenting change the text without an
+            // input event.
+            if (serial !== scriptLoadSerial ||
+                    editorTextarea.value !== editorAtRequest ||
+                    authoringMode !== modeAtRequest) return;
 
             if (data.error) {
                 appendOutput("error", data.error);
@@ -281,6 +525,14 @@
             classifierInputs.species.value = entry.species;
             classifierInputs.event.value = entry.event;
             loadedClassifier = { ...entry };
+            loadedScript = {
+                classifier: { ...entry },
+                source: data.source,
+                checksum: data.checksum ||
+                    Workbench.fingerprint(data.source),
+                worldName: data.worldName || liveContext().worldName
+            };
+            validationResult = null;
 
             // Restore breakpoint context for the newly loaded script
             restoreBreakpointContext(entry.family, entry.genus, entry.species, entry.event);
@@ -291,6 +543,8 @@
             const evtName = EVENT_NAMES[entry.event];
             const suffix = evtName ? ` (${evtName})` : "";
             appendOutput("info", `Loaded ${entry.family} ${entry.genus} ${entry.species} : ${entry.event}${suffix}`);
+            setMode("replace");
+            runValidation();
         } catch (e) {
             appendOutput("error", `Failed to load script: ${e.message}`);
         }
@@ -329,9 +583,12 @@
 
     // Sync on any input — also trigger debounced validation + clear current script breakpoints
     editorTextarea.addEventListener("input", () => {
+        ++validationSerial;
+        validationResult = null;
         syncEditorDisplay();
         scheduleValidation();
         scheduleAutocomplete();
+        renderReview();
         // Clear breakpoints for the CURRENT script only when source changes
         // (address map is invalidated for this script, other scripts are unaffected)
         if (ideBreakpoints.size > 0) {
@@ -474,10 +731,10 @@
             return;
         }
 
-        // Ctrl/Cmd+Enter to run
+        // Ctrl/Cmd+Enter applies the currently selected explicit mode
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
-            btnRun.click();
+            btnApply.click();
             return;
         }
 
@@ -490,6 +747,8 @@
 
         // F1 to show command help
         if (e.key === "F1") {
+            const preferences = ObservatoryState.getState().preferences;
+            if (preferences && preferences.shortcutsEnabled === false) return;
             e.preventDefault();
             triggerHelp();
             return;
@@ -520,7 +779,7 @@
         validateTimer = setTimeout(runValidation, 1500);
     }
 
-    async function runValidation() {
+    async function runValidation(force) {
         const code = editorTextarea.value.trim();
         if (!code || !isActive) {
             clearError();
@@ -529,30 +788,46 @@
 
         // Don't validate while user is actively using autocomplete —
         // the code is incomplete and will always fail compilation
-        if (acVisible) return;
+        if (acVisible && !force) return;
 
         // Don't validate if cursor is at the very end — user is likely still typing
-        if (editorTextarea.selectionStart === editorTextarea.value.length) {
+        if (!force &&
+            editorTextarea.selectionStart === editorTextarea.value.length) {
             const lastLine = code.split("\n").pop().trim();
             // If the last line is just a partial keyword (no args/closing), skip
             if (lastLine && !lastLine.includes(" ") && lastLine.length < 6) return;
         }
 
+        const serial = ++validationSerial;
         try {
-            const resp = await fetch("/api/validate", {
+            const resp = await fetch("/api/caos/validate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ caos: code })
+                body: JSON.stringify({
+                    mode: authoringMode,
+                    source: authoringMode === "install" ||
+                        authoringMode === "replace"
+                        ? Workbench.unwrapEventSource(code)
+                        : code
+                })
             });
             const data = await resp.json();
+            if (serial !== validationSerial) return;
+            validationResult = data;
 
             if (data.ok) {
                 clearError();
             } else {
-                showError(data.error || "Unknown error", data.position, code);
+                const position = data.location
+                    ? data.location.position : -1;
+                showError(data.error || "Unknown error", position, code);
             }
+            renderReview();
         } catch (_) {
             // Network error — don't show validation errors if server unreachable
+            if (serial !== validationSerial) return;
+            validationResult = null;
+            renderReview();
         }
     }
 
@@ -596,6 +871,16 @@
     if (errorDismiss) {
         errorDismiss.addEventListener("click", clearError);
     }
+
+    Object.values(classifierInputs).forEach(input =>
+        input.addEventListener("input", () => {
+            if (["install", "replace", "remove"].includes(authoringMode))
+                fetchExactScriptForClassifier();
+            else
+                renderReview();
+        }));
+    [bindTarget, pauseBeforeRun].forEach(input =>
+        input.addEventListener("change", renderReview));
 
     // ── Auto-Complete ─────────────────────────────────────────────────────
     async function fetchCommandDictionary() {
@@ -860,112 +1145,214 @@
         helpCloseEl.addEventListener("click", hideHelp);
     }
 
-    // ── Run ───────────────────────────────────────────────────────────────
-    btnRun.addEventListener("click", async () => {
-        const code = editorTextarea.value.trim();
-        if (!code) return;
+    // ── Reviewed workbench operations ─────────────────────────────────────
+    function confirmRows(review) {
+        const target = review.context.targetAgentId
+            ? "#" + review.context.targetAgentId
+            : "none";
+        const exactClassifier =
+            ["install", "replace", "remove"].includes(review.mode)
+                ? review.classifier.key : "not applicable";
+        return [
+            ["Operation", review.modeDefinition.label],
+            ["World", review.context.worldName + " at tick " +
+                review.context.worldTick],
+            ["Owner / TARG", "owner none / " +
+                (bindTarget.checked ? target : "not bound")],
+            ["Classifier", exactClassifier],
+            ["Source checksum", review.mode === "remove"
+                ? "not applicable" : review.sourceChecksum],
+            ["Installed checksum", review.existingChecksum || "none"],
+            ["Risk", review.mode === "evaluate"
+                ? review.risk.level + " — " + review.risk.explanation
+                : "scriptorium mutation"],
+            ["Pause before run", review.mode === "evaluate"
+                ? (pauseBeforeRun.checked ? "yes" : "no") : "not applicable"],
+            ["Experiment", review.context.experimentRecording
+                ? "recording; operation enters the ledger"
+                : "not recording"]
+        ];
+    }
 
-        const firstLine = code.split("\n")[0];
-        appendOutput("command", firstLine + (code.includes("\n") ? " …" : ""));
+    function showConfirmation(review) {
+        currentReview = review;
+        confirmTitle.textContent = review.modeDefinition.action;
+        const list = document.createElement("dl");
+        confirmRows(review).forEach(([name, value]) => {
+            const dt = document.createElement("dt");
+            const dd = document.createElement("dd");
+            dt.textContent = name;
+            dd.textContent = value;
+            list.append(dt, dd);
+        });
+        confirmSummary.replaceChildren(list);
+        confirmCheckbox.checked = false;
+        confirmApply.disabled = true;
+        confirmError.textContent = "";
+        confirmDialog.showModal();
+    }
 
-        try {
-            const resp = await fetch("/api/execute", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ caos: code })
-            });
-            const data = await resp.json();
-
-            if (data.ok) {
-                const out = data.output && data.output.trim();
-                appendOutput("result", out || "(ok — no output)");
-            } else {
-                appendOutput("error", data.error || "Unknown error");
-            }
-        } catch (e) {
-            appendOutput("error", `Network error: ${e.message}`);
-        }
+    confirmCheckbox.addEventListener("change", () => {
+        confirmApply.disabled = !confirmCheckbox.checked || applyInFlight;
+        confirmError.textContent = "";
     });
 
-    // ── Inject (install script to scriptorium) ────────────────────────────
-    btnInject.addEventListener("click", async () => {
-        const code = editorTextarea.value.trim();
-        if (!code) return;
-
-        const f = parseInt(classifierInputs.family.value) || 0;
-        const g = parseInt(classifierInputs.genus.value) || 0;
-        const s = parseInt(classifierInputs.species.value) || 0;
-        const ev = parseInt(classifierInputs.event.value) || 0;
-
-        if (f === 0 && g === 0 && s === 0 && ev === 0) {
-            appendOutput("error", "Set family/genus/species/event before injecting.");
-            return;
-        }
-
-        // Strip any existing SCRP/ENDM wrapper from the source
-        const bodyTrimmed = code
-            .replace(/^\s*scrp\s+\d+\s+\d+\s+\d+\s+\d+\s*/i, "")
-            .replace(/\s*endm\s*$/i, "")
-            .trim();
-
-        appendOutput("info", `Injecting as ${f} ${g} ${s} ${ev}…`);
-
-        try {
-            const resp = await fetch("/api/scriptorium/inject", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    family: f, genus: g, species: s, event: ev,
-                    source: bodyTrimmed
-                })
-            });
-            const data = await resp.json();
-
-            if (data.ok) {
-                appendOutput("result", "Script installed in scriptorium ✓");
-                loadedClassifier = { family: f, genus: g, species: s, event: ev };
-                await refreshScriptorium();
-            } else {
-                appendOutput("error", data.error || "Inject failed");
-            }
-        } catch (e2) {
-            appendOutput("error", `Network error: ${e2.message}`);
-        }
+    confirmDialog.addEventListener("close", () => {
+        if (!applyInFlight) currentReview = null;
+    });
+    confirmDialog.addEventListener("click", event => {
+        if (event.target === confirmDialog && !applyInFlight)
+            confirmDialog.close();
     });
 
-    // ── Remove ────────────────────────────────────────────────────────────
-    btnRemove.addEventListener("click", async () => {
-        const f = parseInt(classifierInputs.family.value) || 0;
-        const g = parseInt(classifierInputs.genus.value) || 0;
-        const s = parseInt(classifierInputs.species.value) || 0;
-        const ev = parseInt(classifierInputs.event.value) || 0;
-
-        if (f === 0 && g === 0 && s === 0 && ev === 0) {
-            appendOutput("error", "Set classifier to remove a script.");
+    async function prepareApply() {
+        if (applyInFlight) return;
+        if (!["debug", "remove"].includes(authoringMode)) {
+            await runValidation(true);
+        }
+        if (["install", "replace", "remove"].includes(authoringMode)) {
+            await fetchExactScriptForClassifier();
+        }
+        const review = buildReview();
+        renderReview();
+        if (!review.canApply) {
+            appendOutput("error", review.errors[0] ||
+                "Operation is not ready for review.");
             return;
         }
+        if (review.requiresConfirmation)
+            showConfirmation(review);
+        else
+            performReview(review, false);
+    }
 
-        const caos = `rscr ${f} ${g} ${s} ${ev}`;
-        appendOutput("info", `Removing ${f} ${g} ${s} ${ev}…`);
-
+    async function performReview(review, confirmed) {
+        applyInFlight = true;
+        renderReview();
+        confirmApply.disabled = true;
+        const firstLine = review.source.split("\n")[0];
+        appendOutput("command", review.modeDefinition.label +
+            (firstLine ? " · " + firstLine +
+                (review.source.includes("\n") ? " …" : "") : ""));
         try {
-            const resp = await fetch("/api/execute", {
+            const operation = Workbench.apiRequest(review, {
+                bindTarget: bindTarget.checked,
+                pauseBeforeRun: pauseBeforeRun.checked,
+                riskAcknowledged: confirmed,
+                confirmed
+            });
+            if (operation.kind === "navigate") {
+                const world = ObservatoryState.getState().world.identity;
+                window.DevToolsNavigation.navigate({
+                    tab: "debugger",
+                    view: "agent",
+                    worldKey: world && world.key,
+                    primary: "agent",
+                    selections: {
+                        agent: { id: operation.agentId }
+                    }
+                });
+                appendOutput("result",
+                    "Opened selected running script in Debugger.");
+                return;
+            }
+
+            const response = await fetch(operation.url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ caos })
+                body: JSON.stringify(operation.body)
             });
-            const data = await resp.json();
-
-            if (data.ok) {
-                appendOutput("result", "Script removed ✓");
-                loadedClassifier = null;
-                await refreshScriptorium();
-            } else {
-                appendOutput("error", data.error || "Remove failed");
+            const data = await response.json();
+            if (!data.ok) {
+                const location = data.location && data.location.line
+                    ? ` (line ${data.location.line}, column ${data.location.column})`
+                    : "";
+                appendOutput("error",
+                    (data.error || "Operation failed") + location);
+                return;
             }
-        } catch (e2) {
-            appendOutput("error", `Network error: ${e2.message}`);
+
+            if (review.mode === "evaluate") {
+                const output = data.output && data.output.trim();
+                appendOutput("result",
+                    (output || "(ok — no output)") +
+                    ` · world ticks ${data.worldTickStart}→${data.worldTickEnd}` +
+                    ` · ${data.elapsedWallMs} ms · ${data.correlationId}`);
+            } else {
+                appendOutput("result",
+                    `${review.modeDefinition.label} completed ✓ · ` +
+                    `${review.classifier.key} · tick ${data.worldTick} · ` +
+                    data.correlationId);
+                if (review.mode === "remove") {
+                    loadedClassifier = null;
+                    loadedScript = null;
+                } else {
+                    loadedClassifier = {
+                        family: review.classifier.family,
+                        genus: review.classifier.genus,
+                        species: review.classifier.species,
+                        event: review.classifier.event
+                    };
+                    loadedScript = {
+                        classifier: loadedClassifier,
+                        source: review.source,
+                        checksum: data.sourceChecksum,
+                        worldName: data.worldName || review.context.worldName
+                    };
+                }
+                await refreshScriptorium();
+            }
+            appendHandoffs(data, review);
+        } catch (error) {
+            appendOutput("error", `Network error: ${error.message}`);
+        } finally {
+            applyInFlight = false;
+            if (confirmDialog.open) confirmDialog.close();
+            currentReview = null;
+            renderReview();
         }
+    }
+
+    function appendHandoffs(data, review) {
+        const row = document.createElement("div");
+        row.className = "ide-output-entry ide-output-handoffs";
+        const label = document.createElement("span");
+        label.textContent = "Continue in ";
+        row.appendChild(label);
+        [
+            ["Logs", "log"],
+            ["Scripts", "scripts"],
+            ["Debugger", "debugger"]
+        ].forEach(([name, tab]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "ide-handoff";
+            button.textContent = name;
+            button.addEventListener("click", () => {
+                const world = ObservatoryState.getState().world.identity;
+                window.DevToolsNavigation.navigate({
+                    tab,
+                    worldKey: world && world.key,
+                    primary: review.context.targetAgentId ? "agent" : null,
+                    selections: review.context.targetAgentId
+                        ? { agent: { id: review.context.targetAgentId } }
+                        : {}
+                });
+            });
+            row.appendChild(button);
+        });
+        outputEl.appendChild(row);
+        outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    btnApply.addEventListener("click", prepareApply);
+    confirmApply.addEventListener("click", () => {
+        if (!confirmCheckbox.checked || !currentReview) {
+            confirmError.textContent =
+                "Review acknowledgement is required.";
+            return;
+        }
+        performReview(currentReview, true);
     });
 
     // ── Save / Load .cos ──────────────────────────────────────────────────
@@ -1602,8 +1989,19 @@
     DevToolsEvents.on("tab:activated", (tab) => {
         if (tab === "ide") {
             isActive = true;
+            if (typeof window.CaosWorkbenchDraft === "string") {
+                editorTextarea.value = window.CaosWorkbenchDraft;
+                window.CaosWorkbenchDraft = null;
+                validationResult = null;
+                syncEditorDisplay();
+                setMode("evaluate");
+                appendOutput("info",
+                    "Source moved from Scratchpad for explicit review.");
+            }
             refreshScriptorium();
             fetchCommandDictionary(); // pre-fetch for autocomplete and help
+            renderReview();
+            if (editorTextarea.value.trim()) runValidation(true);
         }
     });
 
@@ -1615,4 +2013,23 @@
             stopBpAgentPoll();
         }
     });
+
+    ObservatoryState.subscribe(
+        state => [
+            state.connection.status,
+            state.world.identity && state.world.identity.key,
+            state.world.tick,
+            state.world.systemTick,
+            state.engine.paused,
+            state.selection.agent && state.selection.agent.key,
+            state.selection.creature && state.selection.creature.key,
+            state.selection.script && state.selection.script.key,
+            state.recording.active
+        ].join("|"),
+        () => {
+            if (isActive && !confirmDialog.open) renderReview();
+        }
+    );
+
+    setMode("evaluate");
 })();

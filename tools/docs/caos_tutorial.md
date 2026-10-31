@@ -4,10 +4,10 @@ Welcome to **CAOS** — the scripting language that controls everything in the C
 
 By the end of this tutorial, you will be able to:
 
-- Execute CAOS commands in the **Console** and the **CAOS IDE**
+- Execute CAOS commands in the **Scratchpad** and the **CAOS Workbench**
 - Understand variables, conditions, and loops
 - Create and manipulate agents in the game world
-- Write and inject event scripts into the Scriptorium
+- Write, review, and install event scripts into the Scriptorium
 - Debug scripts using breakpoints and the Debugger
 
 > **Prerequisites:** The engine must be running with `--tools` and a world must be loaded. Open `http://localhost:9980` in your browser.
@@ -16,14 +16,14 @@ By the end of this tutorial, you will be able to:
 
 ## Part 1: Your First CAOS Command
 
-### 1.1 — The Console Tab
+### 1.1 — The Scratchpad
 
-The quickest way to run CAOS is the **Console** tab — a live command prompt that executes code instantly.
+The quickest way to run CAOS is the **Scratchpad** tab — a live command prompt that executes code instantly.
 
-1. Click the **Console** tab in the left sidebar.
+1. Click the **Scratchpad** tab in the left sidebar.
 2. You'll see an input field at the bottom with a `>` prompt.
 
-![CAOS Console Tab](/docs/media/tab_console_hello_world.png)
+![CAOS Scratchpad](/docs/media/tab_console_hello_world.png)
 
 Type the following and press **Enter**:
 
@@ -111,11 +111,12 @@ You'll see a red error message:
 
 This is the compiler telling you that `outs` expects a string (like `"hello"`), not a number. CAOS is **strictly typed** — commands accept specific types. Don't worry about memorising every rule; the error messages guide you.
 
-![CAOS Console Tab](/docs/media/tab_console_error.png)
+![CAOS Scratchpad](/docs/media/tab_console_error.png)
 
 ### 1.5 — Command History
 
-Press the **↑** (up arrow) key to recall your previous commands. Press **↓** to go forward. This saves you from retyping — the Console stores up to 200 commands in its history.
+Press the **↑** (up arrow) key to recall your previous commands. Press **↓**
+to go forward. The Scratchpad stores up to 200 commands in its history.
 
 ---
 
@@ -135,7 +136,10 @@ Output:
 42
 ```
 
-> **⚠️ Console gotcha:** In the Console, each command you submit runs in a **fresh** virtual machine. Variables do **not** persist between separate executions. If you try `setv va00 42` and then `outv va00` as two separate commands, you'll get `0` — because the second command starts with a clean slate. Always set and use variables **in the same command** when using the Console. (This limitation doesn't apply in the CAOS IDE or in event scripts.)
+> **⚠️ Ownerless-evaluation gotcha:** Scratchpad and Workbench **Evaluate
+> now** use a fresh VM for every submission. Variables do **not** persist
+> between evaluations. Set and consume `vaXX` variables in the same source.
+> Installed event scripts have their own engine-dispatched VM context.
 
 ### 2.2 — Arithmetic
 
@@ -275,23 +279,30 @@ Output:
 
 This doubles `va00` until it reaches or exceeds 100. The first value ≥ 100 is 128 (1 → 2 → 4 → 8 → 16 → 32 → 64 → 128).
 
-> **Console limitation:** You cannot use `loop`...`ever` (infinite loops) or `wait` commands in the Console, because the Console runs each command to completion in a single tick. Use the CAOS IDE for scripts that need timers and waiting.
+> **Ownerless-evaluation limitation:** Infinite loops and yielding commands
+> such as `wait` cannot run in Scratchpad or Workbench **Evaluate now** because
+> the fresh VM must finish synchronously. Install an event for behavior that
+> yields over time.
 
 ---
 
-## Part 4: Switching to the CAOS IDE
+## Part 4: Switching to the CAOS Workbench
 
-The Console is great for quick commands, but for anything beyond a single line, the **CAOS IDE** is far more powerful.
+The Scratchpad is the quick read-only path. Use **CAOS Workbench** when source
+changes the world, needs an explicit target, installs behavior, or benefits
+from the full editor and review context.
 
-### 4.1 — Opening the CAOS IDE
+### 4.1 — Opening CAOS Workbench
 
-1. Click the **CAOS IDE** tab in the left sidebar.
-2. You'll see three panels:
+1. Click **CAOS Workbench** in the left sidebar.
+2. Choose an explicit mode before applying anything.
+3. The workbench shows:
    - **Left:** The Scriptorium Browser (installed scripts)
-   - **Centre:** The code editor with a classifier header
+   - **Top:** mode, exact engine context, validation, risk, and diff
+   - **Centre:** the code editor with a classifier header
    - **Bottom:** The output console
 
-![CAOS IDE Tab](/docs/media/tab_ide.png)
+![CAOS Workbench Tab](/docs/media/tab_ide.png)
 
 ### 4.2 — Writing Multi-Line Code
 
@@ -317,9 +328,12 @@ Notice how the IDE:
 - **Syntax-highlights** your code (keywords in colour, strings in green, comments dimmed)
 - Shows **line numbers** in the left gutter
 
-### 4.3 — Running Your Script
+### 4.3 — Evaluating Your Script
 
-Press **Ctrl+Enter** (or **⌘+Enter** on Mac), or click the **▶ Run** button in the toolbar.
+Choose **Evaluate now**. Review the ownerless VM, active world/tick, pause
+option, compiler checksum, and any command warning. Then press
+**Ctrl+Enter** (or **⌘+Enter** on Mac), or click **Evaluate reviewed source**.
+If final confirmation opens, read it and acknowledge the exact operation.
 
 The output appears in the bottom console panel as a continuous stream:
 
@@ -327,20 +341,22 @@ The output appears in the bottom console panel as a continuous stream:
 Count: 1 Count: 2 Count: 3 Count: 4 Count: 5 Count: 6 Count: 7 Count: 8 Count: 9 Count: 10 Done! Final count: 10
 ```
 
-> **Note:** The Console output is a single text stream — all `outs` and `outv` calls append to the same line. There are no automatic line breaks between outputs.
+> **Note:** Workbench output is a single text stream — all `outs` and `outv`
+> calls append to the same line. There are no automatic line breaks between
+> outputs.
 
-![CAOS IDE Editor](/docs/media/editor_multiline.png)
+![CAOS Workbench Editor](/docs/media/editor_multiline.png)
 
 ### 4.4 — Auto-Complete
 
-The IDE has built-in auto-complete for all CAOS commands.
+The Workbench has built-in auto-complete for all CAOS commands.
 
 1. Clear the editor and start typing `out`
 2. Press **Ctrl+Space** (or just keep typing — suggestions appear after 3 characters)
 3. A dropdown appears showing `outs`, `outv`, `outx`
 4. Use **↑/↓** to navigate, **Enter** or **Tab** to accept
 
-![CAOS IDE Auto-Complete](/docs/media/editor_autocomplete.png)
+![CAOS Workbench Auto-Complete](/docs/media/editor_autocomplete.png)
 
 ### 4.5 — Command Help (F1)
 
@@ -348,7 +364,9 @@ Place your cursor on any CAOS keyword and press **F1**. A floating popup appears
 
 ### 4.6 — Live Syntax Validation
 
-The IDE validates your code as you type. If there's an error, a red bar appears below the header.
+The Workbench validates your code as you type. If there's an error, a red bar
+appears below the header. Compilation catches syntax; it does not establish
+that runtime effects are safe.
 
 Try typing this intentionally broken code:
 
@@ -364,7 +382,7 @@ Error: Expected numeric rvalue at token 'hello' (line 1)
 
 This is because `setv` expects a number, not a string (you'd need `sets` for strings). The gutter also highlights the offending line in red.
 
-![CAOS IDE Validation Error](/docs/media/editor_validation.png)
+![CAOS Workbench Validation Error](/docs/media/editor_validation.png)
 
 ---
 
@@ -376,7 +394,8 @@ Everything in the Creatures world is an **agent** — plants, machines, food, to
 
 ### 5.1 — Creating a Simple Agent
 
-In the CAOS IDE, type and run:
+In CAOS Workbench, choose **Evaluate now**, type the following, and review the
+world-changing commands before applying:
 
 ```caos
 * Create a simple invisible agent
@@ -450,7 +469,10 @@ outv va00
 
 The `enum`/`next` block sets `TARG` to each matching agent in turn. Using `0` as a wildcard (genus=0, species=0) means "any creature".
 
-> **Why `inst`?** The `inst` command puts the VM into "instant" mode — the enumeration runs in a single tick without yielding. Without it, the Console would error because enumeration normally yields between iterations.
+> **Why `inst`?** The `inst` command puts the VM into "instant" mode — the
+> enumeration runs in a single tick without yielding. Without it, an ownerless
+> Scratchpad or Workbench evaluation would error because enumeration normally
+> yields between iterations.
 
 ### 5.4 — Cleaning Up
 
@@ -493,7 +515,8 @@ An event script is identified by four numbers: **Family, Genus, Species, Event**
 
 ### 6.2 — Browsing the Scriptorium
 
-Look at the **left sidebar** in the CAOS IDE — this is the **Scriptorium Browser**. It lists every event script currently loaded in the engine.
+Look at the **left sidebar** in CAOS Workbench — this is the **Scriptorium
+Browser**. It lists every event script currently installed in the engine.
 
 1. Scroll through the list — you'll see groups like `2 3 16` ("Seeds"), `1 1 152` ("Teleporter"), etc.
 2. Click the **search box** at the top and type `teleporter`
@@ -501,29 +524,36 @@ Look at the **left sidebar** in the CAOS IDE — this is the **Scriptorium Brows
 
 Click any script entry to load its source code into the editor. This is a great way to study how the game's own scripts work!
 
-![CAOS IDE Scriptorium](/docs/media/editor_scriptorium.png)
+![CAOS Workbench Scriptorium](/docs/media/editor_scriptorium.png)
 
-### 6.3 — Run vs. Inject: What's the Difference?
+### 6.3 — Evaluate vs. Install: What's the Difference?
 
-You've noticed two buttons in the IDE toolbar: **▶ Run** and **Inject**. They do fundamentally different things:
+The Workbench names these operations separately before they can run:
 
-**▶ Run** executes your code **right now, once, and it's done.** Think of it as typing a command into a terminal — the engine processes it immediately and throws away the script. This is what you've been doing in Parts 1–5: creating agents, printing text, running loops.
+**Evaluate now** executes source **right now, once, in a fresh ownerless VM**.
+The code is discarded after the call. An optional selected agent becomes
+`TARG` only when you check that binding.
 
-**Inject** does something entirely different. It **stores your code in the Scriptorium** — the engine's permanent script registry — filed under the classifier you specify (Family / Genus / Species / Event). The code doesn't execute immediately. Instead, it sits there waiting until the right event happens to the right kind of agent.
+**Install event** stores code in the active world's Scriptorium under one exact
+Family/Genus/Species/Event classifier. It refuses to overwrite an existing
+event. Use **Replace event** to review a diff and conditionally replace it.
+The event body runs later when the engine dispatches that event.
 
 Here's the key mental model:
 
-| | **▶ Run** | **Inject** |
+| | **Evaluate now** | **Install event** |
 |---|---|---|
 | **When does it execute?** | Immediately, right now | Later, when the event fires |
 | **How many times?** | Once | Every time the event occurs |
 | **Who is OWNR?** | Nobody (no owner) | The specific agent that received the event |
-| **Where does it go?** | Nowhere — it's gone after execution | Stored in the Scriptorium |
+| **Where does it go?** | Nowhere — it is discarded | Stored in the active world's Scriptorium |
 | **Use it for…** | Creating agents, one-off commands, testing | Behaviours, reactions, timer loops |
 
-Think of it this way: **Run** is how you *set up the world* (create agents, move things). **Inject** is how you *give agents behaviours* (what they do when clicked, when their timer fires, when a creature pushes them).
+Think of it this way: **Evaluate now** is an immediate intervention;
+**Install event** gives matching agents behavior for future dispatches.
 
-That's why the two-step workflow in the next section makes sense: you **Run** an install script to create the agent, then **Inject** a timer script to give it ongoing behaviour.
+That's why the next workflow first **evaluates** source that creates an agent,
+then **installs** the timer event that gives it ongoing behavior.
 
 ### 6.4 — Writing Your First Event Script
 
@@ -531,7 +561,8 @@ Let's create a complete agent with a timer script. This involves two steps:
 
 **Step 1 — The Install Script (creates the agent):**
 
-Type this in the IDE editor and click **▶ Run**:
+Choose **Evaluate now**, enter this source, review its `new:`, movement,
+attribute, and timer effects, then apply it:
 
 ```caos
 * === Install Script ===
@@ -562,20 +593,24 @@ Now we need to tell the engine *what to do* when the timer fires. Clear the edit
 addv ov00 1
 ```
 
-Before injecting, we need to set the **classifier header** at the top of the editor:
+Before installing, set the **classifier header** at the top of the editor:
 
 1. Set the four classifier fields to: **Family:** `2`, **Genus:** `100`, **Species:** `400`, **Event:** `9`
-2. Click the **Inject** button
+2. Choose **Install event**
+3. Confirm that the target is absent, review the source checksum, then click
+   **Install reviewed script**
 
-![CAOS IDE Inject](/docs/media/editor_inject.png)
+![CAOS Workbench final review](images/observatory/caos-workbench-firefox.png)
 
-You should see a success message in the output: `Injecting as 2 100 400 9…`.
+You should see `Install event completed` with classifier, tick, and correlation
+ID. If the target already exists, choose **Replace event** and review the diff;
+Install never replaces silently.
 
 ### 6.5 — Verifying Your Script
 
 Switch to the **Scripts** tab to see your timer script running live:
 
-Now go back to the **Console** tab and check the counter:
+Now go back to the **Scratchpad** tab and check the counter:
 
 ```caos
 rtar 2 100 400 outv ov00
@@ -585,11 +620,11 @@ Run this a few times — you should see the number increasing!
 
 ### 6.6 — Cleaning Up
 
-```caos
-* Remove the timer script from the scriptorium
-scrx 2 100 400 9
+In the Workbench, set classifier **2 / 100 / 400 / 9**, choose **Remove
+event**, review the installed checksum, acknowledge the removal, and apply it.
+Then choose **Evaluate now** for the separate agent cleanup:
 
-* Delete the agent
+```caos
 inst
 enum 2 100 400
     kill targ
@@ -608,7 +643,8 @@ The Developer Tools include a full **source-level debugger** for CAOS scripts. L
 
 ### 7.1 — Creating a Script to Debug
 
-In the **CAOS IDE**, create and run this install script:
+In the **CAOS Workbench**, choose **Evaluate now** and review this agent-creation
+script:
 
 ```caos
 * Create a debug target agent
@@ -621,7 +657,8 @@ outs "Debug target created! ID: "
 outv unid
 ```
 
-Now inject its timer script. Set the classifier to **2 / 100 / 500 / 9** and type:
+Now install its timer script. Set the classifier to **2 / 100 / 500 / 9**,
+choose **Install event**, and type:
 
 ```caos
 * Timer script — increments ov00 and checks thresholds
@@ -632,15 +669,15 @@ doif ov00 gt 100
 endi
 ```
 
-Click **Inject**.
+Click **Install event**.
 
 ### 7.2 — Setting a Breakpoint in the IDE
 
-1. In the CAOS IDE, with the timer script still loaded, **click line 2** (the `addv ov00 1` line) in the gutter (where the line numbers are)
+1. In the CAOS Workbench, with the timer script still loaded, **click line 2** (the `addv ov00 1` line) in the gutter (where the line numbers are)
 2. A **red dot** appears — this is your breakpoint
 3. The **Breakpoint Panel** opens below the classifier header
 
-![CAOS IDE Breakpoint](/docs/media/editor_breakpoint.png)
+![CAOS Workbench Breakpoint](/docs/media/editor_breakpoint.png)
 
 ### 7.3 — Binding the Breakpoint to an Agent
 
@@ -649,7 +686,7 @@ In the Breakpoint Panel, you'll see agent tags for any agents currently running 
 1. Click the **agent tag** — it turns **orange**, meaning the breakpoint is now active on that agent
 2. The agent's CAOS VM will pause when it hits the breakpoint
 
-![CAOS IDE Breakpoint 2](/docs/media/editor_breakpoint_2.png)
+![CAOS Workbench Breakpoint 2](/docs/media/editor_breakpoint_2.png)
 
 ### 7.4 — Inspecting in the Debugger
 
@@ -679,7 +716,8 @@ Click **Step** a few times — watch the orange highlight move through the code.
 
 ### 7.6 — Cleaning Up
 
-Click **Continue** in the Debugger to let the script resume. Then go to the Console:
+Click **Continue** in the Debugger to let the script resume. Then go to the
+Scratchpad:
 
 ```caos
 scrx 2 100 500 9
@@ -706,15 +744,16 @@ enum 4 0 0
     outv posx
     outs ", "
     outv posy
-    outs ") — Health: "
-    setv va00 100
-    subv va00 dead
-    outv va00
-    outs "%\n"
+    outs ") — Dead flag: "
+    outv dead
+    outs "\n"
 next
 ```
 
-> **Tip:** For rich creature inspection, use the **Creatures** tab instead — it shows live drive bars, biochemistry, brain activity, and more. CAOS is better for batch operations and automation.
+`DEAD` is a binary life-state flag (0 alive, 1 dead), not a health
+percentage. For richer creature inspection, use the **Creatures** tab instead
+— it shows separate vitality indicators, live drive bars, biochemistry, brain
+activity, and more. CAOS is better for batch operations and automation.
 
 ### 8.2 — Interacting with Creature Chemistry
 
@@ -768,7 +807,7 @@ Let's build a complete agent from scratch — a **"Population Monitor"** that co
 
 ### 9.1 — The Install Script
 
-Run this in the CAOS IDE:
+Choose **Evaluate now** in the CAOS Workbench and review:
 
 ```caos
 * === Population Monitor ===
@@ -791,7 +830,8 @@ outv unid
 
 ### 9.2 — The Timer Script
 
-Set the classifier to **2 / 100 / 600 / 9** and inject:
+Set the classifier to **2 / 100 / 600 / 9**, choose **Install event**, and
+enter:
 
 ```caos
 * Count all creatures
@@ -810,7 +850,7 @@ setv ov01 va00
 
 ### 9.3 — Checking the Monitor
 
-Now, in the Console, you can query the monitor at any time:
+Now, in the Scratchpad, you can query the monitor at any time:
 
 ```caos
 rtar 2 100 600
@@ -821,8 +861,10 @@ Run this a few times over the next minute — `ov00` increments (the number of c
 
 ### 9.4 — Tear Down
 
+Remove classifier **2 / 100 / 600 / 9** with the Workbench's **Remove event**
+mode, then evaluate the agent cleanup separately:
+
 ```caos
-scrx 2 100 600 9
 inst
 enum 2 100 600
     kill targ
@@ -836,7 +878,7 @@ outs "Monitor removed."
 
 ### 10.1 — Saving Scripts as .cos Files
 
-In the CAOS IDE, click the **Save .cos** button to download your script as a `.cos` file. This is the standard file format for CAOS scripts.
+In the CAOS Workbench, click the **Save .cos** button to download your script as a `.cos` file. This is the standard file format for CAOS scripts.
 
 ### 10.2 — Loading Scripts
 
@@ -852,7 +894,7 @@ scrp 2 100 400 9
 endm
 ```
 
-The `scrp` line declares the classifier, and `endm` marks the end. When you **Inject** from the IDE, the wrapper is stripped automatically — you only need the body.
+The `scrp` line declares the classifier, and `endm` marks the end. When you **Install event** from the IDE, the wrapper is stripped automatically — you only need the body.
 
 > **Tip:** A `.cos` file can contain multiple scripts and install code. The install script (code outside any `scrp`/`endm` block) runs immediately when injected. Event scripts inside `scrp`/`endm` are installed in the Scriptorium.
 
@@ -890,8 +932,9 @@ The `scrp` line declares the classifier, and `endm` marks the end. When you **In
 
 - **[Intermediate Tutorial: Build a Creature Feeder](caos_tutorial_intermediate.md)** — The next step: compound agents, physics, creature chemistry, messaging, and multi-script debugging
 - **[CAOS Command Reference](caos_overview.md)** — The complete glossary of every CAOS command, organized by category
-- **[Console Tab](tab_console.md)** — Detailed documentation on the Console's features and limitations
-- **[CAOS IDE Tab](tab_caos_ide.md)** — Full reference for the IDE's editing, auto-complete, and breakpoint features
+- **[Scratchpad](tab_console.md)** — Detailed documentation on quick-query
+  history, multiline input, and the handoff to Workbench
+- **[CAOS Workbench Tab](tab_caos_ide.md)** — Full reference for the IDE's editing, auto-complete, and breakpoint features
 - **[Debugger Tab](tab_debugger.md)** — In-depth guide to the source-level debugger
 - **[Creatures Tab](tab_creatures.md)** — Live creature inspector with drives, chemistry, and brain visualization
 - **[Genetics Kit Tab](tab_genetics_kit.md)** — Create, cross-breed, and inject creatures using the genome editor

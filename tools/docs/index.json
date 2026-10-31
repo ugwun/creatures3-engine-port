@@ -8,11 +8,99 @@
     "file": "tools_overview.md"
   },
   {
+    "title": "Observatory State & Evidence",
+    "file": "observatory_state.md"
+  },
+  {
+    "title": "World & Session Status",
+    "file": "session_status.md"
+  },
+  {
+    "title": "Shared Context & Navigation",
+    "file": "shared_context_navigation.md"
+  },
+  {
+    "title": "Observatory Navigation & Dashboard",
+    "file": "observatory_navigation_dashboard.md"
+  },
+  {
+    "title": "Observatory Task Guides",
+    "file": "observatory_task_guides.md"
+  },
+  {
+    "title": "Accessibility & Responsive Operation",
+    "file": "accessibility_and_responsive.md"
+  },
+  {
+    "title": "Observatory Release Validation",
+    "file": "observatory_release_validation.md"
+  },
+  {
+    "title": "Developer Tools Observatory — Owner Hand-off",
+    "file": "developer-tools-observatory-handoff.md"
+  },
+  {
+    "title": "Observatory Migration & Rollback",
+    "file": "observatory_migration_and_rollback.md"
+  },
+  {
+    "title": "Guide: Keyboard-only Observatory",
+    "file": "guide_keyboard_observatory.md"
+  },
+  {
+    "title": "Guide: Orient and Observe",
+    "file": "guide_orient_and_observe.md"
+  },
+  {
+    "title": "Guide: Investigate Behavior",
+    "file": "guide_investigate_behavior.md"
+  },
+  {
+    "title": "Guide: Follow and Compare",
+    "file": "guide_follow_and_compare.md"
+  },
+  {
+    "title": "Guide: Ecology and Routes",
+    "file": "guide_ecology_and_routes.md"
+  },
+  {
+    "title": "Guide: Safe Experiments",
+    "file": "guide_safe_experiments.md"
+  },
+  {
+    "title": "Guide: CAOS Workflows",
+    "file": "guide_caos_workflows.md"
+  },
+  {
+    "title": "Observatory Glossary & Evidence",
+    "file": "observatory_glossary.md"
+  },
+  {
+    "title": "Contextual Help Inventory",
+    "file": "contextual_help_inventory.md"
+  },
+  {
+    "title": "Contextual Help Authoring",
+    "file": "contextual_help_authoring.md"
+  },
+  {
+    "title": "Live Architecture Graph",
+    "file": "live_architecture_graph.md"
+  },
+  {
+    "title": "Guide: Trace a Live Data Path",
+    "file": "guide_trace_data_path.md"
+  },
+  {
+    "title": "How to Read Biological Labels",
+    "file": "biological_labels.md"
+  },
+  {
     "title": "Log Tab",
     "file": "tab_log.md"
   },
   {
-    "title": "Console Tab",
+    "title": "Evaluate-now Scratchpad",
     "file": "tab_console.md"
   },
   {
@@ -28,11 +116,35 @@
     "file": "tab_creatures.md"
   },
   {
-    "title": "Genetics Kit Tab",
+    "title": "Safe Chemical Interventions",
+    "file": "safe_chemical_interventions.md"
+  },
+  {
+    "title": "Following One Creature Live",
+    "file": "live_creature_observation.md"
+  },
+  {
+    "title": "Ethology Timeline",
+    "file": "ethology_timeline.md"
+  },
+  {
+    "title": "Creature & Cohort Comparison",
+    "file": "creature_cohort_comparison.md"
+  },
+  {
+    "title": "World & Ecology Observatory",
+    "file": "world_ecology_observatory.md"
+  },
+  {
+    "title": "Experiment Workspaces & Provenance",
+    "file": "experiment_workspaces.md"
+  },
+  {
+    "title": "Safe Genetics Experiments / Genetics Kit",
     "file": "tab_genetics_kit.md"
   },
   {
-    "title": "CAOS IDE Tab",
+    "title": "CAOS Workbench & Scratchpad",
     "file": "tab_caos_ide.md"
   },
   {

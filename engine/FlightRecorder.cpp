@@ -20,6 +20,7 @@
 #include "FlightRecorder.h"
 #include "C2eServices.h" // MUST come first - breaks circular dep via mfchack.h -> C2eServices.h
 #include "Display/ErrorMessageHandler.h"
+#include "FlightRecorderJson.h"
 
 #include <arpa/inet.h>
 #include <cstdarg>
@@ -114,29 +115,35 @@ void FlightRecorder::Log(uint32 categorymask, const char *fmt, ...) {
   // Done BEFORE the file-open check so the browser monitor works even if
   // the log file cannot be opened (e.g. read-only working directory).
   if (myUDPSocket >= 0) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    unsigned long long ms =
-        (unsigned long long)ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000ULL;
+    struct timespec monotonicTime;
+    struct timespec wallTime;
+    clock_gettime(CLOCK_MONOTONIC, &monotonicTime);
+    clock_gettime(CLOCK_REALTIME, &wallTime);
+    unsigned long long monotonicMs =
+        (unsigned long long)monotonicTime.tv_sec * 1000ULL +
+        monotonicTime.tv_nsec / 1000000ULL;
+    unsigned long long wallTimeMs =
+        (unsigned long long)wallTime.tv_sec * 1000ULL +
+        wallTime.tv_nsec / 1000000ULL;
 
-    // Escape backslashes and double-quotes for valid JSON.
-    char safe[8500];
-    int si = 0;
-    for (int i = 0; i < len && si < (int)sizeof(safe) - 3; ++i) {
-      char c = buf[i];
-      if (c == '"' || c == '\\')
-        safe[si++] = '\\';
-      if (c != '\n' && c != '\r')
-        safe[si++] = c;
-    }
-    safe[si] = '\0';
+    // The legacy aliases below repeat the escaped message. Keep the complete
+    // UDP datagram below the receiver's 16 KiB buffer even for escape-heavy
+    // input.
+    char safe[7000];
+    EscapeLogTextForJson(buf, (size_t)len, safe, sizeof(safe));
 
-    char json[8700];
-    int jlen =
-        snprintf(json, sizeof(json), "{\"t\":%llu,\"cat\":%u,\"msg\":\"%s\"}\n",
-                 ms, (unsigned)categorymask, safe);
+    char json[14500];
+    int jlen = snprintf(
+        json, sizeof(json),
+        "{\"schemaVersion\":2,\"monotonicMs\":%llu,\"wallTimeMs\":%llu,"
+        "\"categoryMask\":%u,\"message\":\"%s\","
+        "\"t\":%llu,\"cat\":%u,\"msg\":\"%s\"}\n",
+        monotonicMs, wallTimeMs, (unsigned)categorymask, safe,
+        monotonicMs, (unsigned)categorymask, safe);
 
     if (jlen > 0) {
+      if (jlen >= (int)sizeof(json))
+        jlen = (int)sizeof(json) - 1;
       struct sockaddr_in dest;
       memset(&dest, 0, sizeof(dest));
       dest.sin_family = AF_INET;

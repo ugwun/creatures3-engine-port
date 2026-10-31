@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <algorithm>
 
 #include "Orderiser.h"
 #include "MacroScript.h"
@@ -47,6 +48,14 @@ Orderiser::~Orderiser()
 }
 
 
+static std::string LowerCaseOpName( const OpSpec* op )
+{
+	std::string name( op->GetName() ? op->GetName() : "" );
+	std::transform( name.begin(), name.end(), name.begin(), ::tolower );
+	return name;
+}
+
+
 MacroScript* Orderiser::OrderFromCAOS( const char* srctext )
 {
 	int type;
@@ -64,6 +73,10 @@ MacroScript* Orderiser::OrderFromCAOS( const char* srctext )
 		myContextStack.pop();
 	myIP = 0;
 	myUniqueLabelID = 0;
+	myCommandsUsed.clear();
+	mySubCommandsUsed.clear();
+	myOpsUsed.clear();
+	myVariablesWritten.clear();
 
 	// this debuginfo object will be passed on to the output
 	// macroscript if all goes well:
@@ -96,6 +109,7 @@ MacroScript* Orderiser::OrderFromCAOS( const char* srctext )
 			else
 			{
 				myDebugInfo->AddAddressToPositionMapping( myIP, myLexer.GetPos() );
+				myCommandsUsed.insert( LowerCaseOpName( op ) );
 				allok = EncodeOp( op );
 			}
 		}
@@ -150,6 +164,8 @@ bool Orderiser::EncodeOp( const OpSpec* op )
 	bool allok = true;
 
 	allok = SpecialPreProcessing( op );
+
+	myOpsUsed.insert( LowerCaseOpName( op ) );
 
 	if( allok )
 		EncodeOpID( op->GetOpcode() );
@@ -399,7 +415,11 @@ bool Orderiser::ExpectSubCommand( const OpSpec* parentop )
 	{
 		subop = theCAOSDescription.FindSubCommand( myLexer.GetAsText(), parentop );
 		if( subop )
+		{
+			mySubCommandsUsed.insert( LowerCaseOpName( parentop ) + " " +
+				LowerCaseOpName( subop ) );
 			return EncodeOp( subop );
+		}
 	}
 
 	// "Expected a subcommand"
@@ -422,6 +442,12 @@ bool Orderiser::ExpectVariable()
 		op = theCAOSDescription.FindVariable( myLexer.GetAsText() );
 		if( op )
 		{
+			// A 'v' parameter is always written to. VAxx ops are shared, so
+			// keep the text as typed rather than the op's name.
+			std::string name( myLexer.GetAsText() );
+			std::transform( name.begin(), name.end(), name.begin(), ::tolower );
+			myVariablesWritten.insert( name );
+
 			// encode the var
 			// (don't need to code an arg type)
 			return EncodeOp( op );

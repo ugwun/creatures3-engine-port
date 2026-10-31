@@ -42,6 +42,9 @@ public:
 	float GetNeuronState(int whichNeuron, int whichState);
 	float* GetNeuronStatePointer(int whichNeuron, int whichState);
 	int GetWhichNeuronWon();
+	// GetWhichNeuronWon falls back to neuron 0 when the lobe's SVRule selected
+	// nobody, as input lobes never do. This says whether the answer is real.
+	bool HasWinningNeuron() const { return myWinnerWasSelected; }
 	void SetNeuronInput(int whichNeuron, float toWhat);
 	void SetLobeWideInput(float toWhat);
 	void ClearNeuronActivity(int whichNeuron);
@@ -72,6 +75,7 @@ public:
 
 protected:
 	int myWinningNeuronId;
+	bool myWinnerWasSelected = false;
 	SVRuleVariables* mySpareNeuronVariables;
 
 	TOKEN myToken;

@@ -11,6 +11,15 @@ function escHtml(s) {
         .replace(/"/g, "&quot;");
 }
 
+// ── Identifiers ───────────────────────────────────────────────────────────
+// crypto.randomUUID only exists in secure contexts, and remote Developer Tools
+// are served over plain HTTP. getRandomValues works in both.
+function randomId() {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, byte =>
+        byte.toString(16).padStart(2, "0")).join("");
+}
+
 // ── DOM Helper ────────────────────────────────────────────────────────────
 // Lightweight utility for building DOM elements to replace string-concatenation
 window.el = function(tag, props, children) {
@@ -86,6 +95,7 @@ const DevToolsEvents = (() => {
         }
     };
 })();
+window.DevToolsEvents = DevToolsEvents;
 
 // ── CAOS Event Names ──────────────────────────────────────────────────────
 // Standard event numbers used in Creatures 3 / Docking Station.

@@ -29,6 +29,7 @@
 #include <stack>
 #include <map>
 #include <list>
+#include <set>
 
 
 // GLOBAL
@@ -57,6 +58,16 @@ public:
 	const char* GetLastError() { return myErrorBuffer; }
 	int GetLastErrorPos() { return myErrorPos; }
 	DebugInfo* GetDebugInfo() { return myDebugInfo; }
+
+	// What the last compile actually contains, in lower case. Unlike a scan of
+	// the source text, these separate a command from an rvalue of the same
+	// name (ASLP 1 changes state, ASLP alone reads it) and see every lvalue.
+	const std::set<std::string>& GetCommandsUsed() const { return myCommandsUsed; }
+	// "parent sub", for example "dbg: outv".
+	const std::set<std::string>& GetSubCommandsUsed() const { return mySubCommandsUsed; }
+	// Every op encoded anywhere, including rvalues.
+	const std::set<std::string>& GetOpsUsed() const { return myOpsUsed; }
+	const std::set<std::string>& GetVariablesWritten() const { return myVariablesWritten; }
 
 	Orderiser();
 	~Orderiser();
@@ -102,6 +113,11 @@ private:
 	void GrowOutputBuffer( int sizerequired );
 
 	
+	std::set<std::string> myCommandsUsed;
+	std::set<std::string> mySubCommandsUsed;
+	std::set<std::string> myOpsUsed;
+	std::set<std::string> myVariablesWritten;
+
 	int	myIP;		// instruction pointer for writing
 	int	myUniqueLabelID;	// unique id for generated labels.
 	Lexer myLexer;

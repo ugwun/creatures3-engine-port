@@ -198,7 +198,7 @@ The engine function `IsThisAnIveBeenScript()` identifies these events. They're u
 
 ## Involuntary Actions (64–72)
 
-Involuntary actions are **chemically triggered reflexes**. They fire when a specific chemoreceptor recommends the action more highly than any voluntary action. After firing, the `LTCY` command can set a cooldown period to prevent the action from repeating continuously. The receptor/emitter locus system that connects chemicals to these actions is described in [Biochemistry — Locus System](biochemistry_deep_dive.md#the-locus-system).
+Involuntary actions are **chemically triggered reflexes**. They fire when a specific chemoreceptor recommends the action more highly than any voluntary action. After firing, the `LTCY` command can set a cooldown period to prevent the action from repeating continuously. The receptor/emitter locus system that connects chemicals to these actions is described in [Biochemistry — Locus System](biochemistry_deep_dive.md#the-locus-system-binding-everything-together).
 
 | Event | Name | Description |
 |---|---|---|
@@ -428,7 +428,7 @@ The creature's brain drives the entire decision cycle. Key lobes involved in eve
 
 ### Stimuli
 
-When a core event (0–5, 12) fires on a creature, the engine can send a **stimulus** to the creature's brain. The stimulus includes the agent's [category](caos_categories.md), enabling associative learning. For example, when a creature pushes a dispenser (category 23) and its hunger decreases, the brain learns: "pushing dispensers reduces hunger." The chemical effects of each stimulus are defined by [Stimulus genes](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus) in the creature's genome.
+When a core event (0–5, 12) fires on a creature, the engine can send a **stimulus** to the creature's brain. The stimulus includes the agent's [category](caos_categories.md), enabling associative learning. For example, when a creature pushes a dispenser (category 23) and its hunger decreases, the brain learns: "pushing dispensers reduces hunger." The chemical effects of each stimulus are defined by [Stimulus genes](genome_deep_dive.md#subtype-0-stimulus-gene-g_stimulus) in the creature's genome.
 
 See [Messages & Stimuli](caos_messages.md) for the `STIM WRIT` and `STIM SHOU` commands.
 

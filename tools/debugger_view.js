@@ -35,6 +35,8 @@
     let agentPos = null; // { x, y } of currently selected agent
     let searchTerm = "";
     let dbgAddressMap = new Map(); // bytecodeIP → sourceCharPos for breakpoint mapping
+    let addressMapLoaded = Promise.resolve();
+    let followedLineIdx = -1;
 
     // Agent data model: Map<agentId, AgentInfo>
     // AgentInfo = { id, family, genus, species, event, state, lastSeen }
@@ -44,6 +46,99 @@
     const agentItemElements = new Map();
     // Group element cache: Map<classifierKey, HTMLElement>
     const groupElements = new Map();
+
+    function eventName(event) {
+        return window.CAOS_EVENT_NAMES && window.CAOS_EVENT_NAMES[event]
+            ? window.CAOS_EVENT_NAMES[event]
+            : null;
+    }
+
+    // What is on screen belongs to the agent it was loaded for. Clicking an old
+    // line after a switch would set a breakpoint from another script's map.
+    function setCurrentAgent(agentId) {
+        const next = Number(agentId);
+        if (next === currentAgentId) return;
+        currentAgentId = next;
+        clearSourceView();
+        dbgAddressMap = new Map();
+        sourceLineOffsets = [];
+    }
+
+    function selectAgent(info, makePrimary) {
+        if (!info || info.id == null) return;
+        if (makePrimary !== false && window.DevToolsNavigation) {
+            const world = ObservatoryState.getState().world.identity;
+            const scriptId = info.event != null && info.family != null
+                ? [info.id, info.family, info.genus, info.species, info.event]
+                    .join(":")
+                : null;
+            window.DevToolsNavigation.navigate({
+                tab: "debugger",
+                view: scriptId ? "script" : "agent",
+                worldKey: world && world.key,
+                primary: "agent",
+                selections: {
+                    agent: {
+                        id: info.id,
+                        family: info.agentFamily == null
+                            ? info.family
+                            : info.agentFamily,
+                        genus: info.agentGenus,
+                        species: info.agentSpecies,
+                        gallery: info.gallery || null
+                    },
+                    script: scriptId ? {
+                        id: scriptId,
+                        agentId: info.id,
+                        family: info.family,
+                        genus: info.genus,
+                        species: info.species,
+                        event: info.event,
+                        eventName: eventName(info.event)
+                    } : null,
+                    event: info.event == null ? null : {
+                        id: info.event,
+                        name: eventName(info.event)
+                    }
+                }
+            });
+            return;
+        }
+        setCurrentAgent(info.id);
+        agentListEl.querySelectorAll(".dbg-agent-item--selected").forEach(item =>
+            item.classList.toggle(
+                "dbg-agent-item--selected",
+                Number(item.dataset.agentId) === currentAgentId
+            )
+        );
+        ObservatoryState.select("agent", currentAgentId, {
+            family: info.agentFamily == null ? info.family : info.agentFamily,
+            genus: info.agentGenus,
+            species: info.agentSpecies,
+            gallery: info.gallery || null
+        }, makePrimary !== false);
+        if (info.event != null && info.family != null) {
+            const scriptId = [
+                currentAgentId,
+                info.family,
+                info.genus,
+                info.species,
+                info.event
+            ].join(":");
+            ObservatoryState.select("script", scriptId, {
+                agentId: currentAgentId,
+                family: info.family,
+                genus: info.genus,
+                species: info.species,
+                event: info.event,
+                eventName: eventName(info.event)
+            });
+            ObservatoryState.select("event", info.event, {
+                name: eventName(info.event)
+            });
+        }
+        fetchAgentState();
+    }
 
     // ── Agent list polling ────────────────────────────────────────────────
     async function refreshAgentList() {
@@ -68,6 +163,9 @@
                 existing.state = s.state;
                 existing.event = s.event;
                 existing.gallery = s.gallery || existing.gallery;
+                existing.agentFamily = s.agentFamily;
+                existing.agentGenus = s.agentGenus;
+                existing.agentSpecies = s.agentSpecies;
                 existing.lastSeen = now;
                 existing.stale = false;
             } else {
@@ -79,6 +177,8 @@
                     event: s.event,
                     gallery: s.gallery || "",
                     agentFamily: s.agentFamily || 0,
+                    agentGenus: s.agentGenus,
+                    agentSpecies: s.agentSpecies,
                     state: s.state,
                     lastSeen: now,
                     stale: false,
@@ -240,21 +340,25 @@
 
     function createAgentItem(info) {
         const galleryLabel = info.gallery ? ` ${info.gallery}` : "";
-        const itemEl = el("div", { className: "dbg-agent-item", dataset: { agentId: info.id } }, [
+        const itemEl = el("div", {
+            className: "dbg-agent-item",
+            dataset: { agentId: info.id },
+            tabIndex: 0,
+            role: "button"
+        }, [
             el("span", { className: "dbg-state-dot" }),
             el("span", { className: "dbg-agent-id", textContent: `#${info.id}` }),
             el("span", { className: "dbg-agent-gallery", textContent: galleryLabel }),
             el("span", { className: "dbg-agent-event", textContent: `evt ${info.event}` })
         ]);
 
-        itemEl.addEventListener("click", () => {
-            currentAgentId = info.id;
-            // Update selection visual
-            agentListEl.querySelectorAll(".dbg-agent-item--selected").forEach(
-                s => s.classList.remove("dbg-agent-item--selected")
-            );
-            itemEl.classList.add("dbg-agent-item--selected");
-            fetchAgentState();
+        itemEl.setAttribute("aria-label",
+            `Inspect agent #${info.id}, event ${info.event}`);
+        itemEl.addEventListener("click", () => selectAgent(info, true));
+        itemEl.addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            selectAgent(info, true);
         });
 
         updateAgentItem(itemEl, info);
@@ -310,20 +414,111 @@
     // ── Fetch full agent state ────────────────────────────────────────────
     async function fetchAgentState() {
         if (!currentAgentId) return;
+        // The user can pick another agent while this is in flight. Applying the
+        // old agent's response to the new id reports a false identity change.
+        const requestedAgentId = currentAgentId;
 
         try {
-            const resp = await fetch(`/api/agent/${currentAgentId}`);
+            const resp = await fetch(`/api/agent/${requestedAgentId}`);
             const data = await resp.json();
+            if (requestedAgentId !== currentAgentId) return;
 
-            if (data.error) {
-                scriptInfo.textContent = `Error: ${data.error}`;
+            if (!resp.ok || data.error) {
+                const reason = data.error || `Agent request failed (${resp.status})`;
+                if (window.DevToolsNavigation) {
+                    window.DevToolsNavigation.markMissing("agent", currentAgentId, reason);
+                }
+                renderHistoricalMissing(reason);
                 return;
             }
 
+            const expected = ObservatoryState.getState().selection.agent;
+            const identityMismatch = expected &&
+                String(expected.id) === String(currentAgentId) &&
+                ["family", "genus", "species", "gallery"].some(field =>
+                    expected[field] != null &&
+                    data[field] != null &&
+                    String(expected[field]) !== String(data[field])
+                );
+            if (identityMismatch) {
+                const reason =
+                    `Agent #${currentAgentId} now has a different identity; ` +
+                    "the historical target was not retargeted";
+                window.DevToolsNavigation.markMissing("agent", currentAgentId, reason);
+                renderHistoricalMissing(reason);
+                return;
+            }
+
+            const wasPrimary = ObservatoryState.getState().selection.primary;
+            ObservatoryState.select("agent", currentAgentId, {
+                family: data.family,
+                genus: data.genus,
+                species: data.species,
+                gallery: data.gallery || null
+            }, Boolean(wasPrimary && wasPrimary.kind === "agent"));
             renderAgentState(data);
         } catch (e) {
             scriptInfo.textContent = `Network error: ${e.message}`;
         }
+    }
+
+    function renderHistoricalMissing(reason) {
+        currentSource = "";
+        currentSourcePos = -1;
+        currentBreakpoints = new Set();
+        agentPos = null;
+        scriptInfo.textContent = `Historical agent #${currentAgentId} — ${reason}`;
+        stateBadge.textContent = "MISSING";
+        stateBadge.className = "state-badge state-finished";
+        clearInspectorValues();
+        sourceLines.replaceChildren(
+            el("div", {
+                className: "dbg-empty-hint",
+                textContent:
+                    "This preserved selection is no longer available in the active world. " +
+                    "It will not follow a reused numeric ID."
+            })
+        );
+        btnFocus.disabled = true;
+        btnContinue.disabled = true;
+        btnStep.disabled = true;
+        btnStepOver.disabled = true;
+    }
+
+    function clearDebuggerContext(message) {
+        currentAgentId = null;
+        currentSource = "";
+        currentSourcePos = -1;
+        currentBreakpoints = new Set();
+        agentPos = null;
+        scriptInfo.textContent = message || "No agent selected";
+        stateBadge.textContent = "—";
+        stateBadge.className = "state-badge";
+        clearInspectorValues();
+        sourceLines.replaceChildren(
+            el("div", {
+                className: "dbg-empty-hint",
+                textContent: message || "Select an agent to inspect its running script"
+            })
+        );
+        btnFocus.disabled = true;
+        btnContinue.disabled = true;
+        btnStep.disabled = true;
+        btnStepOver.disabled = true;
+    }
+
+    function clearInspectorValues() {
+        [ctxOwnr, ctxTarg, ctxFrom, ctxIt, ctxIp].forEach(element => {
+            element.textContent = "—";
+        });
+        renderVarGrid("dbg-ov-vars", null, "ov", "No agent selected");
+        renderVarGrid("dbg-va-vars", null, "va", "No agent selected");
+        const messageParams = document.getElementById("dbg-msg-params");
+        if (messageParams) {
+            messageParams.innerHTML = '<span class="dbg-empty-hint">No agent selected</span>';
+        }
+        bpList.innerHTML =
+            '<span class="dbg-empty-hint">Click a line number to set a breakpoint</span>';
     }
 
     // ── Render agent state ────────────────────────────────────────────────
@@ -374,9 +569,9 @@
             currentSource = data.source;
             const formatted = (typeof formatCAOS === "function")
                 ? formatCAOS(data.source) : data.source;
-            buildSourceView(formatted);
+            buildSourceView(formatted, data.source);
             // Fetch the address map so we can map bytecodeIPs ↔ source lines
-            fetchDebugAddressMap(data.source);
+            addressMapLoaded = fetchDebugAddressMap(data.source);
         }
 
         // Highlight current position
@@ -404,7 +599,7 @@
 
         const entries = vars ? Object.entries(vars) : [];
         if (entries.length === 0) {
-            el.innerHTML = `<span class="dbg-empty-hint">${emptyText}</span>`;
+            DomPatch.update(el, `<span class="dbg-empty-hint">${emptyText}</span>`);
             return;
         }
 
@@ -415,9 +610,9 @@
         for (const [idx, val] of entries) {
             const name = `${prefix}${String(idx).padStart(2, "0")}`;
             html += `<span class="dbg-var-key">${name}</span>`;
-            html += `<span class="dbg-var-val">${typeof val === "string" ? `"${val}"` : val}</span>`;
+            html += `<span class="dbg-var-val">${escHtml(typeof val === "string" ? `"${val}"` : val)}</span>`;
         }
-        el.innerHTML = html;
+        DomPatch.update(el, html);
     }
 
     function renderMessageParams(data) {
@@ -426,14 +621,13 @@
 
         // Only show if a script is active (running/paused/blocking)
         if (!data.running && !data.paused && !data.blocking) {
-            el.innerHTML = '<span class="dbg-empty-hint">No active script</span>';
+            DomPatch.update(el, '<span class="dbg-empty-hint">No active script</span>');
             return;
         }
 
-        const fmtVal = v => (typeof v === "string") ? `"${v}"` : (v ?? 0);
-        el.innerHTML =
-            `<span class="dbg-var-key">_p1_</span><span class="dbg-var-val">${fmtVal(data.p1)}</span>` +
-            `<span class="dbg-var-key">_p2_</span><span class="dbg-var-val">${fmtVal(data.p2)}</span>`;
+        const fmtVal = v => escHtml((typeof v === "string") ? `"${v}"` : (v ?? 0));
+        DomPatch.update(el, `<span class="dbg-var-key">_p1_</span><span class="dbg-var-val">${fmtVal(data.p1)}</span>` +
+            `<span class="dbg-var-key">_p2_</span><span class="dbg-var-val">${fmtVal(data.p2)}</span>`);
     }
 
     // ── Focus camera ─────────────────────────────────────────────────────
@@ -453,14 +647,14 @@
 
 
     // ── Source view rendering ─────────────────────────────────────────────
-    function buildSourceView(src) {
+    function buildSourceView(src, rawSource) {
         sourceLines.innerHTML = "";
-        sourceLineOffsets = [];
+        followedLineIdx = -1;
 
         const lines = src.split("\n");
-        let offset = 0;
+        // Engine positions refer to the raw source, not the formatted display.
+        sourceLineOffsets = sourceOffsetsForFormattedLines(rawSource, src);
         lines.forEach((line, idx) => {
-            sourceLineOffsets.push(offset);
 
             const row = document.createElement("div");
             row.className = "dbg-line";
@@ -484,8 +678,6 @@
             row.appendChild(gutter);
             row.appendChild(code);
             sourceLines.appendChild(row);
-
-            offset += line.length + 1; // +1 for \n
         });
     }
 
@@ -510,9 +702,13 @@
         if (row) {
             row.classList.add("dbg-line--current");
             const followCheck = document.getElementById("opt-dbg-follow");
-            if (!followCheck || followCheck.checked) {
+            // Follow execution, not the poll: repeating this for an unchanged
+            // line would drag the view back while the user reads or clicks.
+            if (lineIdx !== followedLineIdx &&
+                    (!followCheck || followCheck.checked)) {
                 row.scrollIntoView({ block: "center", behavior: "smooth" });
             }
+            followedLineIdx = lineIdx;
         }
     }
 
@@ -590,6 +786,13 @@
     // ── Breakpoint toggling ──────────────────────────────────────────────
     async function toggleBreakpointAtLine(lineIdx) {
         if (!currentAgentId) return;
+        // A click can land before the map arrives. It must not be lost, but
+        // it only means anything for the script that was on screen.
+        const clickedAgentId = currentAgentId;
+        const clickedSource = currentSource;
+        await addressMapLoaded;
+        if (clickedAgentId !== currentAgentId ||
+                clickedSource !== currentSource) return;
 
         // Find the bytecodeIP for this source line by looking up
         // the address map for the first IP that maps to this line
@@ -612,7 +815,7 @@
 
     // Fetch the compile-map for source code to build bytecodeIP → sourceCharPos mapping
     async function fetchDebugAddressMap(source) {
-        dbgAddressMap = new Map();
+        const nextMap = new Map();
         try {
             const resp = await fetch("/api/compile-map", {
                 method: "POST",
@@ -622,25 +825,30 @@
             const data = await resp.json();
             if (data.ok && data.map) {
                 for (const [ipStr, srcPos] of Object.entries(data.map)) {
-                    dbgAddressMap.set(parseInt(ipStr, 10), srcPos);
+                    nextMap.set(parseInt(ipStr, 10), srcPos);
                 }
             }
         } catch (_) {
             // Compile-map unavailable — breakpoint markers may not render
         }
+        if (source !== currentSource) return;
+        dbgAddressMap = nextMap;
+        updateBreakpointMarkers();
+        updateBreakpointList();
     }
 
     async function sendBreakpointAction(action, ip) {
         if (!currentAgentId) return;
+        const requestedAgentId = currentAgentId;
 
         try {
             const resp = await fetch("/api/breakpoint", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ agentId: currentAgentId, ip: ip, action: action })
+                body: JSON.stringify({ agentId: requestedAgentId, ip: ip, action: action })
             });
             const data = await resp.json();
-            if (data.ok) {
+            if (data.ok && requestedAgentId === currentAgentId) {
                 currentBreakpoints = new Set(data.breakpoints);
                 updateBreakpointMarkers();
                 updateBreakpointList();
@@ -734,6 +942,72 @@
             stopPolling();
         }
     });
+
+    ObservatoryState.subscribe(
+        state => state.selection.agent,
+        selection => {
+            if (!selection || String(selection.id) === String(currentAgentId)) return;
+            setCurrentAgent(selection.id);
+            renderAgentList();
+            fetchAgentState();
+        }
+    );
+
+    ObservatoryState.subscribe(
+        state => state.world.status + ":" +
+            (state.world.identity ? state.world.identity.key : "") + ":" +
+            (state.world.transition ? state.world.transition.targetName : ""),
+        () => {
+            agentMap.clear();
+            agentItemElements.clear();
+            groupElements.forEach(element => element.remove());
+            groupElements.clear();
+            clearDebuggerContext("World changed — select an agent in the active world");
+            renderAgentList();
+        }
+    );
+
+    if (window.DevToolsNavigation) {
+        const sourceView = document.getElementById("dbg-source-view");
+        const followInput = document.getElementById("opt-dbg-follow");
+        window.DevToolsNavigation.registerWorkspace("debugger", {
+            capture() {
+                return {
+                    searchTerm,
+                    currentAgentId,
+                    listScrollTop: agentListEl.scrollTop,
+                    sourceScrollTop: sourceView ? sourceView.scrollTop : 0,
+                    follow: Boolean(followInput && followInput.checked)
+                };
+            },
+            restore(saved) {
+                if (!saved) return;
+                searchTerm = saved.searchTerm || "";
+                if (searchInput) searchInput.value = searchTerm;
+                if (saved.currentAgentId != null) {
+                    setCurrentAgent(saved.currentAgentId);
+                }
+                if (followInput && saved.follow != null) {
+                    followInput.checked = Boolean(saved.follow);
+                }
+                renderAgentList();
+                if (currentAgentId) fetchAgentState();
+                requestAnimationFrame(() => {
+                    agentListEl.scrollTop = Number(saved.listScrollTop) || 0;
+                    if (sourceView) {
+                        sourceView.scrollTop = Number(saved.sourceScrollTop) || 0;
+                    }
+                });
+            },
+            open(route) {
+                const target = route.selections && route.selections.agent;
+                if (!target) return;
+                setCurrentAgent(target.id);
+                renderAgentList();
+                fetchAgentState();
+            }
+        });
+    }
 
     // Don't poll on load — wait for tab activation
 })();

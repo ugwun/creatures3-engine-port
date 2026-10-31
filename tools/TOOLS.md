@@ -18,6 +18,20 @@ Browser-based developer tools for the Creatures 3 / Docking Station engine, serv
 
 The tools server runs on port **9980**. When `--tools` is not passed, the server does not start and there is **zero impact** on engine performance.
 
+The API can execute arbitrary CAOS and rewrite genome files, so it serves only
+this machine: it binds `127.0.0.1`, sends no CORS headers, and rejects foreign
+`Host` headers and cross-origin or cross-site API requests. To use it from
+another machine, start `lc2e` with `--allow-remote-tools`. That listens on all
+interfaces, requires a token for anything but local requests, and prints an
+access URL at startup. Set `LC2E_TOOLS_TOKEN` to choose the token.
+
+Displayed values do not all have the same source or freshness. Direct endpoint
+reads are **Observed**; calculations are **Derived**; interpretations are
+**Inferred**; and values without adequate capture metadata are **Unknown**.
+World-qualified samples record their capture tick and polling interval, and
+disconnects make the last sample stale. See the built-in
+**Observatory State & Evidence** reference for the shared contract.
+
 ### CLI Options
 
 | Flag | Description |
@@ -29,20 +43,90 @@ The tools directory is resolved relative to the executable: `<exe_dir>/../tools/
 
 ---
 
-## Tabs
+## Observatory Navigation
 
-The developer tools UI is organized into seven tabs, accessible from the collapsible left navigation sidebar. Each tab has a **contextual toolbar** below the header that shows only the controls relevant to the active tab.
+The developer tools open on a calm Observatory overview and organize
+workspaces into four intent groups in the collapsible left navigation:
+**Observe**, **Experiment**, **Develop**, and **Learn**. Named routes carry
+required capabilities, contextual help, and an activity marker. Workspaces
+that can lead to mutation are visibly labelled **Reviewed change**; unavailable
+routes remain discoverable and explain which connection, world, or creature
+selection they need.
 
-**Engine Pause/Play:** The header includes **▶** (play) and **❚❚** (pause) buttons on the right side. These control the global engine simulation — pausing freezes all game ticks (creature AI, physics, timer scripts, agent updates) while keeping the developer tools UI and debug server fully responsive. Useful for inspecting creatures and agents in a frozen state.
+The dashboard summarizes the session, creature population, current experiment
+or recording, world-qualified interventions, script/log diagnostics, retained
+biological pins, and a resumable investigation. It reuses the global session
+sample and polls creature/script summaries at a bounded five-second cadence
+only while visible. Each workspace still has a contextual toolbar below the
+header.
+
+Named deep links use `#observe?route=<id>&tab=<tab>` and can retain the world,
+stable selections, and an `at`/`from`/`to` world-tick context. Existing
+`#creatures`, `#console`, and other useful flat hashes remain aliases. See the
+built-in **Observatory Navigation & Dashboard** guide for the complete route
+map, first-visit workflow, migration table, keyboard controls, and responsive
+behaviour.
+
+**World/session ribbon:** The persistent header shows the active or requested
+world, world type, simulation state, speed, world tick, creature count, and
+status-sample age. Click it for exact ticks, connection/source details, pending
+load context, and explicit speed controls.
+
+**Simulation controls:** The text-labelled **Resume simulation** and **Pause
+simulation** actions control the global engine. Pausing freezes all game ticks
+(creature AI, physics, timer scripts, agent updates) while keeping the UI and
+debug server responsive.
+
+**Keyboard and display:** The header **Display** action (Shift+?) publishes the
+keyboard map and provides browser-local Comfortable/Compact density,
+reduced-motion, and global-shortcut controls. Global shortcuts are suppressed
+inside editable fields and can be disabled for assistive-technology conflicts.
+The maintained layouts cover 720 × 900 narrow inspection, common 1600 × 940
+laptops, 1920 × 1080 wide investigation, and 200% browser zoom. Graphical
+timeline, ecology, brain, biological-series, and architecture views retain
+labelled textual alternatives. See
+[Accessibility and Responsive Operation](docs/accessibility_and_responsive.md)
+and the [Keyboard-only Observatory Tour](docs/guide_keyboard_observatory.md).
+
+### Release Boundary and Validation
+
+The numbered Observatory roadmap is validated as one product, not only as
+independent panels. The packaged
+[release validation report](docs/observatory_release_validation.md) records
+the end-to-end, semantic, safety, performance, accessibility, resilience, API,
+documentation, and Firefox checks for this build. Supported retention and
+request limits are explicit; exceeding one produces truncation, eviction, or a
+gap indicator instead of an invented complete result.
+Repository owners should begin with the
+[complete Observatory owner hand-off](docs/developer-tools-observatory-handoff.md)
+for a step-by-step tour of all changed workspaces and controls.
+
+Keep the built `lc2e` binary and its `tools/` directory at the same revision.
+Existing flat hashes and legacy endpoints remain documented compatibility
+paths, while new work should use named Observatory routes and checksum/world-
+bound mutation APIs. Read
+[Migration and Rollback](docs/observatory_migration_and_rollback.md) before
+mixing versions or reverting. A code rollback does not reverse a world,
+genome, chemical, creature, script, or file change that has already happened;
+such operations cannot be truly undone.
+
+The compatibility field `health` means glycogen reserve (chemical 4), not
+overall health. More generally, the Observatory's **Observed**, **Derived**,
+**Inferred**, and **Unknown** labels describe how a claim was produced. A
+cross-panel narrative does not prove why a creature acted.
 
 ### Log
 
-The **Log** tab provides a real-time stream of engine log messages via Server-Sent Events (SSE). It replaces the old `monitor/` + `relay.js` setup with a zero-dependency embedded solution.
+The **Log** tab records engine messages as structured, time-aligned evidence
+over Server-Sent Events (SSE). It replaces the old `monitor/` + `relay.js`
+setup with a zero-dependency embedded solution.
 
 **Features:**
 
 - **Live streaming** — log messages appear as the engine produces them, with sub-second latency
-- **Category filtering** — toggle visibility by category using the sidebar checkboxes:
+- **Severity filtering** — Info, Warning, Error, and Critical are independent
+  of the source subsystem
+- **Subsystem filtering** — toggle the original FlightRecorder categories:
   - **Errors** (red) — runtime errors, assertion failures
   - **Shutdown** (orange) — engine shutdown sequence
   - **Network** (blue) — network/socket activity
@@ -52,21 +136,37 @@ The **Log** tab provides a real-time stream of engine log messages via Server-Se
   - **Crash** (magenta) — crash reports, signal handlers
   - **Other** (grey) — uncategorized messages
 - **Text search** — filter messages by content using the search box
-- **Pause / Resume** — temporarily stop rendering new messages; buffered messages are flushed on resume
+- **Context filters** — world, agent, classifier, event, since-world-load, and
+  around-context-tick ranges
+- **Pause stream / Resume stream** — temporarily stop Log rendering; buffered
+  messages are flushed on resume while the simulation continues
 - **Copy** — copy all visible (filtered) log lines to clipboard
-- **Export** — download the entire log history as a `.txt` file
+- **Context preview** — inspect time provenance, agent/script identity,
+  bytecode IP, and correlation before following an Agent, Scripts, or Debugger
+  link
+- **Bookmarks and annotations** — retain investigative notes with the record
+- **Export** — download the filtered history as structured JSONL, JSON, or
+  readable text
 - **Display options:**
-  - Timestamps — show/hide relative timestamps
+  - Wall time and world tick — show/hide either timebase
   - Auto-scroll — automatically scroll to the latest message
   - Compact rows — reduce row height for denser viewing
 
-Messages are colour-coded by category with a left border indicator and a category badge (e.g. `ERR`, `NET`, `WRLD`). Error and crash messages also have a tinted background for visibility.
+World loads create visible session boundaries. Server and browser buffers are
+both bounded to 5,000 records and approximately 4 MiB. Disconnect, restart, and
+overflow gaps are explicit rows. Composite SSE IDs resume retained records
+without duplication. See the built-in **Log — Contextual Engine Evidence**
+guide for schema, provenance, retention, and tracing details.
 
-### Console
+### Evaluate-now Scratchpad
 
-![Developer Tools — Console Tab](developer_tools_console.png)
+![Developer Tools — Scratchpad](developer_tools_console.png)
 
-The **Console** tab is an interactive CAOS REPL (Read-Eval-Print Loop). It compiles and executes CAOS commands on the engine's main thread and displays the output immediately.
+The **Scratchpad** is the compact expert route for short read-only CAOS. It
+compiles the exact source first, binds it to the current world/tick, and
+executes it on the main thread only when the maintained risk inventory finds no
+known mutation or unknown command. Other source gets a one-click transfer to
+Workbench **Evaluate now** for explicit review.
 
 **Usage:**
 
@@ -83,7 +183,9 @@ hello world
 
 **Features:**
 
-- **Instant execution** — commands are compiled by the `Orderiser` and executed by a fresh `CAOSMachine` on the main thread
+- **Guarded immediate evaluation** — read-only source is compiled through
+  `/api/caos/validate`, then checksum-bound and executed through
+  `/api/caos/evaluate`
 - **Command history** — press ↑/↓ to recall previous commands (up to 200 entries)
 - **Multi-line input** — press Shift+Enter for multi-line CAOS scripts; Enter alone executes
 - **Error display** — compilation errors and runtime errors are shown in red with a `✗` marker
@@ -91,9 +193,14 @@ hello world
 
 **Limitations:**
 
-- **No OWNR** — the console has no owner agent. Commands that require `ValidateOwner()` (e.g. `targ ownr`) will throw a runtime error. This matches the behavior of the original Windows CAOS Tool.
-- **No blocking commands** — commands like `wait`, `over`, `anim ... over` will throw `sidBlockingDisallowed` because the console script runs to completion in a single call (`UpdateVM(-1)`). Use `inst` mode for enumeration loops.
+- **No OWNR or TARG binding** — Scratchpad has no owner or selected target.
+  Use Workbench when a selected `TARG` is required.
+- **No blocking commands** — commands like `wait`, `over`, `anim ... over`
+  cannot yield because the fresh VM runs to completion in one call. Use `inst`
+  for finite enumeration loops.
 - **Single execution** — each command runs in a fresh VM instance. Variables (`va00`–`va99`) do not persist between commands.
+- **Mutation review** — known world mutation, broad/destructive commands, and
+  unclassified source do not execute here; use the offered Workbench handoff
 
 #### Advanced: C++ Stack Tracer (`CSTK`)
 
@@ -114,28 +221,30 @@ This provides instant visibility into which C++ functions and handlers actually 
 
 ### Scripts
 
-![Developer Tools — Scripts Tab](developer_tools_scripts.png)
+![Developer Tools — compact grouped Scripts workspace](docs/media/tab_scripts.png)
 
-The **Scripts** tab shows a live table of all currently running CAOS scripts across all agents in the world.
+The **Scripts** tab is a compact, grouped activity workspace for agent CAOS
+VMs. Each row shows owner identity, classifier/event, normalized state, and the
+single source statement mapped near the current IP. IP, blocking command and
+reason, TARG, IT, capture tick, and full installed source are behind
+**Details**.
 
-**Columns:**
-
-| Column | Description |
-|---|---|
-| Agent ID | The agent's unique ID (`GetUniqueID()`) |
-| Classifier | Family, Genus, Species, Event with human-readable name (e.g. `2 13 100 9 (Timer)`) |
-| State | `running`, `blocking` (waiting on `wait`, `over`, etc.), or `paused` (at a breakpoint) |
-| IP | Current instruction pointer in the bytecode |
-| Current Source | The CAOS source at the current IP, auto-formatted with line breaks and 4-space indentation |
-
-**Features:**
-
-- **Auto-refresh** — the table polls `GET /api/scripts` every 2 seconds by default
-- **Manual refresh** — click "Refresh" for an immediate update
-- **Toggle auto** — uncheck "Auto" to disable automatic polling
-- **Empty state** — when no scripts are running (e.g. no world loaded), a message is shown instead of an empty table
-
-Running scripts are shown with a green badge; blocking scripts with an orange badge; paused scripts (at a breakpoint) with an orange outlined badge tagged ⏸.
+- **Group identical** collapses matching classifier/event instances to a count
+  and state summary.
+- Search plus state, classifier, event, gallery, creature, Changed, and New
+  filters can be combined without disrupting stable row order.
+- `WAIT` is labelled **Waiting** only when the VM identifies that exact
+  blocking command. Other blocking operations retain **Blocking** and use
+  “Reason unavailable” where the engine cannot report a completion condition.
+- **Paused** describes one VM at a breakpoint, not the world's global pause
+  state. **Finished**, **Changed**, and **New** are derived from successive
+  samples and labelled accordingly.
+- **Focus** moves the game camera to the owner. **Debugger** carries exact
+  owner identity and script/event context; Back restores filters, grouping,
+  disclosure, Auto, and scroll.
+- Full source is fetched on demand from the classifier endpoint and cached once
+  per classifier/source revision. Normal polling returns only a current
+  statement, so repeated timer instances do not repeat full source payloads.
 
 ### Debugger
 
@@ -194,7 +303,7 @@ The **Debugger** tab is an interactive CAOS source-level debugger. A persistent 
 
 ### Creatures
 
-The **Creatures** tab is a live inspector for all creature agents (Norns, Grendels, Ettins) in the world. It provides real-time drive levels and biochemistry data for analysing creature behaviour and health.
+The **Creatures** tab is a live inspector for all creature agents (Norns, Grendels, Ettins) in the world. It provides sampled drive levels, biochemistry, organ state, and neural activity without inventing an overall health score. See [How to Read Biological Labels](docs/biological_labels.md).
 
 **Layout:** Three-panel design — creature list sidebar (left), detail panel with sub-tabs (centre), summary card (right).
 
@@ -204,12 +313,104 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 - **Auto (2s):** Toggle automatic background polling
 - **Focus:** When a creature is selected, click this to immediately snap the in-game camera to that creature's coordinates in the world
 
+**Live Observation Strip:**
+
+- Seven fixed cards join Environment, Perception, Internal pressure,
+  Attention, Selection, Action, and Derived Consequence evidence without
+  claiming that adjacency proves causation
+- Environment through Action share one engine-main-thread sample tick;
+  unavailable lobes or targets remain explicit Unknowns
+- Weak, close, and apparently overtaken neural winners retain the competing
+  sampled activity
+- Freeze holds only the rendered view; named captures and per-stage comparison
+  are isolated by world and creature
+- Raw expert state and source/target links preserve provenance and hand the
+  current context to Brain, Drives, Chemistry, or Debugger
+
+See [Following One Creature Live](docs/live_creature_observation.md).
+
+### Timeline
+
+The **Timeline** tab records one selected creature into a bounded,
+world-qualified history. Its nine lanes cover environment, perception,
+neural selection, action scripts, physiology, lifecycle, interventions,
+subject-correlated errors, and explicit recording gaps.
+
+Polled transitions are Derived tick intervals with before/after evidence, not
+invented exact events. Atomic observation snapshots reconstruct the nearest
+seven-stage historical view while scrubbing. Explicit structured events take
+precedence over overlapping polling inference. The workspace supports zoom,
+filters, bookmarks, annotations, source cross-navigation, repository-safe
+JSON/JSONL/CSV export, and offline JSON/JSONL review.
+
+Recording uses 1/2/5-second intervals and browser-only rolling memory/duration
+bounds. It runs while Timeline is visible unless **Record in background** is
+enabled. Pauses, disconnects, world/creature switches, tick regressions, and
+sampling delays remain visible as gaps rather than being mistaken for
+inactivity. See [Ethology Timeline](docs/ethology_timeline.md).
+
+### Compare
+
+The **Compare** tab supports coherent same-tick individual tables, one-creature
+Timeline range comparisons, and explicit cohort summaries. It consumes
+bounded Biological Monitor and Timeline history and retains removed or dead
+members as missing/dead rather than silently reducing the cohort.
+
+Every aggregate shows `n`, missing values, spread, and raw individuals.
+Accelerated or unequal cadence stays visible through tick ranges and offsets.
+The first individual column is a display reference rather than a healthy
+target or rank. Room occupancy, movement, event rates, and explicit lifecycle
+events remain descriptive evidence.
+
+Pinned chemicals are fetched through a bounded bulk snapshot request.
+Structural genome counts are fetched only on demand and neither comparison
+definitions nor reports contain genome payloads. See
+[Creature and Cohort Comparison](docs/creature_cohort_comparison.md).
+
+### World
+
+The **World** tab is a read-only, layered observatory for metaroom/room
+geometry, doors, linked rooms, agents, vehicles, configured CA emissions,
+room-level CA samples, and a bounded selected-creature movement trace.
+
+It visibly separates globally observed world state, the selected creature's
+current-room sample, available smell-lobe evidence, and inferred relevance.
+A globally visible agent is never labelled perceived merely because it
+appears on the map.
+
+The connection inspector derives a bounded graph chain at a chosen
+permeability threshold and labels it as browser-derived rather than an
+engine-selected route. CA names appear only when supplied by the active
+world's smell-category mapping. Sampling runs only while the tab is visible
+and never changes `APPR`, linked-room navigation, targets, smells, agents, or
+world saves. See [World and Ecology Observatory](docs/world_ecology_observatory.md).
+
+### Experiments
+
+The **Experiments** tab builds a versioned before/after protocol around
+explicit control and treatment subjects. A recording retains selected
+creature observations on world ticks, makes disconnections visible as
+non-interpolated gaps, and continues in the background only after the user
+starts it deliberately.
+
+Mutating REST operations enter a redacted provenance ledger while an
+experiment is active. User action, requested operation, observed response,
+and verification state remain separate. CAOS/script source and genome
+payloads are omitted from exports.
+
+The safe branch workflow checks name collisions, saves the active world,
+copies it under an unused name, verifies the copied archive, and does not load
+or overwrite a world implicitly. Exported manifests contain local references,
+not worlds, saves, creatures, genomes, or proprietary assets. A branch or
+saved world is a useful baseline, not a deterministic replay guarantee. See
+[Experiment Workspaces and Provenance](docs/experiment_workspaces.md).
+
 **Creature List:**
 
 - All creatures in the world, listed with species icon (🐣 Norn, 🦎 Grendel, 🔧 Ettin)
 - Creature name shown as primary label (if named), otherwise genus + short moniker
 - Life state badge (alert, asleep, dreaming, unconscious, dead, zombie)
-- Tiny health bar on each list item
+- Compact **Gly** bar showing glycogen reserve (chemical 4), not overall health
 - Click to select and inspect
 - **Text search** — filter creatures by name or moniker using the search box at the top of the list
 - **Species filter** — toggle buttons (All, 🐣 Norns, 🦎 Grendels, 🔧 Ettins) to show only creatures of a specific genus. Both filters combine — e.g. selecting "Norns" and typing a name shows only Norns matching that name
@@ -225,33 +426,45 @@ The **Creatures** tab is a live inspector for all creature agents (Norns, Grende
 
 **Chemistry Sub-Tabs:**
 
-The Chemistry inspector is split into two modes: **Monitoring** and **Syringe**.
+The Chemistry inspector is split into two modes: **Monitoring** and
+**Intervene**.
 
 **Monitoring:**
 
 ![Developer Tools — Chemistry View](developer_tools_chemistry.png)
 
 - All 256 biochemical concentrations displayed as colour-coded bars
-- Sorted by value (highest first) for quick identification
+- Stable canonical chemical-ID order by default, with explicit alternative
+  order modes in the Biological monitor
 - "Non-zero only" toggle to filter out inactive chemicals
 - Full repository of all 256 biochemicals mapped out. This list is sourced directly from the engine's internal structure and the historical [GameWare Chemical List](https://web.archive.org/web/20110807073010/http://www.gamewaredevelopment.co.uk/cdn/C3chemicalList.php).
 - Colour-coded by category: purple (drives), red (antigens), orange (antibodies), green (smells), blue (general)
 
-**Syringe:**
+**Intervene:**
 
-![Developer Tools — Syringe View](developer_tools_chemicals_syringe.png)
+- Search all 256 identifiers and catalogue names, then bind the operation to
+  the exact live creature moniker and a fresh chemistry sample
+- Capture a biological-series baseline, or use an Experiment baseline before
+  beginning treatment
+- Choose a signed adjustment, absolute target, small ±0.05 preset, or
+  explicitly formatted protocol operation
+- Preview the engine's immediate 0–1 clamping result and review the exact
+  target in a final dialog
+- Require explicit confirmation for changes over 0.25 or any clamped
+  operation; prevent duplicate pending requests
+- Preserve the world's current pause state and report engine-confirmed
+  before/after values and operation tick
+- Record the raw chemical ID and result in Experiment provenance, the pinned
+  chemical graph, and Timeline
 
-- Inject or extract specific chemicals into the creature's bloodstream on the fly
-- Dynamic filtering to search through all 256 available chemicals by ID or label
-- Adjustable dosage spinner spanning from -1.0 to 1.0 amounts
-- Instant visual feedback and engine recalculations upon payload injection
+See [Safe Chemical Interventions](docs/safe_chemical_interventions.md).
 
 **Organs Sub-Tab:**
 
-![Developer Tools — Organs View](developer_tools_creature_organs.png)
-
 - Lists all of the creature's organs as expandable cards
-- At-a-glance health bar, status badge (OK / IMPAIRED / FAILED), and component count badges (Receptors, Emitters, Reactions) for each organ
+- Stable `Organ N` identity; no assumed mammalian-organ name
+- Inferred likely-role label with supporting chemical IDs, method, and an explicit `not calibrated` confidence statement, or `not classified` when no rule matches
+- Derived long-term life-force ratio, observed status badge (ATP AVAILABLE / ATP UNAVAILABLE / FAILED), and component count badges (Receptors, Emitters, Reactions)
 - **Click an organ card to expand it** to view internal biochemistry machinery:
   - **Stats Grid:** details such as Clock Rate, Energy Cost, Life Force, and Rate of Repair
   - **Reactions:** displays chemical formulas with proportions and visual reaction-rate bars (e.g., `Glucogen + 4 ASH2Dehydrogenase → Starch`)
@@ -275,9 +488,10 @@ The Genome sub-tab is a fully immersive, real-time binary parser for inspecting 
 
 - Species icon and genus label
 - Creature name (if assigned)
-- Moniker, sex, age stage, life state, health percentage
+- Moniker, engine sex value, life stage, tick age, and life state
 - Position in world, agent ID
 - Highest active drive
+- Separate vitality indicators: observed raw concentrations plus separately labelled derived toxin-threshold results and aggregate organ activation counts
 **Toolbar Controls:**
 
 - **Refresh** — manually fetch latest data
@@ -285,13 +499,12 @@ The Genome sub-tab is a fully immersive, real-time binary parser for inspecting 
 
 **Brain Sub-Tab:**
 
-![Developer Tools — Brain Monitor](developer_tools_brain_monitor.png)
-
-The **Brain** sub-tab provides a real-time spatial visualization of the creature's neural network, inspired by the original Creatures 3 "Brain in VAT" tool. All lobes are rendered simultaneously on a 2D canvas at their genome-defined positions, giving an immediate overview of what the creature is thinking and how information flows through its brain.
+The **Brain** sub-tab provides a real-time spatial visualization of the creature's neural network, inspired by the original Creatures 3 "Brain in VAT" tool. It exposes exact anatomy without presenting a readability transform as genome geometry.
 
 **Spatial Heatmap:**
 
-- All lobes (typically 15 in a C3/DS brain: `noun`, `verb`, `visn`, `comb`, `decn`, `driv`, `attn`, `stim`, `move`, `detl`, `situ`, `resp`, `forf`, `mood`, `smel`) are positioned according to their genome coordinates (`x`, `y`, `width`, `height`)
+- **Genome anatomy** plots all lobes at the exact engine coordinates (`x`, `y`, `width`, `height`) and is marked Observed.
+- **Functional flow** is marked Derived and visibly documents its transform: noun, vision, and stimulus are aligned around combination, and movement is repositioned below.
 - Each neuron within a lobe is a coloured cell:
   - **Dark/transparent** = inactive (activity ≈ 0). Inactive cells feature a faint inner boundary to maintain a visible cellular grid even when the entire lobe is completely dormant.
   - **Bright orange** = highly active (activity ≈ 1).
@@ -343,22 +556,40 @@ The **Brain** sub-tab provides a real-time spatial visualization of the creature
 
 ### Genetics Kit
 
-![Developer Tools — Genetics Kit](developer_tools_genetics_kit.png)
+![Developer Tools — safe Genetics Kit](docs/images/observatory/safe-genetics-experiment-firefox.png)
 
-The **Genetics Kit** tab is a standalone tool for manipulating, cross-breeding, and injecting genomes directly into the engine, bypassing the normal biological reproduction cycle. Use this to instantly draft new creatures or orchestrate careful genetic crosses without waiting for in-game life cycles.
+The **Genetics Kit** is a copy-first experiment workspace. It inspects
+checksum-backed identity, keeps protected and ordinary originals read-only,
+edits only a verified derived copy or browser draft, shows a structured
+source→derived diff, and injects only an exact saved checksum after a final
+world review. See the canonical [Safe Genetics Experiments guide](docs/tab_genetics_kit.md).
 
 **Basic Concepts:**
 
-- **Moniker:** Every creature and genome in the game has a unique hash called a "moniker" (e.g., `985-haze-kszy7-dqh74-qvfpg-qq7vs`). This designates the `.gen` genome file located in your game's *Genetics* directory.
+- **File identity versus moniker:** a Genetics filename may be a stock template,
+  a recorded experimental name, or an engine-generated creature moniker. The
+  identity panel does not treat a filename as trustworthy biography.
+- **Version:** a saved genome version is identified by filename plus FNV-1a-64
+  checksum and, for a derived file, a verified `.gxp.json` provenance sidecar.
 - **Cross-Breeding:** Select two parent monikers from the active world or your genetics library. The engine's native crossover algorithm will shuffle their genes using proper biological inheritance and mutation to produce a unique child genome.
 
 **Workflow & Features:**
 
 The Genetics Kit uses a split-pane layout to maximize space (the global developer toolbar is completely hidden when this tab is active to provide maximum vertical real estate): a left **Genome Library** sidebar and a right **Genetics Inspector** panel.
 
-1. **Browse & Manage Genomes** — the left sidebar lists all `.gen` files in the world's `Genetics/` directory, acting as a full folder view. Core engine genetics are marked with a `CORE` badge. Hover over any non-core file to access inline **Rename** (✏️) and **Delete** (🗑️) actions. The sidebar also provides global actions to create a **New** genome, **Import** from JSON, or **Cross** two parent genomes.
-2. **Inspect & Search** — selecting a genome loads it into the right panel. The gene table categorizes every gene in the selected genome (Brain/Biochemistry/Creature/Organ). Use the primary search filter to deeply search through the genetic literal structures (e.g., search for a specific chemical ID like `148`, or an SV-Rule property).
-3. **Inline Property Editing** — all gene properties are natively editable. Structural checkboxes toggle mutability flags and activation states, while number inputs allow you to tune biochemical thresholds, brain coordinates, clock rates, and reaction values on the fly. Editing is disabled for `CORE` files to protect the engine's structural base. When modifying user genomes, a real-time **Modified Genes** summary section appears at the top of the inspector tracking all edits and additions. Click any badge in this summary to instantly scroll and highlight the modified gene. Click **Save** in the inspector header to commit changes to disk, or **Export** to download the genome as JSON.
+1. **Browse protected sources and copies** — the library marks `.gno`-backed
+   sources `CORE`, verified derived files `COPY`, and invalid sidecars
+   `STALE META`. Rename/delete controls exist only on a verified copy and use
+   explicit confirmation; deletion is never needed for editing.
+2. **Inspect trusted identity** — the identity panel shows current/source
+   names, binary checksums, format/gene count, and only live/biography fields
+   supported by an engine-confirmed injection result in the current browser
+   session. Persistent file-to-creature relationships are unavailable and
+   remain `Unknown`.
+3. **Create a copy, then edit** — originals have no interactive gene inputs
+   and Save/Review injection stay disabled. **Create experimental copy**
+   performs a no-overwrite copy and records the source checksum. Bounded inputs
+   and structural controls then operate in browser memory on the copy.
 4. **Structural Chromosome Modifiers** — full visual CRUD operations allow you to dynamically groom the DNA strand without raw byte patching. Click the action buttons on a gene to **Duplicate**, **Delete**, or **Move** it up or down the genetic ladder. You can also press **Add Gene** to create a completely blank gene of any subtype at the end of the genome.
 5. **Editing Complex SV Rules** — Brain Lobe and Neural Tract genes use State Variable Rules (SVRules) to define neuron logic. Each SVRule is edited through a **16-row visual grid editor** (one row per 3-byte instruction in the 48-byte buffer) with three columns:
    - **Opcode** — searchable Bright-Fi combobox populated from the engine's 69 SVRule opcodes (e.g. `store`, `load`, `if=0`, `tend`, `wta`)
@@ -366,8 +597,15 @@ The Genetics Kit uses a split-pane layout to maximize space (the global develope
    - **Value** — dynamically renders as a numeric input (integer 0–255 or decoded float) or a chemical combobox (256 chemicals) depending on the selected operand type
 
    The human-readable SVRule display above the editor (e.g. `store neuron[0]` → `stop`) updates **in real-time** as values are changed — no save/reload cycle is required. Opcode changes dynamically toggle operand/value visibility for no-operand instructions (`stop`, `nop`, `wta`). All labels containing `<`/`>` characters (e.g. `if<Stop`, `if>=0`) are HTML-escaped to prevent DOM parsing errors.
-6. **Cross** — click **Cross** in the sidebar, select two parent monikers, and provide an optional **Child Name**. The engine's native `Genome::Cross` algorithm performs biological crossover with mutation (see *Crossover Algorithm* below). A new child `.gen` file is written to the Genetics directory using your chosen name (or a safe UUID fallback).
-7. **Inject** — select your preferred mode ("Inject as Hatched Creature" or "Inject as Egg"), choose the desired **gender** (Random ♂♀, Male ♂, or Female ♀), and click **Inject to Engine** in the inspector header to drop the currently loaded genome directly into the world. The API writes a temporary uniquely-identified `.gen` file, executes a conditional CAOS macro to hatch the creature or spawn an egg with the selected sex, and immediately auto-cleans up the temporary `.gen` file so your library remains uncluttered.
+6. **Review and save** — the stable gene diff names additions, removals,
+   reorders, enabled/disabled states, and exact field changes with raw evidence
+   and decoding limitations. **Save copy** requires the last-read checksum and
+   transactionally updates the binary plus provenance; unknown layouts and
+   out-of-range fixed fields are blocked.
+7. **Cross or inject deliberately** — crossover creates a new no-overwrite
+   derived file with both parent checksums. **Review injection** names the exact
+   world, saved copy/checksum, sources, diff, mode, sex, and pause behavior.
+   Both disposable/branch and final-review confirmations are required.
 
 #### End-to-End Pipeline Architecture
 
@@ -387,18 +625,28 @@ The Genetics Kit operates through four layers:
 
 1. **Frontend (`tools/genetics.js`)** — renders the file list with deep-search-driven filtering, the interactive gene property modifiers, structural chromosome tools, and the crossover modal. Communicates exclusively via `fetch()` to the REST API. State is managed in-browser (no server-side sessions).
 
-2. **REST API (`engine/DebugServer.cpp`)** — seven endpoints handle all genetics operations. All mutating operations are dispatched to the engine's main thread via a `WorkItem` queue to ensure thread safety:
-   - `GET /api/genetics/files` — scans the world's `GENETICS_DIR` for `.gen` files and detects protected core files
-   - `GET /api/genetics/file/:moniker` — reads and parses a `.gen` binary file into structured JSON
-   - `POST /api/genetics/crossover` — performs `Genome::Cross` and writes the child to disk
-   - `POST /api/genetics/save` — serializes a (potentially modified) genome JSON back into a binary `.gen` file
-   - `POST /api/genetics/rename` — safely renames a user `.gen` file (rejects if core)
-   - `POST /api/genetics/delete/:moniker` — safely deletes a user `.gen` file (rejects if core)
-   - `POST /api/genetics/inject` — serializes a genome, writes it, and executes the CAOS injection macro to hatch it or spawn an egg based on the requested mode
+2. **REST API (`engine/DebugServer.cpp`)** — narrow identity, copy, save, and
+   injection operations execute through the main-thread `WorkItem` queue:
+   - `GET /api/genetics/files` and `GET /api/genetics/file/:name` return
+     verified original/copy identity and binary checksums with decoded genes
+   - `POST /api/genetics/copy` creates a source-derived pair without overwrite
+   - `POST /api/genetics/crossover` creates a derived native crossover and
+     records both parent checksums
+   - `POST /api/genetics/save` is create-only for new/imported drafts
+   - `POST /api/genetics/save-experiment` is schema/range/stale-checked and
+     transactional for verified copies
+   - `POST /api/genetics/rename` and `POST /api/genetics/delete/:name` are
+     separate confirmed verified-copy operations
+   - `POST /api/genetics/inject` accepts only the reviewed filenames,
+     checksums, world, confirmations, mode, and sex, then returns the
+     engine-confirmed result agent
 
 3. **Engine Core (`engine/Creature/Genome.cpp`, `GenomeStore.cpp`)** — the `Genome` class handles binary file I/O (`ReadFromFile` / `WriteToFile`), crossover (`Cross` / `CrossLoop`), and gene expression (`GetGeneType`). `GenomeStore` manages genome slots, moniker generation, and history event registration.
 
-4. **CAOS VM** — the injection endpoint compiles and executes a multi-command CAOS script that creates a temporary agent, loads the genome, hatches the creature (or spawns the egg), sets physics properties, and places it in the world.
+4. **CAOS VM** — after server-side identity revalidation, injection makes a
+   private template copy, executes the existing creature/egg construction
+   path, removes the template, and identifies the new live agent by comparing
+   the engine agent map before and after the atomic operation.
 
 #### Binary `.gen` File Format
 
@@ -491,13 +739,21 @@ When the **Cross** button is clicked, the REST API reads both parent `.gen` file
 
 **Crossover parameters used by the Genetics Kit:** `MumChanceOfMutation=200`, `MumDegreeOfMutation=200`, `DadChanceOfMutation=200`, `DadDegreeOfMutation=200`. These are intentionally high to produce diverse offspring from the developer tool (the game's native breeding uses creature-specific mutation rates from biochemistry).
 
-**Child moniker:** Since `GenomeStore::GenerateUniqueMoniker` is protected, the REST API synthesizes a moniker using `000-chld-<random hex>` format. In contrast, the engine's native moniker generation uses an MD5 hash seeded with timestamps, mouse position, world tick, agent count, and random data to guarantee universal uniqueness.
+**Derived filename:** the user chooses a new path-safe, collision-free child
+name. This file identity is not yet a live creature moniker. If it is later
+injected, `GenomeStore::LoadEngineeredFile` generates the live genome moniker
+and the API returns that engine-generated value.
 
 #### Injection Pipeline (CAOS Macro)
 
-When **Inject to Engine** is clicked, the following steps execute in sequence:
+When **Review injection** is confirmed, the following steps execute:
 
-**Step 1: Binary Serialization** — the frontend sends the full genome JSON (including any checkbox modifications to gene flags or active states, the selected inject mode, and the chosen gender) to `POST /api/genetics/inject`. The server re-serializes the gene array back into a `dna3` binary file. Genes with `active: false` are omitted. A fresh moniker is generated by appending `_<random>` to the input moniker, and the `.gen` file is written to the Genetics directory.
+**Step 1: Identity revalidation** — the frontend sends only the reviewed
+derived/source filenames and checksums, confirmed world, disposable/branch
+and final-review booleans, mode, and sex. The server rejects unsaved/stale
+bytes, changed sources, invalid provenance, `Startup`, or a world-name change.
+It copies the exact saved derived bytes to a private, collision-free template;
+it does not serialize browser gene JSON during injection.
 
 **Step 2: CAOS Execution** — the server constructs and executes a CAOS macro on the main thread, using the selected gender as the sex parameter. If injecting a hatched creature, the macro creates a temporary blank agent, loads the genome, and hatches it with the chosen sex. If injecting an egg, it spawns a simple `3 4 1` agent, sets `ov01` to the chosen sex (or randomizes it if "Random" was selected), and assigns standard egg physics and timer rules:
 
@@ -518,10 +774,10 @@ accg game "c3_creature_accg"         \ Set gravitational acceleration (default: 
 attr game "c3_creature_attr"         \ Set agent attributes (default: 198)
 bhvr game "c3_creature_bhvr"         \ Set click behaviours (default: 15)
 perm game "c3_creature_perm"         \ Set wall permeability (default: 100)
-setv va01 unid                       \ Store new creature's unique ID in va01
+seta va01 targ                       \ Retain the new creature handle during the macro
 targ agnt va00                       \ Re-select the temporary blank agent
 kill targ                            \ Destroy the temporary agent
-targ agnt va01                       \ Re-select the creature
+targ va01                            \ Re-select the creature
 mvsf 1000 8900                       \ Move to safe position in Norn Meso (Metaroom 11)
 ```
 
@@ -537,13 +793,24 @@ mvsf 1000 8900                       \ Move to safe position in Norn Meso (Metar
 
 **Step 4: World Placement** — `MVSF 1000 8900` moves the creature to a safe floor position in the Docking Station Norn Meso (Metaroom 11). The `MVSF` command validates the position against the physics map and finds the nearest valid standing location.
 
+**Step 5: Engine confirmation** — `CAOSMachine` clears `TARG` and agent local
+variables when a script finishes. The endpoint therefore compares the
+engine's agent-ID map before and after the atomic operation, selects the new
+creature or egg, and returns its agent ID, classifier, generated genome
+moniker, world/system tick, and pause state. The private template is removed;
+the reviewed derived experiment file remains.
+
 #### Binary Serialization (Read/Write)
 
 The REST API contains **two parallel binary codec implementations** in `DebugServer.cpp`:
 
 1. **`parseGenomeFileToJson` (reader)** — a lambda (line ~1445) that opens the `.gen` file, validates the `dna3` header, and walks each gene sequentially. It reads the 8-byte header and then dispatches on `type/subtype` to parse the gene-specific data into JSON fields. SVRule byte arrays (48 bytes) in Brain Lobe and Tract genes are passed through `decompileSVRuleByBytes()` for human-readable display.
 
-2. **Inject serializer (writer)** — inside the `POST /api/genetics/inject` handler (line ~1686), the server iterates the JSON gene array and re-writes each gene back to binary using `writeU8`, `writeU16BE`, and `writeFloat8` helpers. Genes with `active: false` are skipped. The file is bookended with `dna3` and `gend` markers.
+2. **Save serializer (writer)** — the create-only and experimental-save
+   handlers iterate validated decoded genes and write `dna3`/`gene`/`gend`
+   bytes using `writeU8`, `writeU16BE`, and `writeFloat8`. Genes with
+   `active:false` are omitted. Injection reads only the already saved,
+   checksum-matching binary.
 
 > **⚠️ MAINTENANCE WARNING:** These two codecs are **manually mirrored** and must stay in exact sync with each other and with the engine's `Genome.cpp` binary format. Any change to gene data layout in the engine (e.g., adding a field to a gene subtype) must be reflected in **both** the parser and the serializer in `DebugServer.cpp`. There is no shared schema — each codec independently hard-codes the byte layout per gene subtype. Failure to keep them synchronized will produce corrupted `.gen` files or incorrect gene displays.
 
@@ -551,11 +818,17 @@ The REST API contains **two parallel binary codec implementations** in `DebugSer
 
 This tool directly hooks into the underlying C++ `GenomeStore` and `CreatureGallery`. By operating exactly how natural births work — using the same `Genome::Cross`, `GENE LOAD`, `NEW: CREA`, and `BORN` CAOS commands that the game's own egg-hatching scripts use — injected creatures behave authentically. They appear in the built-in game UI panels (creature tracking panel), preserve full lifecycle history logging, and have correct physics properties.
 
-### CAOS IDE
+### CAOS Workbench
 
-![Developer Tools — CAOS IDE](developer_tools_caos_ide.png)
+![Developer Tools — CAOS Workbench](docs/images/observatory/caos-workbench-firefox.png)
 
-The **CAOS IDE** tab is a lightweight browser-based code editor for writing, editing, running, and managing CAOS scripts directly in the running engine. It provides a scriptorium browser, a syntax-highlighted editor, and an output console.
+The **CAOS Workbench** is the explicit authoring and intervention surface for
+CAOS. It combines the scriptorium browser, syntax-highlighted editor, compiler
+diagnostics, output, and breakpoint tools with five modes: **Evaluate now**,
+**Inspect running**, **Install event**, **Replace event**, and **Remove event**.
+The separate **Scratchpad** remains a fast compile-checked path for short
+read-only ownerless expressions; mutating or unknown source is transferred to
+Workbench review.
 
 **Layout:** Three-panel design — scriptorium sidebar (left), code editor with classifier header (centre), output console (bottom).
 
@@ -574,7 +847,7 @@ The sidebar lists all scripts currently installed in the engine's scriptorium �
 **Code Editor (Centre):**
 
 - **Syntax highlighting** — CAOS keywords, flow control (`doif`, `loop`, `scrp`, `endm`), commands (`setv`, `targ`, `mvto`), variables (`va00`–`va99`, `ov00`–`ov99`), strings, numbers, and comments are colour-coded using the shared `highlightCAOS()` tokenizer
-- **Live syntax validation** — editor content is validated against the engine's compiler 500ms after typing stops. On error, a red error bar appears below the header showing the error message with line number, and the gutter highlights the offending line in red. Validation uses `POST /api/validate` which compiles without executing
+- **Live syntax validation** — editor content is validated against the engine's compiler after typing stops. On error, a red error bar shows the message and source location and the gutter highlights the line. Validation uses `POST /api/caos/validate`, returns an exact source checksum, compiles without executing, and explicitly does not claim safety
 - **Auto-complete** — press **Ctrl+Space** to show a dropdown of matching CAOS commands at the cursor position, or just type 3+ characters for automatic suggestions. The dropdown shows the command name, type badge (command/integer/float/string/agent/variable), parameter signature, and a brief description. Navigate with ↑↓ arrows, accept with Enter/Tab, dismiss with Escape. The command dictionary is fetched once from `GET /api/caos-commands` and cached in memory
 - **Line numbers** — displayed in a gutter on the left; the error line is highlighted red when a syntax error is detected. **Click any line number to toggle a breakpoint** (see Breakpoints section below)
 - **Smart indentation** — the editor behaves like a code editor:
@@ -586,15 +859,20 @@ The sidebar lists all scripts currently installed in the engine's scriptorium �
 
 **Classifier Header:**
 
-Four numeric input fields (Family, Genus, Species, Event) above the editor. These are auto-populated when loading a script from the scriptorium and are used by the Inject and Remove actions.
+Four numeric input fields (Family, Genus, Species, Event) above the editor.
+They are auto-populated when loading a script and identify the exact target for
+Install, Replace, and Remove. Loading an existing event selects Replace and
+loads its engine checksum.
 
-**Toolbar Actions:**
+**Modes and toolbar actions:**
 
 | Button | Shortcut | Description |
 |---|---|---|
-| **▶ Run** | Ctrl/⌘+Enter | Executes the editor content as CAOS code via `/api/execute`. Output and errors appear in the output panel. Runs in a fresh VM with no owner agent |
-| **Inject** | — | Compiles the editor content and installs it in the scriptorium under the classifier specified in the header fields. Uses the dedicated `/api/scriptorium/inject` endpoint. Strips any existing `scrp`/`endm` wrapper automatically |
-| **Remove** | — | Removes the script matching the classifier fields from the scriptorium using `rscr` |
+| **Evaluate now** | Ctrl/⌘+Enter while selected | Executes checksum-bound source in a fresh ownerless VM. Optional selected `TARG` and pause-before-run are explicit |
+| **Inspect running** | Ctrl/⌘+Enter while selected | Opens the selected running agent script in Debugger without executing editor source |
+| **Install event** | Ctrl/⌘+Enter while selected | Installs only when the exact classifier/event is absent |
+| **Replace event** | Ctrl/⌘+Enter while selected | Shows a diff and replaces only when the reviewed installed checksum still matches |
+| **Remove event** | Ctrl/⌘+Enter while selected | Shows the exact installed classifier/checksum and requires confirmation |
 | **Save .cos** | — | Downloads the editor content as a `.cos` file. If a scriptorium script is loaded, the filename reflects the classifier (e.g. `2_18_16_9.cos`) |
 | **Load .cos** | — | Opens a file picker to load a `.cos`, `.txt`, or `.caos` file into the editor |
 | **⟳ Scripts** | — | Refreshes the scriptorium sidebar |
@@ -602,12 +880,13 @@ Four numeric input fields (Family, Genus, Species, Event) above the editor. Thes
 
 **Output Console (Bottom):**
 
-- Displays execution results from Run, status messages from Inject/Remove/Save/Load, and error messages
+- Displays mode, output or error location, tick/elapsed context, correlation ID,
+  and handoffs to Logs, Scripts, and Debugger
 - Colour-coded: green `▶` prompt for commands, white for results, red `✗` for errors, muted italic for info messages
 
 **Breakpoints (IDE → Debugger Workflow):**
 
-The CAOS IDE allows you to set breakpoints on source lines, then **choose which running agents** should pause at those breakpoints. This bridges the IDE (which works with scripts) and the Debugger (which works with agents).
+The CAOS Workbench allows you to set breakpoints on source lines, then **choose which running agents** should pause at those breakpoints. This bridges the IDE (which works with scripts) and the Debugger (which works with agents).
 
 - **Setting a breakpoint** — click any line number in the gutter. A red dot marker appears next to the line number, and the **Breakpoint Panel** opens below the classifier header
 - **Breakpoint Panel** — shows all active breakpoints with:
@@ -635,10 +914,13 @@ The CAOS IDE allows you to set breakpoints on source lines, then **choose which 
 
 **Limitations:**
 
-- **Run** behaves like the Console tab — no OWNR, no blocking commands, single-shot execution
-- **Inject** requires the classifier fields to be set. If all four are zero, it shows an error
+- **Evaluate now** always has no `OWNR`; `TARG` is bound only when explicitly
+  selected, and blocking/yielding commands remain invalid in the single-shot VM
+- **Install/Replace/Remove** require an exact non-zero event classifier; Install
+  refuses an occupied target and Replace/Remove refuse missing or changed source
 - **Source availability** — scripts compiled without debug info (e.g. from binary-only worlds) may report "No source available" when loaded
-- **Script locking** — if a scriptorium script is currently being executed by an agent, Inject will fail with "script may be locked"
+- **Script locking** — Replace/Remove fail without mutation while the installed
+  event is locked by a running VM
 - **Auto-complete positioning** — the dropdown uses approximate font metrics; on non-standard zoom levels the position may drift slightly
 - **Breakpoints are not persistent** — breakpoints are cleared when the source text is edited, when a new script is loaded, or when the page is refreshed. They exist only in the browser session
 - **Blank-line breakpoints** — clicking a line with no CAOS instructions (blank line, comment-only line) shows an info message and does not set a breakpoint
@@ -656,64 +938,65 @@ The **Docs** tab acts as the built-in knowledge base for the project, featuring 
 - **Internal Routing:** Internal Markdown links (e.g., `[Link](file.md)`) are intercepted by the client router to seamlessly transition between Wiki pages.
 - **Image Scaling:** All inline Markdown images are automatically responsive and scaled to fit the reading pane, preventing overflow.
 - **Search:** A full-text search box above the page list filters wiki pages by title as you type, matching the searchable dropdown pattern used throughout the tools.
-- **Deep-Link URLs:** The wiki supports hash-based deep-links in the format `http://localhost:9980/#docs/filename.md` or `http://localhost:9980/#docs/filename.md:section-slug`. When the page loads with such a hash, it automatically switches to the Docs tab → Wiki sub-tab, loads the specified page, and (if a section is given) smooth-scrolls to the corresponding heading. The hash is cleared from the URL after navigation.
+- **Deep-Link URLs:** New wiki links use the shared named route form, for
+  example
+  `http://localhost:9980/#observe?route=guides&tab=docs&view=wiki&doc=tools_overview.md`.
+  The earlier `#docs/filename.md` and
+  `#docs/filename.md:section-slug` forms remain accepted. The shared router
+  opens the Wiki workspace, loads the page, and scrolls to a requested section
+  without discarding the current world/subject context.
 
 **Architecture Graph:**
-- Displays an interactive, fully client-side architecture node graph of the primary C++ engine classes utilizing an SVG overlay system on a 2D DOM pane.
-- **Drag & Drop:** You can click and drag class container nodes to dynamically restructure the spatial view at any time.
-- **Auto-routing connections:** Edges reroute instantaneously linking related system objects regardless of structure. Solid lines reflect strong inheritance / ownership properties while dashed represent loosely coupled spans / dependencies.
-- **Node Highlight:** You can hover edge paths, which will visually highlight the associated connecting classes in a bright orange tint. 
-- **Zoom / Pan Constraints:** Includes full spatial zooming with independent control bindings (`+`, `-`, and viewport Ctrl+Scroll wheel integrations). Reset easily back to 100% bounds using the toolbar reset module.
-- **Class Context:** Side panel reflects the class description, purpose and system alignment layer when any node is clicked globally.  
+- Uses a versioned structured model spanning engine, domain, transport,
+  browser, surface, and external-integration layers. Drawing coordinates are
+  derived by the renderer and are not part of the architecture contract.
+- Separates reviewed static relationships, recently observed browser requests,
+  mechanical derived transformations, inferred context, and a selected
+  documentary path. Selecting a path never claims that it ran.
+- Filters by layer or search term, supports pointer and keyboard pan/zoom,
+  **Fit all**, **Fit selection**, arrow-key node movement, and keyboard-reachable
+  relationships.
+- Provides an equivalent text representation for compact layouts and users who
+  do not rely on spatial position or colour.
+- Carries the current world, subject, tick/range, and metric path from
+  contextual help. Recent endpoint highlighting is bounded browser Resource
+  Timing evidence, not general engine tracing.
+- The inspector links to maintained tools, help, and built-in references.
+  Repository source paths are displayed as metadata and explicitly unavailable
+  as browser links.
+- Reviewed metric paths state the owner, field, unit, transformation, cadence,
+  and evidence at each step from engine value through API/browser processing to
+  display or export.
 
-### Contextual Tooltips & Documentation Links
+See [Live Architecture Graph](docs/live_architecture_graph.md) and
+[Trace a Live Metric Through the Architecture](docs/guide_trace_data_path.md).
 
-The developer tools include a **global contextual tooltip system** that shows descriptive help text when hovering any interactive element. Tooltips with associated documentation go one step further — they provide a direct **"📖 Read docs"** link that opens the relevant wiki page in a new browser tab.
+### Contextual Help, Task Guides, and Tooltips
 
-**Basic Usage:**
+The visible **Help** button opens a non-modal drawer for the active route.
+Focus a registered field, chart, panel, or consequential action and press
+**F1** for its specific meaning, activity, evidence/source, update cadence,
+interpretation caution, optional shortcut, related terms, and current live
+identifiers. The **Evidence** button opens the same shared surface at the
+evidence legend.
 
-Hover over any interactive element (buttons, tabs, panels) for 500ms and a tooltip appears with a description. The tooltip disappears when the cursor moves away.
+**Open task guide** provides step-by-step investigation workflows; **Open
+reference** provides deeper field/API detail. Both use the named Docs route and
+preserve the confirmed world, stable selections, and world-tick cursor/range.
+Opening help never pauses, records, executes CAOS, or mutates the world.
 
-**Interactive Documentation Links:**
+The optional Tips system remains a concise accelerator:
 
-Some tooltips include a documentation link that bridges to the Developer Wiki. These tooltips show:
-1. The descriptive help text (same as always)
-2. A small *"press Tab to pin"* hint
-3. A clickable **"📖 Read docs"** link
+- pointer hover waits 500 ms;
+- keyboard focus exposes the same text with `aria-describedby`;
+- a short hint advertises F1 when full contextual help exists;
+- the tooltip is non-interactive and never captures Tab;
+- Escape, the close button, or a click outside closes the drawer, while Tab
+  always performs normal focus navigation.
 
-**Pin-to-Read Workflow:**
-
-Because tooltips normally dismiss when the cursor moves away, a **pin mechanism** lets users lock a tooltip in place:
-
-1. **Hover** an element with a doc link — tooltip appears after 500ms
-2. **Press `Tab`** while the tooltip is showing — the tooltip **pins** in place (visual indicator: white left border + orange glow, the hint text disappears)
-3. **Move the cursor freely** — the pinned tooltip remains visible regardless of mouse position
-4. **Click "📖 Read docs"** — opens the wiki page in a **new browser tab** (the user doesn't lose their current context)
-5. **Dismiss:** click anywhere outside the pinned tooltip, or press `Escape`
-
-Clicking the target element itself (e.g., the tab button) still works normally — pinning is triggered **only** by the `Tab` key.
-
-**Section-Level Navigation:**
-
-Documentation links can point to a specific section within a page. For example, hovering the "Brain" sub-tab and clicking "Read docs" opens `tab_creatures.md` scrolled directly to the **Brain Sub-Tab** heading, not just the top of the page.
-
-**Current Tooltips with Doc Links:**
-
-| Element | Wiki Page | Section |
-|---|---|---|
-| Logo | `tools_overview.md` | — |
-| Status Pill | `api_reference.md` | — |
-| All 8 navigation tabs | Respective tab page | — |
-| Console input field | `tab_console.md` | — |
-| Debugger source view | `tab_debugger.md` | Source View |
-| Debugger context table | `tab_debugger.md` | Inspector Panel |
-| Creatures sub-tabs (Drives, Chemistry, Organs, Brain, Genome) | `tab_creatures.md` | Respective section |
-| Syringe button | `tab_creatures.md` | Syringe Mode |
-| Brain viewport | `tab_creatures.md` | Spatial Heatmap |
-| IDE scriptorium header | `tab_caos_ide.md` | Scriptorium Browser |
-| IDE code editor | `tab_caos_ide.md` | Code Editor |
-| Genetics crossover button | `tab_genetics_kit.md` | Crossover Algorithm |
-| Genetics inject button | `tab_genetics_kit.md` | Injection Pipeline |
+See the [Task Guide Index](docs/observatory_task_guides.md), [Help
+Inventory](docs/contextual_help_inventory.md), and [Help Authoring
+Rules](docs/contextual_help_authoring.md).
 
 ---
 
@@ -721,9 +1004,32 @@ Documentation links can point to a specific section within a page. For example, 
 
 All API endpoints are served on port 9980 alongside the static files. Endpoints that modify engine state are executed on the main thread via a work queue (see [ARCHITECTURE.md](./ARCHITECTURE.md)).
 
+### `POST /api/caos/validate`
+
+Compile `{mode, source}` without execution. Returns exact FNV-1a source
+checksum, compiler error location, known command risk, and
+`validationIsSafety:false`.
+
+### `POST /api/caos/evaluate`
+
+Execute checksum-bound source in a fresh ownerless VM after rechecking reviewed
+world/tick and optional target ID/classifier. Supports deliberate
+pause-before-run with prior-state restoration and requires acknowledgement for
+known mutating/broad commands. Results include output or source location,
+world/system tick interval, elapsed wall time, context, and correlation ID.
+
+### `POST /api/caos/script`
+
+Apply explicit `install`, `replace`, or `remove` to one exact classifier/event.
+Install requires absence. Replace and Remove require the reviewed installed
+checksum; both require confirmation. Remove omits source. Changed/stale world,
+checksum drift, missing/occupied target, compile failure, or locking is refused
+without retargeting.
+
 ### `POST /api/execute`
 
-Compile and execute CAOS code. The code runs on the main thread in a fresh `CAOSMachine` with no owner agent.
+Legacy compatibility endpoint. Compile and execute CAOS in a fresh ownerless VM
+without the Workbench's reviewed world/target/checksum preconditions.
 
 **Request:**
 ```json
@@ -766,8 +1072,18 @@ List all currently running CAOS scripts across all agents.
     "state": "running",
     "ip": 156,
     "source": "doif targ <> null",
+    "sourceRevision": "50ca98130c5a42dc",
+    "blockingCommand": "",
+    "blockReason": "",
+    "targ": 77,
+    "it": 0,
+    "posX": 5200,
+    "posY": 1300,
+    "worldTick": 8144,
     "gallery": "balloonbug",
-    "agentFamily": 2
+    "agentFamily": 2,
+    "agentGenus": 13,
+    "agentSpecies": 100
   }
 ]
 ```
@@ -790,7 +1106,19 @@ Get the source code of a specific scriptorium script by classifier.
 
 **Response (success):**
 ```json
-{ "source": "setv va00 42\noutv va00" }
+{
+  "source": "setv va00 42\noutv va00",
+  "checksum": "fnv1a64:…",
+  "classifier": {
+    "family": 2,
+    "genus": 18,
+    "species": 16,
+    "event": 9
+  },
+  "worldName": "Experiment Branch",
+  "worldTick": 12040,
+  "systemTick": 318
+}
 ```
 
 **Response (not found):**
@@ -802,7 +1130,9 @@ Get the source code of a specific scriptorium script by classifier.
 
 ### `POST /api/scriptorium/inject`
 
-Compile CAOS source and install it in the scriptorium under the given classifier. The source should be the script body **without** the `scrp`/`endm` wrapper.
+Legacy compatibility endpoint that compiles source and installs or silently
+replaces the classifier. New UI code uses `/api/caos/script` for explicit,
+conditional operation semantics.
 
 **Request:**
 ```json
@@ -846,7 +1176,8 @@ Keys are `"family genus species"` strings. Only classifiers with matching catalo
 
 ### `POST /api/validate`
 
-Compile CAOS code without executing it. Returns success or error details. Used by the IDE for live syntax error highlighting.
+Legacy compile-only endpoint. It does not return the reviewed source checksum.
+The Workbench uses `/api/caos/validate`.
 
 **Request:** `Content-Type: application/json`
 ```json
@@ -925,6 +1256,7 @@ Get detailed state about a specific agent, its VM, source code, breakpoints, and
 {
   "id": 42,
   "family": 2, "genus": 13, "species": 100,
+  "gallery": "balloonbug",
   "running": true, "blocking": false, "paused": true,
   "ip": 156,
   "posx": 5200, "posy": 1300,
@@ -1013,9 +1345,34 @@ Query the current engine pause state.
 { "paused": false }
 ```
 
+### `GET /api/session`
+
+Return the shared world/session sample used by the persistent ribbon.
+
+```json
+{
+  "worldName": "DevTools Audit",
+  "worldType": "undocked",
+  "worldTick": 17578,
+  "systemTick": 17920,
+  "paused": false,
+  "gameSpeed": 1,
+  "creatureCount": 4,
+  "loadPending": false,
+  "requestedWorldName": null,
+  "requestedWorldType": null
+}
+```
+
+World-load requests made through REST/MCP remain represented as pending until
+the requested world is confirmed active. Browser consumers share the central
+poller; visible pages poll once per second and hidden pages once every five
+seconds, except that an active observatory recording retains the one-second
+cadence.
+
 ### `GET /api/creatures`
 
-List all creature agents (family 4) in the world with drives, life state, and health.
+List all creature agents (family 4) in the world with drives, life state, life stage, and explicit glycogen reserve.
 
 **Response:**
 ```json
@@ -1031,15 +1388,24 @@ List all creature agents (family 4) in the world with drives, life state, and he
     "ageInTicks": 12500,
     "lifeState": "alert",
     "health": 0.85,
+    "healthMeaning": "glycogen concentration (legacy compatibility)",
+    "glycogenReserve": 0.85,
+    "glycogenChemicalId": 4,
     "posX": 3400,
     "posY": 2100,
+    "roomId": 680,
+    "metaRoomId": 0,
     "drives": [0.1, 0.3, 0.8, "..."],
     "highestDrive": 2
   }
 ]
 ```
 
-The `name` field is the creature's given name from its `LinguisticFaculty` (empty string if unnamed). `drives` is an array of 20 float values matching the `driveoffsets` enum order.
+The `name` field is the creature's given name from its `LinguisticFaculty`
+(empty string if unnamed). `drives` is an array of 20 float values matching the
+`driveoffsets` enum order. `age` is a life-stage index; `ageInTicks` is tick
+age. The compatibility field `health` is exactly glycogen (chemical 4), not an
+overall health score. New clients should use `glycogenReserve`.
 
 ### `GET /api/creature/:id/chemistry`
 
@@ -1069,8 +1435,29 @@ Get all 256 chemical concentrations and organ status for a specific creature.
 ```
 
 `chemicals` is a flat array of 256 float values indexed by chemical ID.
+`functioning` is the engine's latest organ energy flag combined with the failure
+state. For a non-failed organ, `false` means ATP was unavailable at its most
+recent activation; it is not a medical diagnosis of impairment.
 
 **Timeout:** 5 seconds. Returns HTTP 504 on timeout.
+
+### `POST /api/creature/:id/chemical-intervention`
+
+Apply one reviewed chemical adjustment or target value. The JSON body binds
+the request to `confirmedWorldName`, `expectedMoniker`, `sampleWorldTick`, and
+`expectedConcentration`; it also supplies `chemicalId`, `operation`
+(`adjust`/`target`), `requestedValue`, `extremeConfirmed`, and the only
+supported `pauseMode`, `preserve`.
+
+The engine rechecks the live target and sample, previews its authoritative
+0–1 numeric semantics, applies once on the main thread, and returns
+`beforeValue`, `requestedChange`, `projectedImmediateValue`, `afterValue`,
+`appliedChange`, clamping/warning metadata, world/system tick, and pause state.
+Changed worlds/monikers, old or changed samples, reserved chemical `0`,
+out-of-range values, and unconfirmed unusual operations return `ok: false`
+without mutation. See
+[Safe Chemical Interventions](docs/safe_chemical_interventions.md) and the
+[API Reference](docs/api_reference.md#post-apicreatureidchemical-intervention).
 
 ### `GET /api/creature/:id/brain`
 
@@ -1101,12 +1488,15 @@ Get all neuron states for a specific lobe.
 ```json
 {
   "name": "verb", "neuronCount": 40, "winner": 4,
+  "labels": ["Quiescent", "Push", "..."],
   "neurons": [
-    {"id": 0, "states": [0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
-    {"id": 1, "states": [0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
+    {"id": 0, "label": "Quiescent", "states": [0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+    {"id": 1, "label": "Push", "states": [0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
   ]
 }
 ```
+
+The overview and detailed lobe response use the same semantic-label mapping.
 
 ### `GET /api/creature/:id/brain/tract/:tractIdx`
 
@@ -1170,11 +1560,30 @@ Get deep inspection details for a single specific neuron, including state variab
 
 ### `GET /api/genetics/files`
 
-List all `.gen` genome files in the world's Genetics directory. Returns an array of moniker strings (filenames without the `.gen` extension).
+List all `.gen` files with protection and checksum-backed experiment identity.
+An experiment sidecar that does not match the exact filename/current checksum
+is reported as `invalid_or_stale` and does not authorize writes.
 
 **Response:**
 ```json
-["985-haze-kszy7-dqh74-qvfpg-qq7vs", "000-chld-4a3b2c1d-...", "norn.brain.gen.template"]
+[
+  {
+    "name": "norn.astro.48",
+    "isCore": true,
+    "isExperimental": false,
+    "metadataStatus": "absent",
+    "origin": "protected_original",
+    "sourceName": null
+  },
+  {
+    "name": "norn_astro_48_experiment_01",
+    "isCore": false,
+    "isExperimental": true,
+    "metadataStatus": "verified",
+    "origin": "copy",
+    "sourceName": "norn.astro.48"
+  }
+]
 ```
 
 **Timeout:** 5 seconds. Scans the directory returned by `theApp.GetDirectory(GENETICS_DIR)`.
@@ -1188,6 +1597,18 @@ Parse a binary `.gen` file and return its full gene structure as JSON. Used by t
 {
   "moniker": "985-haze-kszy7-...",
   "geneCount": 287,
+  "identity": {
+    "currentName": "985-haze-kszy7-...",
+    "format": "dna3",
+    "checksum": "fnv1a64:115c0bfe4ed1b1ae",
+    "checksumAlgorithm": "FNV-1a-64",
+    "isProtected": false,
+    "isExperimental": false,
+    "metadataStatus": "absent",
+    "origin": "original",
+    "sourceName": null,
+    "sourceChecksum": null
+  },
   "genes": [
     {
       "type": 2, "subtype": 1,
@@ -1212,6 +1633,33 @@ Each gene object includes the parsed 8-byte header fields and a `data` object wh
 
 **Timeout:** 5 seconds. The binary parser (`parseGenomeFileToJson` lambda in `DebugServer.cpp`) reads the file sequentially, validating the `dna3` header and walking `gene`/`gend` markers.
 
+### `POST /api/genetics/copy`
+
+Create a no-overwrite experimental copy and its versioned provenance sidecar.
+
+```json
+{"sourceName":"norn.astro.48","derivedName":"norn_astro_48_experiment_01"}
+```
+
+Success returns `sourceChecksum`, `derivedChecksum`, `worldName`,
+`worldTick`, and `correlationId`. The two checksums initially match. Unsafe
+names, `.gen` suffixes, missing sources, protected-name collisions, and a
+source that changes during copying are rejected.
+
+### `POST /api/genetics/save` and `POST /api/genetics/save-experiment`
+
+`save` is create-only for a new/imported browser draft and refuses every
+existing `.gen`, `.gno`, or sidecar destination. `save-experiment` requires a
+verified sidecar, decoded genome JSON, `saveName`, and the last-read
+`expectedChecksum`. It validates supported layouts and fixed serialized
+ranges, checks all recorded sources, and transactionally replaces only the
+derived copy. Success returns `previousChecksum`, the new `checksum`, source
+identity, tick, and correlation ID.
+
+Rename and deletion likewise require a verified experimental copy,
+`expectedChecksum`, and `confirmed:true`; originals are refused even when
+called outside the UI.
+
 ### `POST /api/genetics/crossover`
 
 Perform genetic crossover between two parent genomes. Reads both parent `.gen` files, executes `Genome::Cross()` with high mutation parameters, and writes the child genome to disk.
@@ -1220,13 +1668,25 @@ Perform genetic crossover between two parent genomes. Reads both parent `.gen` f
 ```json
 {
   "parentA": "985-haze-kszy7-...",
-  "parentB": "000-chld-4a3b2c1d-..."
+  "parentB": "000-chld-4a3b2c1d-...",
+  "child": "comparison_cross_01"
 }
 ```
 
 **Response (success):**
 ```json
-{ "status": "success", "child": "000-chld-7f8e9d0c-..." }
+{
+  "ok": true,
+  "status": "success",
+  "child": "comparison_cross_01",
+  "childChecksum": "fnv1a64:...",
+  "parentA": "985-haze-kszy7-...",
+  "parentAChecksum": "fnv1a64:...",
+  "parentB": "000-chld-4a3b2c1d-...",
+  "parentBChecksum": "fnv1a64:...",
+  "worldTick": 1234,
+  "correlationId": "genome-crossover-..."
+}
 ```
 
 **Response (error):**
@@ -1234,64 +1694,98 @@ Perform genetic crossover between two parent genomes. Reads both parent `.gen` f
 { "error": "Could not open genome file: ..." }
 ```
 
-The child moniker is synthesized as `000-chld-<8 hex>-<8 hex>-<8 hex>-<5 hex>` using `rand()`. Crossover uses mutation parameters `(200, 200, 200, 200)` — intentionally high to produce diverse offspring from the developer tool.
+The chosen child name must be path-safe and unused. The output is installed
+without overwrite and receives a provenance sidecar containing both parent
+names/checksums. Crossover uses mutation parameters `(200, 200, 200, 200)` —
+intentionally high to produce diverse offspring from the developer tool.
 
 **Timeout:** 5 seconds.
 
 ### `POST /api/genetics/inject`
 
-Serialize a genome from JSON back to binary `.gen` format, then execute the CAOS injection macro to hatch it as a live creature or spawn it as an egg in the world. This is the most complex genetics endpoint — it performs binary file writing, CAOS compilation, and VM execution in a single request.
-
-**Request:** The full genome JSON object as returned by `GET /api/genetics/file/:moniker`, with optional modifications (toggled `active` flags on genes, modified `flags` fields). An `injectMode` field selects creature vs egg injection, and a `gender` field controls the sex of the resulting creature.
+Revalidate and inject one exact saved experimental genome. The request is
+narrow: it contains identity/review fields, never the gene array.
 
 ```json
 {
-  "moniker": "985-haze-kszy7-...",
+  "derivedName": "norn_astro_48_experiment_01",
+  "expectedChecksum": "fnv1a64:ca76b5cff985e8af",
+  "reviewedSourceName": "norn.astro.48",
+  "reviewedSourceChecksum": "fnv1a64:115c0bfe4ed1b1ae",
+  "reviewedSecondParentName": null,
+  "reviewedSecondParentChecksum": null,
+  "confirmedWorldName": "Disposable Genetics",
+  "disposableConfirmed": true,
+  "reviewConfirmed": true,
   "injectMode": "creature",
-  "gender": 0,
-  "genes": [
-    { "type": 2, "subtype": 1, "active": true, "data": { "genus": 1, "..." }, "..." },
-    { "type": 0, "subtype": 0, "active": false, "..." }
-  ]
+  "gender": 0
 }
 ```
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `injectMode` | string | `"creature"` | `"creature"` for hatched creature, `"egg"` for egg |
-| `gender` | integer | `0` | `0` = random, `1` = male, `2` = female |
-
-Genes with `"active": false` are omitted from the binary output, effectively deleting them from the injected genome.
+| `injectMode` | string | required | `"creature"` for hatched creature, `"egg"` for egg |
+| `gender` | integer | required | `0` = random, `1` = male, `2` = female |
+| `confirmedWorldName` | string | required | Must still equal the active non-Startup world |
+| `disposableConfirmed` | boolean | required | Confirms disposable world or explicit branch |
+| `reviewConfirmed` | boolean | required | Confirms the exact final summary |
 
 **Response (success):**
 ```json
-{ "status": "success", "moniker": "985-haze-kszy7-..._1234567890" }
+{
+  "ok": true,
+  "status": "success",
+  "derivedChecksum": "fnv1a64:ca76b5cff985e8af",
+  "sourceName": "norn.astro.48",
+  "worldName": "Disposable Genetics",
+  "worldTick": 463,
+  "enginePaused": false,
+  "result": {
+    "agentId": 429,
+    "isCreature": true,
+    "engineeredFrom": "norn_astro_48_experiment_01",
+    "genomeMoniker": "001-rune-mezz8-73syc-zh7f6-vaalw",
+    "moniker": "001-rune-mezz8-73syc-zh7f6-vaalw"
+  }
+}
 ```
 
 **Response (error):**
 ```json
-{ "error": "Could not write gen file" }
+{"ok":false,"error":"The saved genome checksum changed; reload and review again"}
 ```
 
-The returned moniker has `_<random>` appended to avoid overwriting the original `.gen` file. See *Injection Pipeline (CAOS Macro)* in the Genetics Kit section for the full CAOS script that executes after the file is written.
-
-**Timeout:** 5 seconds. This endpoint performs significant work on the main thread: file I/O, CAOS compilation (`Orderiser::OrderFromCAOS`), VM execution (`CAOSMachine::UpdateVM(-1)`), creature construction (skeleton, brain, biochemistry initialization), and world placement.
+The endpoint copies the reviewed binary to a private template for `GENE LOAD`,
+executes construction on the main thread, removes the template, and discovers
+the new live entry from the engine agent map. `genomeMoniker` is the
+engine-generated live genome identity, not the private template name.
 
 ### `GET /api/events`
 
-Server-Sent Events (SSE) endpoint for live log streaming. Connects once and receives a continuous stream of log lines.
+Server-Sent Events (SSE) endpoint for versioned, contextual log records.
+Normal events carry a composite `streamId:recordId` SSE ID. EventSource uses
+`Last-Event-ID` to resume without duplicating retained records.
 
 **Event format:**
 ```
-data: {"cat":4,"t":1234567,"msg":"World loaded successfully"}
+id: 1785152071258-85556:68
+data: {"schemaVersion":2,"kind":"record","severity":"info","subsystem":"world","worldName":"test3","worldTick":110035,"wallTimeMs":1785152152138,"message":"World loaded successfully","cat":4,"t":1234567,"msg":"World loaded successfully"}
 
-data: {"cat":1,"t":1234890,"msg":"Runtime error in agent 2 13 100"}
+data: {"schemaVersion":2,"kind":"gap","reason":"server_restart","droppedCount":0,"message":"Log stream restarted; records between sessions are unavailable"}
 ```
 
-Each `data:` line contains a JSON object with:
-- `cat` — category bitmask (1=error, 2=network, 4=world, 8=caos, 16=shutdown, 32=sound, 64=crash)
-- `t` — timestamp in milliseconds since engine start
-- `msg` — log message text
+Modern records can additionally contain `systemTick`, `contextTiming`,
+`agent`, `script`, and `correlationId`. `kind` is `record`,
+`world_boundary`, or `gap`. The compatibility aliases remain:
+
+- `cat` — category bitmask (1=error, 2=network, 4=world, 8=caos,
+  16=shutdown, 32=sound, 64=crash);
+- `t` — monotonic milliseconds;
+- `msg` — message text.
+
+The server retains at most 5,000 records and approximately 4 MiB. A client
+whose cursor falls behind receives an explicit gap before the oldest retained
+record.
 
 ---
 
@@ -1306,18 +1800,29 @@ The tools UI follows the **"Bright-Fi"** design language — a Utopian Graphic-C
 
 ### Contextual Tooltips
 
-A global tooltip system (`tooltips.js`) provides contextual help for every interactive element across all tabs. Tooltips are opt-in via the **💡 Tips** toggle in the header-right area; the preference is persisted in `localStorage`.
+A global tooltip system (`tooltips.js`) provides concise descriptions on hover
+and keyboard focus. Full contextual help is owned by
+`contextual_help_model.js` and rendered by `contextual_help.js`. Tips remain
+optional through the **💡 Tips** toggle; the preference is stored in
+`localStorage`.
 
 **Features:**
 
-- **120+ tooltips** covering every tab: header controls, navigation tabs, log category filters, console, scripts table headers, debugger inspector keys (OWNR/TARG/FROM/IT/IP), creature sub-tabs, organ/brain panels, CAOS IDE editor/classifier/breakpoint controls, and docs graph
+- **120+ tooltips** covering the grouped routes, dashboard, header controls,
+  log category filters, console, scripts table headers, debugger inspector keys
+  (OWNR/TARG/FROM/IT/IP), creature sub-tabs, organ/brain panels, CAOS Workbench
+  editor/classifier/breakpoint controls, and docs graph
 - **500ms hover delay** with 120ms fade-in/out animations to avoid visual noise
+- **Keyboard focus support** through `aria-describedby`; standard keys are not
+  repurposed
 - **Smart positioning** — the tooltip auto-flips vertically and clamps horizontally to stay within the viewport
 - **Native `title` suppression** — when a custom tooltip is active, the system temporarily strips `title` attributes from the hovered element and its ancestors to prevent "double tooltip" conflicts (the browser's native tooltip appearing alongside the custom one). Attributes are restored on mouse-out
 - **CSS-selector registry** — tips are defined as `{ selector, text }` entries in the `TIPS` array. The system uses a `mouseover` listener on the document root and walks up the DOM tree to find the first matching tip, supporting both static and dynamically generated elements (e.g. organ cards, brain neurons, scriptorium groups)
 - **Styling** — follows the Bright-Fi aesthetic: dark semi-transparent background (`rgba(0,0,0,0.92)`), orange left border accent, Inter font, max-width 320px
 
-To add tooltips for new UI elements, append entries to the `TIPS` array in `tooltips.js`.
+Register durable help metadata and ownership first; add a short tooltip only
+when it improves scanning. See
+`tools/docs/contextual_help_authoring.md`.
 
 ---
 

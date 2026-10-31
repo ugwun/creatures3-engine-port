@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include "unix/FileFuncs.h"
 
+#include <errno.h>
 #include <sstream>
 
 // Return an ascii filespec in the form xxxx.yyy, given fsp as a 4-char token
@@ -214,13 +215,14 @@ bool GetMissingDirsInDirectory(
 }
 
 bool CopyDirectory(std::string const &source, std::string const &destination) {
-  // Create destination directory
-  mkdir(destination.c_str(), 0755);
+  if (mkdir(destination.c_str(), 0755) != 0 && errno != EEXIST)
+    return false;
 
   DIR *dir = opendir(source.c_str());
   if (!dir)
     return false;
 
+  bool success = true;
   struct dirent *ent;
   while ((ent = readdir(dir)) != NULL) {
     if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
@@ -230,17 +232,21 @@ bool CopyDirectory(std::string const &source, std::string const &destination) {
     std::string dstPath = destination + "/" + ent->d_name;
 
     struct stat st;
-    if (stat(srcPath.c_str(), &st) != 0)
+    if (stat(srcPath.c_str(), &st) != 0) {
+      success = false;
       continue;
+    }
 
     if (S_ISDIR(st.st_mode)) {
-      CopyDirectory(srcPath, dstPath);
+      if (!CopyDirectory(srcPath, dstPath))
+        success = false;
     } else {
-      CopyFile(srcPath.c_str(), dstPath.c_str(), false);
+      if (!CopyFile(srcPath.c_str(), dstPath.c_str(), false))
+        success = false;
     }
   }
   closedir(dir);
-  return true;
+  return success;
 }
 
 bool DeleteDirectory(std::string directory) {

@@ -6,20 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Creatures 3 — Developer Tools</title>
   <meta name="description" content="Developer tools for Creatures 3 engine: log monitor, CAOS console, and script inspector." />
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900&display=swap"
-    rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ff5f00'/%3E%3Cpath d='M7 7h18v18H7z' fill='white'/%3E%3Cpath d='M15 7h2v18h-2M7 15h18v2H7z' fill='black'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+  <a id="skip-to-workspace" class="skip-link" href="#tab-dashboard">
+    Skip to active workspace
+  </a>
+  <p id="route-announcer" class="sr-only" role="status"
+    aria-live="polite" aria-atomic="true"></p>
   <!-- ── Header ────────────────────────────────────────────────────────────── -->
   <header id="header">
     <div id="header-left">
-      <button id="btn-nav-toggle" class="engine-ctrl" title="Toggle Menu" style="margin-right: 16px;">☰</button>
+      <button id="btn-nav-toggle" class="engine-ctrl" type="button"
+        aria-label="Open workspace navigation" title="Toggle Menu"
+        style="margin-right: 16px;">☰</button>
       <div id="logo">
         <!-- Marathon-style geometric mark: bold orange square with a cross slit -->
         <div id="logo-mark">
@@ -34,14 +36,29 @@
           <div id="logo-sub">Developer Tools</div>
         </div>
       </div>
-      <div style="width:20px"></div>
-      <div id="status-pill" class="pill pill--disconnected">
-        <span class="pill-dot"></span>
-        <span id="status-text">Connecting</span>
-      </div>
     </div>
 
     <div id="header-center">
+      <div id="session-ribbon" data-state="connecting">
+        <button id="session-summary" type="button" aria-controls="session-popover"
+          aria-expanded="false" aria-label="Connecting. Open session details.">
+          <span class="session-ribbon__identity">
+            <strong id="session-world">Checking session…</strong>
+            <span id="session-type">Type unknown</span>
+          </span>
+          <span class="session-ribbon__divider" aria-hidden="true"></span>
+          <span class="session-ribbon__state">
+            <span id="session-state-icon" aria-hidden="true">…</span>
+            <span id="session-state">Connecting</span>
+          </span>
+          <span id="session-speed" class="session-ribbon__secondary">×—</span>
+          <span id="session-tick" class="session-ribbon__secondary">Tick —</span>
+          <span id="session-creatures" class="session-ribbon__secondary">— creatures</span>
+          <span id="session-activity" class="session-ribbon__activity" hidden></span>
+          <span id="session-age" class="session-ribbon__freshness">Waiting for status</span>
+          <span id="session-previous-world" class="session-ribbon__previous" hidden></span>
+        </button>
+      </div>
     </div>
 
     <div id="header-right">
@@ -49,32 +66,312 @@
         By Cyril Sadovsky
       </a>
       <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 8px;"></div>
-      <button id="btn-engine-play" class="engine-ctrl engine-ctrl--active" title="Play">▶</button>
-      <button id="btn-engine-pause" class="engine-ctrl" title="Pause">❚❚</button>
+      <button id="btn-context-help" class="engine-ctrl evidence-help-trigger"
+        type="button" aria-label="Open contextual help" aria-keyshortcuts="F1"
+        aria-controls="context-help-drawer" aria-expanded="false"
+        title="Contextual help (F1)">Help</button>
+      <button id="btn-accessibility"
+        class="engine-ctrl engine-ctrl--labeled" type="button"
+        data-help-id="action.accessibility-settings"
+        aria-label="Open keyboard and display settings"
+        aria-keyshortcuts="Shift+?"
+        aria-controls="accessibility-dialog"
+        title="Keyboard and display settings (Shift+?)">
+        <span aria-hidden="true">Aa</span>
+        <span class="engine-ctrl__label">Display</span>
+      </button>
+      <button id="btn-evidence-help" class="engine-ctrl evidence-help-trigger"
+        type="button" data-help-id="concept.evidence-levels"
+        aria-label="Explain observatory evidence levels"
+        aria-controls="context-help-drawer" aria-expanded="false"
+        title="Evidence levels">Evidence</button>
+      <button id="btn-engine-play" class="engine-ctrl engine-ctrl--labeled engine-ctrl--active"
+        aria-label="Resume simulation" aria-pressed="true" title="Resume simulation">
+        <span aria-hidden="true">▶</span>
+        <span class="engine-ctrl__label">Resume <span class="engine-ctrl__object">simulation</span></span>
+      </button>
+      <button id="btn-engine-pause" class="engine-ctrl engine-ctrl--labeled"
+        aria-label="Pause simulation" aria-pressed="false" title="Pause simulation">
+        <span aria-hidden="true">❚❚</span>
+        <span class="engine-ctrl__label">Pause <span class="engine-ctrl__object">simulation</span></span>
+      </button>
     </div>
   </header>
 
+  <dialog id="accessibility-dialog" class="accessibility-dialog"
+    aria-labelledby="accessibility-title"
+    aria-describedby="accessibility-description">
+    <form method="dialog">
+      <header class="accessibility-dialog__header">
+        <div>
+          <span class="section-kicker">Accessibility</span>
+          <h2 id="accessibility-title">Keyboard and display</h2>
+        </div>
+        <button id="accessibility-close" type="button"
+          aria-label="Close keyboard and display settings">×</button>
+      </header>
+      <p id="accessibility-description">
+        Adjust data density and motion. Browser text zoom remains supported
+        independently.
+      </p>
+      <label class="accessibility-dialog__field">
+        Data density
+        <select id="accessibility-density">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+        </select>
+      </label>
+      <label class="accessibility-dialog__check">
+        <input id="accessibility-reduced-motion" type="checkbox" />
+        Reduce interface motion
+      </label>
+      <label class="accessibility-dialog__check">
+        <input id="accessibility-shortcuts" type="checkbox" checked />
+        Enable global Observatory shortcuts
+      </label>
+      <p class="accessibility-dialog__note">
+        Global shortcuts never run while you type in an input, editor, or
+        selectable field. Disable them if they conflict with assistive
+        technology or browser commands.
+      </p>
+      <h3>Keyboard shortcuts</h3>
+      <ul id="accessibility-shortcut-list"
+        class="accessibility-shortcut-list"></ul>
+      <output id="accessibility-status" role="status"
+        aria-live="polite"></output>
+    </form>
+  </dialog>
+
+  <dialog id="session-popover" class="session-popover" aria-labelledby="session-popover-title">
+    <div class="session-popover__header">
+      <div>
+        <div class="session-popover__eyebrow">Observed session status</div>
+        <h2 id="session-popover-title">World and simulation</h2>
+      </div>
+      <button id="session-popover-close" type="button" class="session-popover__close"
+        aria-label="Close session details">×</button>
+    </div>
+    <dl class="session-popover__details">
+      <div><dt>Active world</dt><dd id="session-detail-world">No world</dd></div>
+      <div><dt>Active world type</dt><dd id="session-detail-type">Unknown</dd></div>
+      <div id="session-detail-pending-row" hidden>
+        <dt>Switch pending</dt><dd id="session-detail-pending">None</dd>
+      </div>
+      <div><dt>Simulation</dt><dd id="session-detail-state">Connecting</dd></div>
+      <div><dt>API connection</dt><dd id="session-detail-connection">Connecting</dd></div>
+      <div><dt>Game speed</dt><dd id="session-detail-speed">×—</dd></div>
+      <div><dt>World tick</dt><dd id="session-detail-world-tick">—</dd></div>
+      <div><dt>System tick</dt><dd id="session-detail-system-tick">—</dd></div>
+      <div><dt>Creatures</dt><dd id="session-detail-creatures">—</dd></div>
+      <div id="session-detail-activity-row" hidden>
+        <dt>Activity</dt><dd id="session-detail-activity">None</dd>
+      </div>
+      <div><dt>Freshness</dt><dd id="session-detail-freshness">No sample</dd></div>
+      <div><dt>Captured</dt><dd id="session-detail-captured">No successful sample</dd></div>
+      <div><dt>Source</dt><dd id="session-detail-source">GET /api/session</dd></div>
+    </dl>
+    <div class="session-popover__speed">
+      <label for="session-speed-select">Change simulation speed</label>
+      <div>
+        <select id="session-speed-select">
+          <option value="0.25">×0.25</option>
+          <option value="0.5">×0.5</option>
+          <option value="1" selected>×1</option>
+          <option value="2">×2</option>
+          <option value="4">×4</option>
+          <option value="8">×8</option>
+        </select>
+        <button id="session-speed-apply" type="button" class="btn-light">Apply speed</button>
+      </div>
+      <output id="session-speed-result" aria-live="polite"></output>
+    </div>
+    <p class="session-popover__note">
+      World ticks are the primary simulation timebase. Sample age is browser
+      wall time since the last successful status response.
+    </p>
+  </dialog>
+
+  <button id="context-help-scrim" type="button" hidden
+    aria-label="Close contextual help"></button>
+  <aside id="context-help-drawer" role="dialog" aria-modal="false"
+    aria-labelledby="context-help-title" hidden>
+    <header class="context-help__header">
+      <div>
+        <span class="section-kicker">Contextual help</span>
+        <h2 id="context-help-title">Help</h2>
+      </div>
+      <button id="context-help-close" type="button" class="context-help__close"
+        aria-label="Close contextual help">×</button>
+    </header>
+    <div class="context-help__body">
+      <div class="context-help__badges">
+        <span id="context-help-activity"></span>
+        <span id="context-help-evidence"></span>
+      </div>
+      <p id="context-help-summary" class="context-help__summary"></p>
+      <dl class="context-help__facts">
+        <div>
+          <dt>Data source</dt>
+          <dd id="context-help-source"></dd>
+        </div>
+        <div>
+          <dt>Update and freshness</dt>
+          <dd id="context-help-cadence"></dd>
+        </div>
+      </dl>
+      <section class="context-help__caution"
+        aria-labelledby="context-help-caution-title">
+        <h3 id="context-help-caution-title">Interpretation caution</h3>
+        <p id="context-help-caution"></p>
+      </section>
+      <section id="context-help-shortcut-section"
+        aria-labelledby="context-help-shortcut-title" hidden>
+        <h3 id="context-help-shortcut-title">Optional shortcut</h3>
+        <p id="context-help-shortcut"></p>
+      </section>
+      <section aria-labelledby="context-help-context-title">
+        <h3 id="context-help-context-title">Current identifiers</h3>
+        <dl id="context-help-identifiers"
+          class="context-help__identifiers"></dl>
+        <p id="context-help-no-identifiers">No live world or subject context
+          is required for this help.</p>
+      </section>
+      <section aria-labelledby="context-help-terms-title">
+        <h3 id="context-help-terms-title">Related terms</h3>
+        <div id="context-help-terms" class="context-help__terms"></div>
+      </section>
+    </div>
+    <footer class="context-help__actions">
+      <button id="context-help-guide" type="button" class="btn-light">
+        Open task guide
+      </button>
+      <button id="context-help-reference" type="button" class="btn-light">
+        Open reference
+      </button>
+      <button id="context-help-architecture" type="button" class="btn-light">
+        Trace data path
+      </button>
+    </footer>
+    <p id="context-help-status" class="sr-only" role="status"
+      aria-live="polite"></p>
+  </aside>
+
   <!-- ── Left Navigation ───────────────────────────────────────────────────── -->
-  <nav id="left-nav">
-    <button class="tab-btn tab-btn--active" data-tab="creatures">Creatures</button>
-    <button class="tab-btn" data-tab="genetics">Genetics Kit</button>
-    <button class="tab-btn" data-tab="log">Log</button>
-    <button class="tab-btn" data-tab="console">Console</button>
-    <button class="tab-btn" data-tab="scripts">Scripts</button>
-    <button class="tab-btn" data-tab="debugger">Debugger</button>
-    <button class="tab-btn" data-tab="ide">CAOS IDE</button>
-    <button class="tab-btn" data-tab="docs">Docs</button>
+  <nav id="left-nav" aria-label="Observatory workspaces">
+    <div id="primary-navigation"></div>
+    <output id="navigation-capability-status" role="status"
+      aria-live="polite"></output>
   </nav>
 
   <!-- ── Toolbar: contextual controls per tab ──────────────────────────────── -->
   <div id="toolbar">
+    <!-- Observatory dashboard controls -->
+    <div id="dashboard-controls" class="tab-controls">
+      <button id="dashboard-refresh" class="btn" type="button">Refresh overview</button>
+      <span id="dashboard-toolbar-freshness"
+        class="dashboard-toolbar-freshness">Waiting for live context</span>
+      <div class="toolbar-sep"></div>
+      <button id="dashboard-orientation" class="btn" type="button">First-visit guide</button>
+    </div>
+    <!-- Timeline tab controls -->
+    <div id="timeline-controls" class="tab-controls" hidden>
+      <button id="timeline-record" class="btn" type="button">Pause recording</button>
+      <label class="opt-toggle toolbar-toggle">
+        <input id="timeline-background" type="checkbox" /> Record in background
+      </label>
+      <div class="toolbar-sep"></div>
+      <label class="timeline-toolbar-label">Sample
+        <select id="timeline-interval" class="toolbar-select">
+          <option value="1000">1 s</option>
+          <option value="2000" selected>2 s</option>
+          <option value="5000">5 s</option>
+        </select>
+      </label>
+      <label class="timeline-toolbar-label">Memory
+        <select id="timeline-memory" class="toolbar-select">
+          <option value="2">2 MiB</option>
+          <option value="4" selected>4 MiB</option>
+          <option value="8">8 MiB</option>
+        </select>
+      </label>
+      <label class="timeline-toolbar-label">Duration
+        <select id="timeline-duration" class="toolbar-select">
+          <option value="10000">10k ticks</option>
+          <option value="50000" selected>50k ticks</option>
+          <option value="200000">200k ticks</option>
+          <option value="0">Memory only</option>
+        </select>
+      </label>
+      <div class="toolbar-sep"></div>
+      <select id="timeline-export-format" class="toolbar-select" aria-label="Timeline export format">
+        <option value="json">JSON</option>
+        <option value="jsonl">JSONL</option>
+        <option value="csv">CSV event table</option>
+      </select>
+      <button id="timeline-export" class="btn" type="button">Export</button>
+      <button id="timeline-import" class="btn" type="button">Import</button>
+      <input id="timeline-import-file" type="file" accept=".json,.jsonl,application/json,application/x-ndjson" hidden />
+    </div>
+    <!-- Comparison tab controls -->
+    <div id="compare-controls" class="tab-controls" hidden>
+      <button id="compare-refresh" class="btn" type="button">Refresh snapshot</button>
+      <label class="timeline-toolbar-label">Sample
+        <select id="compare-interval" class="toolbar-select">
+          <option value="2000">2 s</option>
+          <option value="5000" selected>5 s</option>
+          <option value="10000">10 s</option>
+        </select>
+      </label>
+      <label class="opt-toggle toolbar-toggle">
+        <input id="compare-auto" type="checkbox" checked /> Auto while visible
+      </label>
+      <div class="toolbar-sep"></div>
+      <button id="compare-export-report" class="btn" type="button">Export report</button>
+      <button id="compare-export-definition" class="btn" type="button">Export definition</button>
+    </div>
+    <!-- World observatory controls -->
+    <div id="ecology-controls" class="tab-controls" hidden>
+      <button id="ecology-refresh" class="btn" type="button">Refresh map</button>
+      <label class="timeline-toolbar-label">Sample
+        <select id="ecology-interval" class="toolbar-select">
+          <option value="1500">1.5 s</option>
+          <option value="3000" selected>3 s</option>
+          <option value="6000">6 s</option>
+        </select>
+      </label>
+      <label class="opt-toggle toolbar-toggle">
+        <input id="ecology-auto" type="checkbox" checked /> Auto while visible
+      </label>
+      <div class="toolbar-sep"></div>
+      <button id="ecology-fit" class="btn" type="button">Fit metaroom</button>
+      <button id="ecology-copy-link" class="btn" type="button">Copy view link</button>
+    </div>
+    <!-- Experiment workspace controls -->
+    <div id="experiments-controls" class="tab-controls" hidden>
+      <button id="experiment-new" class="btn" type="button">New experiment</button>
+      <button id="experiment-import" class="btn" type="button">Open manifest</button>
+      <input id="experiment-import-file" type="file"
+        accept=".json,application/json" hidden />
+      <button id="experiment-export" class="btn" type="button" disabled>Export manifest</button>
+      <div class="toolbar-sep"></div>
+      <button id="experiment-start" class="btn" type="button" disabled>Start baseline</button>
+      <button id="experiment-treatment" class="btn" type="button" disabled>Begin treatment</button>
+      <button id="experiment-stop" class="btn" type="button" disabled>Stop recording</button>
+    </div>
     <!-- Log tab controls -->
     <div id="log-controls" class="tab-controls" hidden>
+      <span id="log-stream-state" class="log-stream-state" data-state="connecting">Stream connecting</span>
+      <div class="toolbar-sep"></div>
       <input id="search" type="text" placeholder="Filter messages…" autocomplete="off" />
       <div class="toolbar-sep"></div>
-      <button id="btn-pause" class="btn">Pause</button>
+      <button id="btn-pause" class="btn">Pause stream</button>
       <button id="btn-clear" class="btn">Clear</button>
       <button id="btn-copy" class="btn">Copy</button>
+      <select id="log-export-format" class="toolbar-select" aria-label="Log export format">
+        <option value="jsonl">JSONL</option>
+        <option value="json">JSON</option>
+        <option value="text">Text</option>
+      </select>
       <button id="btn-export" class="btn">Export</button>
     </div>
     <!-- Console tab controls -->
@@ -104,16 +401,15 @@
     <div id="creatures-controls" class="tab-controls">
       <button id="btn-creatures-refresh" class="btn">Refresh</button>
       <label class="opt-toggle toolbar-toggle">
-        <input type="checkbox" id="opt-creatures-auto" checked /> Auto (2s)
+        <input type="checkbox" id="opt-creatures-auto" checked /> Auto
       </label>
       <div class="toolbar-sep"></div>
       <button id="btn-creatures-focus" class="btn" disabled>Focus</button>
     </div>
-    <!-- CAOS IDE tab controls -->
+    <!-- CAOS Workbench tab controls -->
     <div id="ide-controls" class="tab-controls" hidden>
-      <button id="btn-ide-run" class="btn btn-ide-run">▶ Run</button>
-      <button id="btn-ide-inject" class="btn">Inject</button>
-      <button id="btn-ide-remove" class="btn">Remove</button>
+      <button id="btn-ide-apply" class="btn btn-ide-run">Evaluate reviewed source</button>
+      <span id="ide-toolbar-status" class="ide-toolbar-status">Waiting for engine validation</span>
       <div class="toolbar-sep"></div>
       <button id="btn-ide-save" class="btn">Save .cos</button>
       <button id="btn-ide-load" class="btn">Load .cos</button>
@@ -132,69 +428,764 @@
         <div class="toolbar-sep"></div>
         <button id="btn-docs-zoom-out" class="btn" title="Zoom Out">−</button>
         <button id="btn-docs-zoom-in" class="btn" title="Zoom In">+</button>
-        <button id="btn-docs-reset" class="btn" title="Reset View">⟲ Reset</button>
+        <button id="btn-docs-reset" class="btn" title="Fit full architecture">Fit all</button>
+        <button id="architecture-fit-selection" class="btn" type="button"
+          data-help-id="action.architecture-fit">Fit selection</button>
+        <div class="toolbar-sep"></div>
+        <label class="architecture-search-label">
+          <span class="sr-only">Search architecture nodes</span>
+          <input id="architecture-search" type="search"
+            data-help-id="field.architecture-search"
+            placeholder="Search architecture…" autocomplete="off" />
+        </label>
+        <button id="architecture-view-toggle" class="btn" type="button"
+          aria-pressed="false">Text view</button>
+        <output id="architecture-toolbar-status" role="status"
+          aria-live="polite"></output>
       </div>
     </div>
   </div>
 
+  <div id="context-strip" aria-label="Shared investigation context">
+    <button id="context-back" type="button" aria-label="Return to previous investigation" disabled>
+      <span aria-hidden="true">←</span>
+      <span class="context-back__label">Back</span>
+    </button>
+    <div id="context-segments" role="navigation" aria-label="Selected world and related subjects"></div>
+    <output id="context-status" role="status" aria-live="polite" hidden></output>
+    <span id="context-tick">Tick —</span>
+  </div>
+
+  <!-- ── Tab: Observatory dashboard ──────────────────────────────────────── -->
+  <div id="tab-dashboard" class="tab-panel tab-panel--active">
+    <main id="observatory-dashboard" aria-labelledby="dashboard-title">
+      <header class="dashboard-hero">
+        <div>
+          <span class="section-kicker">Observatory overview</span>
+          <h1 id="dashboard-title">Follow the living system</h1>
+          <p>Orient to the current world, resume an investigation, or choose
+            observation, experiment, development, and learning work
+            deliberately.</p>
+        </div>
+        <div id="dashboard-hero-state" data-state="waiting">
+          <strong id="dashboard-hero-label">Waiting for session</strong>
+          <span id="dashboard-hero-detail">No observed tick movement yet</span>
+        </div>
+      </header>
+
+      <section id="dashboard-resume" class="dashboard-resume" hidden
+        aria-labelledby="dashboard-resume-title">
+        <div>
+          <span class="section-kicker">Resume investigation</span>
+          <h2 id="dashboard-resume-title">Return to recent context</h2>
+          <p id="dashboard-resume-detail"></p>
+        </div>
+        <button id="dashboard-resume-open" type="button"
+          class="btn-light">Resume</button>
+      </section>
+
+      <section class="dashboard-intents" aria-label="Choose an investigative intent">
+        <button type="button" data-dashboard-route="creatures">
+          <span>Observe</span><strong>Follow a creature</strong>
+          <small>Present biology, behavior, and evidence</small>
+        </button>
+        <button type="button" data-dashboard-route="experiments"
+          data-activity="reviewed-change">
+          <span>Experiment</span><strong>Plan a recorded change</strong>
+          <small>Baseline, treatment, provenance, export</small>
+        </button>
+        <button type="button" data-dashboard-route="workbench"
+          data-activity="reviewed-change">
+          <span>Develop</span><strong>Author or inspect CAOS</strong>
+          <small>Explicit execution and persistence modes</small>
+        </button>
+        <button type="button" data-dashboard-route="guides">
+          <span>Learn</span><strong>Open task guides</strong>
+          <small>Workflows, evidence terms, and references</small>
+        </button>
+      </section>
+
+      <section class="dashboard-grid" aria-label="Live observatory summaries">
+        <article id="dashboard-session-card" class="dashboard-card"
+          data-state="waiting">
+          <header>
+            <div><span class="section-kicker">Observed session</span>
+              <h2>World & simulation</h2></div>
+            <span id="dashboard-session-evidence"
+              class="evidence-badge evidence-badge--unknown">Unknown</span>
+          </header>
+          <dl id="dashboard-session-summary"></dl>
+          <p id="dashboard-session-freshness" class="dashboard-freshness"></p>
+          <button type="button" data-dashboard-action="session"
+            class="dashboard-card-link">Open session details</button>
+        </article>
+
+        <article id="dashboard-creatures-card" class="dashboard-card">
+          <header>
+            <div><span class="section-kicker">Observed population</span>
+              <h2>Creatures</h2></div>
+            <span id="dashboard-creatures-evidence"
+              class="evidence-badge evidence-badge--unknown">Unknown</span>
+          </header>
+          <div id="dashboard-creature-count" class="dashboard-big-value">—</div>
+          <p id="dashboard-selected-creature">No creature selected</p>
+          <div id="dashboard-life-states" class="dashboard-chip-row"></div>
+          <p id="dashboard-creatures-freshness"
+            class="dashboard-freshness"></p>
+          <button type="button" data-dashboard-route="creatures"
+            class="dashboard-card-link">Open live observation</button>
+        </article>
+
+        <article id="dashboard-experiment-card" class="dashboard-card"
+          data-state="idle">
+          <header>
+            <div><span class="section-kicker">Recorded context</span>
+              <h2>Experiment</h2></div>
+            <span id="dashboard-recording-badge"
+              class="dashboard-state-badge">Not recording</span>
+          </header>
+          <h3 id="dashboard-experiment-name">No experiment open</h3>
+          <p id="dashboard-experiment-detail">Create a protocol before a
+            deliberate intervention.</p>
+          <button type="button" data-dashboard-route="experiments"
+            class="dashboard-card-link dashboard-card-link--change">
+            Open experiment workspace
+          </button>
+        </article>
+
+        <article id="dashboard-interventions-card"
+          class="dashboard-card dashboard-card--wide">
+          <header>
+            <div><span class="section-kicker">Observed ledger</span>
+              <h2>Recent interventions</h2></div>
+            <span class="dashboard-risk-key">Reviewed changes</span>
+          </header>
+          <div id="dashboard-interventions"
+            class="dashboard-list dashboard-empty">No interventions recorded
+            for this world.</div>
+        </article>
+
+        <article id="dashboard-diagnostics-card"
+          class="dashboard-card dashboard-card--wide">
+          <header>
+            <div><span class="section-kicker">Observed activity</span>
+              <h2>Scripts, logs & stream gaps</h2></div>
+            <span id="dashboard-diagnostics-state"
+              class="dashboard-state-badge">Waiting</span>
+          </header>
+          <div id="dashboard-script-summary" class="dashboard-chip-row"></div>
+          <div id="dashboard-notable-logs"
+            class="dashboard-list dashboard-empty">No notable log records
+            observed in this browser session.</div>
+          <div class="dashboard-card-actions">
+            <button type="button" data-dashboard-route="scripts"
+              class="dashboard-card-link">Running scripts</button>
+            <button type="button" data-dashboard-route="logs"
+              class="dashboard-card-link">Contextual logs</button>
+          </div>
+        </article>
+
+        <article id="dashboard-pins-card" class="dashboard-card">
+          <header>
+            <div><span class="section-kicker">Derived trends</span>
+              <h2>Pinned signals</h2></div>
+            <span class="evidence-badge evidence-badge--derived">Derived</span>
+          </header>
+          <div id="dashboard-pins"
+            class="dashboard-list dashboard-empty">Pin biological signals
+            while observing a creature.</div>
+          <button type="button" data-dashboard-route="creatures"
+            class="dashboard-card-link">Open biological monitoring</button>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- ── Tab: Experiment workspace ───────────────────────────────────────── -->
+  <div id="tab-experiments" class="tab-panel" hidden>
+    <aside id="experiment-protocol" aria-label="Experiment protocol builder">
+      <header>
+        <span>PROTOCOL BUILDER</span>
+        <h1>Plan before changing</h1>
+      </header>
+      <ol class="experiment-protocol-steps">
+        <li>
+          <label>Title
+            <input id="experiment-title" type="text"
+              value="Before / after observation" maxlength="200" />
+          </label>
+          <label>Question
+            <textarea id="experiment-question" rows="3"
+              placeholder="What observable difference are you investigating?"></textarea>
+          </label>
+          <label>Hypothesis <small>optional</small>
+            <textarea id="experiment-hypothesis" rows="2"
+              placeholder="A hypothesis is encouraged, not required."></textarea>
+          </label>
+        </li>
+        <li>
+          <label>Baseline window
+            <input id="experiment-baseline-ticks" type="number"
+              min="0" value="200" />
+            <small>world ticks; 0 means manual</small>
+          </label>
+        </li>
+        <li>
+          <label>Control creature IDs
+            <input id="experiment-control-subjects" type="text"
+              placeholder="e.g. 621, 622" />
+          </label>
+          <button id="experiment-add-control" class="btn-light"
+            type="button">Use selected creature</button>
+          <label>Treatment creature IDs
+            <input id="experiment-treatment-subjects" type="text"
+              placeholder="e.g. 623, 624" />
+          </label>
+          <button id="experiment-add-treatment" class="btn-light"
+            type="button">Use selected creature</button>
+        </li>
+        <li>
+          <fieldset>
+            <legend>Measurements</legend>
+            <label class="opt-toggle"><input type="checkbox"
+              data-experiment-measurement="highest_drive" checked />
+              Highest drive</label>
+            <label class="opt-toggle"><input type="checkbox"
+              data-experiment-measurement="decision" checked />
+              Decision winner</label>
+            <label class="opt-toggle"><input type="checkbox"
+              data-experiment-measurement="room" checked />
+              Current room</label>
+          </fieldset>
+          <label>Sampling interval
+            <select id="experiment-interval">
+              <option value="1000">1 s</option>
+              <option value="2000" selected>2 s</option>
+              <option value="5000">5 s</option>
+              <option value="10000">10 s</option>
+            </select>
+          </label>
+        </li>
+        <li>
+          <label>Planned intervention
+            <textarea id="experiment-intervention" rows="2"
+              placeholder="Describe the deliberate change. Exact tool actions enter the ledger automatically."></textarea>
+          </label>
+        </li>
+        <li>
+          <label>Observation window
+            <input id="experiment-duration-ticks" type="number"
+              min="0" value="400" />
+            <small>world ticks; 0 means manual</small>
+          </label>
+          <label>Stopping condition
+            <textarea id="experiment-stopping" rows="2">Stop after the treatment window or if a subject becomes unavailable.</textarea>
+          </label>
+          <label>Unavoidable differences <small>optional</small>
+            <textarea id="experiment-differences" rows="2"
+              placeholder="Record known differences between this run and another trial."></textarea>
+          </label>
+          <label>Desired export
+            <input type="text" value="Portable JSON manifest" readonly />
+          </label>
+        </li>
+        <li>
+          <label class="experiment-safety-check">
+            <input id="experiment-disposable" type="checkbox" />
+            This is a disposable world or an explicit branch.
+          </label>
+          <p>Unchecked worlds trigger a separate warning before recording.
+            A saved world does not guarantee deterministic replay.</p>
+        </li>
+      </ol>
+      <button id="experiment-create" class="btn-light" type="button">
+        Create browser draft
+      </button>
+      <p class="experiment-storage-note">Draft metadata is kept in this
+        browser only. Export JSON for a durable record.</p>
+    </aside>
+
+    <main id="experiment-main">
+      <div id="experiment-warning" role="status" aria-live="polite"></div>
+      <header class="experiment-heading">
+        <div>
+          <span>EXPERIMENT / PROVENANCE</span>
+          <h1 id="experiment-heading-title">No experiment open</h1>
+        </div>
+        <output id="experiment-phase">DRAFT</output>
+      </header>
+      <section id="experiment-run-summary" aria-label="Experiment run summary">
+        <div><span>Source world</span><strong id="experiment-world">—</strong></div>
+        <div><span>Start tick</span><strong id="experiment-start-tick">—</strong></div>
+        <div><span>Samples</span><strong id="experiment-sample-count">0</strong></div>
+        <div><span>Gaps</span><strong id="experiment-gap-count">0</strong></div>
+      </section>
+      <section class="experiment-limitations">
+        <strong>Reproducibility boundary</strong>
+        <p>The protocol, samples, gaps, and interventions are recorded.
+          Random state and external world conditions are not, so repeated
+          runs may differ.</p>
+      </section>
+      <section id="experiment-arm-grid" aria-label="Control and treatment observations">
+        <article data-experiment-arm="control">
+          <header><span>CONTROL</span><strong id="experiment-control-count">0 points</strong></header>
+          <div id="experiment-control-series" class="experiment-series-empty">No control observations.</div>
+        </article>
+        <article data-experiment-arm="treatment">
+          <header><span>TREATMENT</span><strong id="experiment-treatment-count">0 points</strong></header>
+          <div id="experiment-treatment-series" class="experiment-series-empty">No treatment observations.</div>
+        </article>
+      </section>
+      <section class="experiment-observations">
+        <header>
+          <div>
+            <span>RECORDED EVIDENCE</span>
+            <h2>Latest observations and gaps</h2>
+          </div>
+          <output id="experiment-recording-state">Not recording</output>
+        </header>
+        <div id="experiment-observation-list">
+          Create a protocol to begin.
+        </div>
+      </section>
+    </main>
+
+    <aside id="experiment-ledger-panel" aria-label="Branches, notes, and provenance">
+      <section>
+        <div class="sidebar-title">Safe world branch</div>
+        <p id="experiment-branch-source">Load a world before branching.</p>
+        <label>New branch name
+          <input id="experiment-branch-name" type="text"
+            placeholder="Experiment baseline 01" />
+        </label>
+        <button id="experiment-branch-preview" class="btn-light"
+          type="button">Review save and branch</button>
+        <output id="experiment-branch-result" aria-live="polite"></output>
+      </section>
+      <section>
+        <div class="sidebar-title">Notes and bookmarks</div>
+        <textarea id="experiment-note" rows="3"
+          placeholder="Record an observation, limitation, or unavoidable difference."></textarea>
+        <div class="experiment-note-actions">
+          <button id="experiment-add-note" class="btn-light"
+            type="button">Add note</button>
+          <button id="experiment-add-bookmark" class="btn-light"
+            type="button">Bookmark tick</button>
+        </div>
+        <div id="experiment-annotations">No annotations.</div>
+      </section>
+      <section class="experiment-ledger-section">
+        <div class="sidebar-title">Intervention ledger</div>
+        <p>User action, request, observed response, and verification remain
+          separate. Source code and genome payloads are omitted.</p>
+        <div id="experiment-ledger">No recorded interventions.</div>
+      </section>
+      <section>
+        <div class="sidebar-title">Manifest provenance</div>
+        <div id="experiment-provenance">No manifest.</div>
+      </section>
+    </aside>
+  </div>
+
+  <dialog id="experiment-personal-warning" class="experiment-dialog"
+    aria-labelledby="experiment-personal-title">
+    <h2 id="experiment-personal-title">This world is not marked disposable</h2>
+    <p>Recording itself is observational, but the planned intervention may
+      change a personal world. Branch first when possible. Continuing records
+      this acknowledgement; it does not make later mutations reversible.</p>
+    <div class="experiment-dialog-actions">
+      <button type="button" data-experiment-dialog-cancel
+        class="btn-light">Cancel</button>
+      <button id="experiment-personal-continue" type="button"
+        class="btn-light">Continue in this world</button>
+    </div>
+  </dialog>
+
+  <dialog id="experiment-branch-dialog" class="experiment-dialog"
+    aria-labelledby="experiment-branch-title">
+    <h2 id="experiment-branch-title">Save and create branch</h2>
+    <dl>
+      <div><dt>Active source</dt><dd id="experiment-branch-confirm-source">—</dd></div>
+      <div><dt>New branch</dt><dd id="experiment-branch-confirm-name">—</dd></div>
+    </dl>
+    <p>The engine will save the active world, then copy it under the unused
+      name. Existing worlds are never overwritten. The new branch is not
+      loaded automatically.</p>
+    <label class="experiment-safety-check">
+      <input id="experiment-branch-confirm" type="checkbox" />
+      I confirm the active source and new branch name.
+    </label>
+    <div class="experiment-dialog-actions">
+      <button type="button" data-experiment-dialog-cancel
+        class="btn-light">Cancel</button>
+      <button id="experiment-branch-create" type="button"
+        class="btn-light" disabled>Create branch</button>
+    </div>
+  </dialog>
+
+  <!-- ── Tab: World and ecology observatory ───────────────────────────────── -->
+  <div id="tab-ecology" class="tab-panel" hidden>
+    <aside id="ecology-sidebar" aria-label="World map layers and sample controls">
+      <section>
+        <div class="sidebar-title">Map sample</div>
+        <label>Metaroom
+          <select id="ecology-metaroom" aria-label="Observed metaroom"></select>
+        </label>
+        <label>CA / smell channel
+          <input id="ecology-channel" type="number" min="0" max="19" value="0" />
+        </label>
+        <output id="ecology-channel-label">CA 0 · meaning unknown</output>
+        <p class="sidebar-note">Channel names appear only when the active world supplies a smell-category mapping.</p>
+      </section>
+      <section>
+        <div class="sidebar-title">Independent layers</div>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="rooms" checked /> Rooms</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="connections" checked /> Doors and links</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="field" checked /> CA field</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="agents" checked /> Agents</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="creatures" checked /> Creatures</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="vehicles" checked /> Vehicles</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="sources" checked /> Sources / sinks</label>
+        <label class="opt-toggle"><input type="checkbox" data-ecology-layer="trace" checked /> Selected-creature trace</label>
+      </section>
+      <section>
+        <div class="sidebar-title">Connectivity query</div>
+        <label>Minimum permeability
+          <input id="ecology-permeability" type="range" min="0" max="100" value="1" />
+          <output id="ecology-permeability-value">1</output>
+        </label>
+        <button id="ecology-query-reachable" class="btn-light" type="button">Reachable agents</button>
+        <div id="ecology-query-result"></div>
+      </section>
+      <section class="ecology-guidance">
+        <strong>Observation only</strong>
+        <p>The map reads engine state. Connectivity chains are derived from sampled links and are not routes chosen by the engine.</p>
+      </section>
+    </aside>
+
+    <main id="ecology-main">
+      <div id="ecology-warning" role="status" aria-live="polite"></div>
+      <header id="ecology-heading">
+        <div>
+          <span>WORLD / ECOLOGY</span>
+          <h1>Layered room observatory</h1>
+        </div>
+        <output id="ecology-sample-summary">Waiting for a world sample</output>
+      </header>
+      <div id="ecology-map-wrap">
+        <svg id="ecology-map" role="img" aria-labelledby="ecology-map-title ecology-map-description">
+          <title id="ecology-map-title">Observed room and agent map</title>
+          <desc id="ecology-map-description">Layered engine room geometry, connections, field samples, agents, and selected creature trace.</desc>
+          <g id="ecology-field-layer"></g>
+          <g id="ecology-room-layer"></g>
+          <g id="ecology-connection-layer"></g>
+          <g id="ecology-trace-layer"></g>
+          <g id="ecology-agent-layer"></g>
+        </svg>
+        <div id="ecology-map-empty">Select a world with room geometry.</div>
+      </div>
+      <details id="ecology-map-text">
+        <summary>Room data table — textual map alternative</summary>
+        <div id="ecology-map-text-content">
+          <p class="crt-empty-hint">Waiting for a world sample.</p>
+        </div>
+      </details>
+      <footer id="ecology-legend">
+        <span><i class="ecology-key ecology-key--creature"></i> creature</span>
+        <span><i class="ecology-key ecology-key--agent"></i> agent</span>
+        <span><i class="ecology-key ecology-key--vehicle"></i> vehicle</span>
+        <span><i class="ecology-key ecology-key--source"></i> CA source</span>
+        <span><i class="ecology-key ecology-key--selected"></i> selected</span>
+      </footer>
+    </main>
+
+    <aside id="ecology-detail" aria-label="Creature-relative ecology and route evidence">
+      <section>
+        <div class="sidebar-title">Creature-relative evidence</div>
+        <div id="ecology-relative"></div>
+      </section>
+      <section>
+        <div class="sidebar-title">Room and target</div>
+        <div id="ecology-inspection"></div>
+      </section>
+      <section>
+        <div class="sidebar-title">Connection chain</div>
+        <div id="ecology-route"></div>
+      </section>
+      <section>
+        <div class="sidebar-title">Sample provenance</div>
+        <div id="ecology-provenance"></div>
+      </section>
+    </aside>
+  </div>
+
+
+  <!-- ── Tab: Creature and cohort comparison ──────────────────────────────── -->
+  <div id="tab-compare" class="tab-panel" hidden>
+    <aside id="compare-sidebar" aria-label="Comparison subjects and measures">
+      <section class="compare-sidebar-section">
+        <div class="sidebar-title">Mode</div>
+        <div id="compare-modes" role="group" aria-label="Comparison mode">
+          <button type="button" class="compare-mode compare-mode--active" data-compare-mode="individual">Individuals</button>
+          <button type="button" class="compare-mode" data-compare-mode="self">Self / ranges</button>
+          <button type="button" class="compare-mode" data-compare-mode="cohort">Cohort</button>
+        </div>
+      </section>
+      <section class="compare-sidebar-section">
+        <div class="sidebar-title">Subjects</div>
+        <div class="compare-subject-actions">
+          <button id="compare-add-selected" class="btn-light" type="button">Add selected</button>
+          <button id="compare-select-all" class="btn-light" type="button">All present</button>
+          <button id="compare-clear-subjects" class="btn-light" type="button">Clear</button>
+        </div>
+        <div id="compare-subject-list"></div>
+        <p class="sidebar-note">Membership is explicit. Missing and dead members stay in recorded cohort history.</p>
+      </section>
+      <section class="compare-sidebar-section">
+        <div class="sidebar-title">Measures</div>
+        <div id="compare-measures"></div>
+        <p class="sidebar-note">Pinned chemicals are requested in the bulk snapshot. No average is presented as a healthy target.</p>
+      </section>
+    </aside>
+
+    <main id="compare-main">
+      <div id="compare-warning" role="status" aria-live="polite"></div>
+      <header id="compare-heading">
+        <div>
+          <span id="compare-mode-label">INDIVIDUALS</span>
+          <h1 id="compare-title">Creature comparison</h1>
+        </div>
+        <output id="compare-sample-summary">Waiting for a cohort snapshot</output>
+      </header>
+      <section id="compare-time-controls">
+        <label>Time alignment
+          <select id="compare-timebase">
+            <option value="world_tick">World tick</option>
+            <option value="relative">Relative to marked event</option>
+          </select>
+        </label>
+        <label>Range A start<input id="compare-a-start" type="number" /></label>
+        <label>Range A end<input id="compare-a-end" type="number" /></label>
+        <label>Range B start<input id="compare-b-start" type="number" /></label>
+        <label>Range B end<input id="compare-b-end" type="number" /></label>
+        <label>Anchor event
+          <select id="compare-anchor"><option value="">None</option></select>
+        </label>
+        <button id="compare-apply-ranges" class="btn-light" type="button">Apply ranges</button>
+      </section>
+      <div id="compare-results"></div>
+    </main>
+
+    <aside id="compare-detail" aria-label="Comparison definitions and provenance">
+      <section>
+        <div class="sidebar-title">Saved definitions</div>
+        <label for="compare-definition-name">Definition name</label>
+        <div class="compare-name-row">
+          <input id="compare-definition-name" type="text" maxlength="80" placeholder="Four-Norn baseline" />
+          <button id="compare-save-definition" class="btn-light" type="button">Save</button>
+        </div>
+        <div id="compare-definitions"></div>
+      </section>
+      <section>
+        <div class="sidebar-title">Provenance</div>
+        <div id="compare-provenance"></div>
+      </section>
+      <section id="compare-genome-section">
+        <div class="sidebar-title">Genome structure</div>
+        <p>On demand; compares gene-type counts without saving genome payloads.</p>
+        <button id="compare-genomes" class="btn-light" type="button">Compare selected genomes</button>
+        <div id="compare-genome-result"></div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ── Tab: Ethology timeline ───────────────────────────────────────────── -->
+  <div id="tab-timeline" class="tab-panel" hidden>
+    <aside id="timeline-sidebar" aria-label="Timeline filters">
+      <section class="timeline-sidebar-section">
+        <div class="sidebar-title">Recording</div>
+        <select id="timeline-session" aria-label="Timeline recording session"></select>
+        <label for="timeline-name">Session name</label>
+        <div class="timeline-name-row">
+          <input id="timeline-name" type="text" maxlength="80" placeholder="Rolling observation" />
+          <button id="timeline-name-save" class="btn-light" type="button" title="Rename this recording. The name labels the recording in this list and in exports.">Rename</button>
+        </div>
+        <output id="timeline-name-status" class="timeline-name-status" aria-live="polite"></output>
+        <output id="timeline-summary">Waiting for a selected creature</output>
+        <p class="sidebar-note">
+          Rolling history is browser memory only. It never enters a world save.
+        </p>
+      </section>
+      <section class="timeline-sidebar-section">
+        <div class="sidebar-title">Event lanes</div>
+        <div id="timeline-category-filters"></div>
+      </section>
+      <section class="timeline-sidebar-section">
+        <div class="sidebar-title">Display</div>
+        <label>Zoom
+          <input id="timeline-zoom" type="range" min="20" max="300" value="100" />
+        </label>
+        <label class="opt-toggle">
+          <input id="timeline-follow" type="checkbox" checked /> Follow live tick
+        </label>
+        <p class="sidebar-note">
+          Gaps remain visible even when their lane is filtered.
+        </p>
+      </section>
+      <section class="timeline-sidebar-section timeline-sidebar-help">
+        <strong>Evidence, not causation.</strong>
+        <p>Polled transitions span two sample ticks. Concurrent events and sequence alone do not prove why behavior occurred.</p>
+      </section>
+    </aside>
+
+    <main id="timeline-main">
+      <div id="timeline-warning" role="status" aria-live="polite"></div>
+      <header id="timeline-ruler-header">
+        <div>
+          <span id="timeline-mode">LIVE</span>
+          <strong id="timeline-cursor-label">Tick —</strong>
+        </div>
+        <button id="timeline-live" class="btn-light" type="button">Return to live</button>
+      </header>
+      <div id="timeline-ruler">
+        <input id="timeline-scrubber" type="range" min="0" max="0" value="0" aria-label="Historical world tick" />
+        <div id="timeline-ticks" aria-hidden="true"></div>
+      </div>
+      <p id="timeline-lanes-description" class="sr-only">
+        Events are positioned by retained world-tick range. Every visible mark
+        is keyboard focusable and the same records follow in the retained
+        events list.
+      </p>
+      <div id="timeline-lanes" role="group"
+        aria-label="Ethology event timeline"
+        aria-describedby="timeline-lanes-description"></div>
+      <section id="timeline-events-section"
+        aria-labelledby="timeline-events-title">
+        <header>
+          <div>
+            <h2 id="timeline-events-title">Retained events</h2>
+            <span id="timeline-display-count">0 events</span>
+          </div>
+          <p>Observed events use a solid edge; derived intervals use a dashed edge.</p>
+        </header>
+        <div id="timeline-event-list" role="list"></div>
+      </section>
+    </main>
+
+    <aside id="timeline-detail" aria-label="Selected timeline evidence">
+      <div class="sidebar-title">Historical evidence</div>
+      <div id="timeline-historical"></div>
+      <div id="timeline-event-detail">
+        <p class="timeline-empty">Select an event to inspect before/after values, uncertainty, and sources.</p>
+      </div>
+    </aside>
+  </div>
 
   <!-- ── Tab: Log ──────────────────────────────────────────────────────────── -->
   <div id="tab-log" class="tab-panel" hidden>
-    <!-- Category sidebar -->
-    <aside id="sidebar">
+    <aside id="sidebar" aria-label="Log filters">
       <div class="sidebar-section">
-        <div class="sidebar-title">Categories</div>
-        <label class="cat-toggle" id="cat-all">
-          <input type="checkbox" checked data-mask="0xFFFFFFFF" /> All
+        <div class="sidebar-title">Severity</div>
+        <label class="cat-toggle" style="--accent:#555">
+          <input type="checkbox" checked data-severity="info" /> <span class="cat-dot"></span> Info
+        </label>
+        <label class="cat-toggle" style="--accent:#b15b00">
+          <input type="checkbox" checked data-severity="warning" /> <span class="cat-dot"></span> Warning
+        </label>
+        <label class="cat-toggle" style="--accent:#c00">
+          <input type="checkbox" checked data-severity="error" /> <span class="cat-dot"></span> Error
+        </label>
+        <label class="cat-toggle" style="--accent:#c000c0">
+          <input type="checkbox" checked data-severity="critical" /> <span class="cat-dot"></span> Critical
         </label>
       </div>
 
       <div class="sidebar-section">
+        <div class="sidebar-title">Subsystem</div>
         <label class="cat-toggle" style="--accent:#DD0000">
-          <input type="checkbox" checked data-mask="1" /> <span class="cat-dot"></span> Errors
+          <input type="checkbox" checked data-subsystem="error" /> <span class="cat-dot"></span> Error
         </label>
         <label class="cat-toggle" style="--accent:#FF5F00">
-          <input type="checkbox" checked data-mask="16" /> <span class="cat-dot"></span> Shutdown
+          <input type="checkbox" checked data-subsystem="shutdown" /> <span class="cat-dot"></span> Shutdown
         </label>
         <label class="cat-toggle" style="--accent:#0055FF">
-          <input type="checkbox" checked data-mask="2" /> <span class="cat-dot"></span> Network
+          <input type="checkbox" checked data-subsystem="network" /> <span class="cat-dot"></span> Network
         </label>
         <label class="cat-toggle" style="--accent:#008000">
-          <input type="checkbox" checked data-mask="4" /> <span class="cat-dot"></span> World
+          <input type="checkbox" checked data-subsystem="world" /> <span class="cat-dot"></span> World
         </label>
         <label class="cat-toggle" style="--accent:#7700CC">
-          <input type="checkbox" checked data-mask="8" /> <span class="cat-dot"></span> CAOS
+          <input type="checkbox" checked data-subsystem="caos" /> <span class="cat-dot"></span> CAOS
         </label>
         <label class="cat-toggle" style="--accent:#007799">
-          <input type="checkbox" checked data-mask="32" /> <span class="cat-dot"></span> Sound
+          <input type="checkbox" checked data-subsystem="sound" /> <span class="cat-dot"></span> Sound
         </label>
         <label class="cat-toggle" style="--accent:#FF00FF">
-          <input type="checkbox" checked data-mask="64" /> <span class="cat-dot"></span> Crash
+          <input type="checkbox" checked data-subsystem="crash" /> <span class="cat-dot"></span> Crash
         </label>
         <label class="cat-toggle" style="--accent:#555555">
-          <input type="checkbox" checked data-mask="0" /> <span class="cat-dot"></span> Other
+          <input type="checkbox" checked data-subsystem="developer_tools" /> <span class="cat-dot"></span> Developer tools
         </label>
+        <label class="cat-toggle" style="--accent:#777">
+          <input type="checkbox" checked data-subsystem="other" /> <span class="cat-dot"></span> Other
+        </label>
+      </div>
+
+      <div class="sidebar-section log-context-filters">
+        <div class="sidebar-title">Context</div>
+        <label>World<input id="log-filter-world" type="text" placeholder="Any world" /></label>
+        <label>Agent ID<input id="log-filter-agent" type="text" inputmode="numeric" placeholder="Any" /></label>
+        <label>Classifier<input id="log-filter-classifier" type="text" placeholder="4 1 2" /></label>
+        <label>Event<input id="log-filter-event" type="text" inputmode="numeric" placeholder="Any" /></label>
+        <label>Time range
+          <select id="log-filter-range">
+            <option value="all">All retained</option>
+            <option value="since_world_load">Since world load</option>
+            <option value="around_tick">Around context tick</option>
+          </select>
+        </label>
+        <label>Tick window<input id="log-filter-tick-window" type="number" min="1" value="100" /></label>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Buffer</div>
+        <output id="log-buffer-summary">0 records · 0 B</output>
+        <p class="sidebar-note">Bounded to 5,000 records and about 4 MiB. Gaps are retained as evidence.</p>
       </div>
 
       <div class="sidebar-section sidebar-footer">
         <div class="sidebar-title">Display</div>
-        <label class="opt-toggle"><input type="checkbox" id="opt-timestamps" checked /> Timestamps</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-timestamps" checked /> Wall time</label>
+        <label class="opt-toggle"><input type="checkbox" id="opt-world-ticks" checked /> World tick</label>
         <label class="opt-toggle"><input type="checkbox" id="opt-autoscroll" checked /> Auto-scroll</label>
         <label class="opt-toggle"><input type="checkbox" id="opt-compact" /> Compact rows</label>
       </div>
     </aside>
 
-    <!-- Log output -->
     <main id="log-container">
+      <div id="log-guidance">
+        <strong>Log stream</strong> is independent of simulation pause.
+        Wall time records when available; world tick aligns engine observations.
+        “Nearest snapshot” context may be later than the originating engine event.
+      </div>
       <div id="log-inner">
-        <!-- rows injected by JS -->
       </div>
       <div id="scroll-anchor"></div>
     </main>
 
-    <!-- Pause overlay -->
+    <aside id="log-context-preview" aria-label="Selected log context" hidden>
+      <div class="sidebar-title">Context preview</div>
+      <div id="log-context-preview-body"></div>
+      <div id="log-context-actions"></div>
+      <label for="log-annotation">Annotation</label>
+      <textarea id="log-annotation" rows="4" placeholder="Add an investigative note"></textarea>
+      <button id="log-save-annotation" class="btn-light" type="button">Save annotation</button>
+      <button id="log-close-preview" class="btn-light" type="button">Close</button>
+    </aside>
+
     <div id="pause-overlay" hidden>
-      <div id="pause-badge">Paused — <span id="pause-buffered">0</span> buffered</div>
+      <div id="pause-badge">Rendering paused — <span id="pause-buffered">0</span> buffered.
+        Simulation continues.</div>
     </div>
   </div>
 
@@ -203,8 +1194,8 @@
     <div id="console-container">
       <div id="console-output">
         <div class="console-welcome">
-          <span class="console-welcome-title">CAOS Console</span>
-          <span class="console-welcome-hint">Type CAOS commands below. Press Enter to execute, Shift+Enter for multi-line. ↑/↓ for history.</span>
+          <span class="console-welcome-title">CAOS Evaluate-now Scratchpad</span>
+          <span class="console-welcome-hint">Read-only snippets run in a fresh ownerless VM. Mutating, destructive, or unknown source moves to CAOS Workbench for explicit context review. Enter evaluates; Shift+Enter adds a line; ↑/↓ recalls history.</span>
         </div>
       </div>
       <div id="console-input-bar">
@@ -216,24 +1207,59 @@
 
   <!-- ── Tab: Scripts ──────────────────────────────────────────────────────── -->
   <div id="tab-scripts" class="tab-panel" hidden>
-    <div id="scripts-container">
-      <table id="scripts-table">
-        <thead>
-          <tr>
-            <th>Agent ID</th>
-            <th>Classifier</th>
-            <th>State</th>
-            <th>IP</th>
-            <th>Current Source</th>
-          </tr>
-        </thead>
-        <tbody id="scripts-tbody">
-          <!-- populated by scripts.js -->
-        </tbody>
-      </table>
+    <div id="scripts-workspace">
+      <div id="scripts-filters" aria-label="Running script filters">
+        <label class="scripts-filter scripts-filter--search">
+          <span>Search</span>
+          <input id="scripts-search" type="search"
+            placeholder="Agent, gallery, statement…" autocomplete="off" />
+        </label>
+        <label class="scripts-filter">
+          <span>State</span>
+          <select id="scripts-state-filter">
+            <option value="all">All states</option>
+            <option value="running">Running</option>
+            <option value="waiting">Waiting</option>
+            <option value="blocking">Blocking</option>
+            <option value="paused">Paused</option>
+            <option value="finished">Finished</option>
+          </select>
+        </label>
+        <label class="scripts-filter">
+          <span>Classifier</span>
+          <input id="scripts-classifier-filter" type="search"
+            placeholder="2 14 8 9" autocomplete="off" />
+        </label>
+        <label class="scripts-filter scripts-filter--short">
+          <span>Event</span>
+          <input id="scripts-event-filter" type="search"
+            placeholder="9 or Timer" autocomplete="off" />
+        </label>
+        <label class="scripts-filter">
+          <span>Gallery / kind</span>
+          <input id="scripts-gallery-filter" type="search"
+            placeholder="rotorfly" autocomplete="off" />
+        </label>
+        <div class="scripts-filter-toggles" aria-label="Script display options">
+          <label><input id="scripts-group-filter" type="checkbox" checked /> Group identical</label>
+          <label><input id="scripts-creature-filter" type="checkbox" /> Creatures</label>
+          <label><input id="scripts-changed-filter" type="checkbox" /> Changed</label>
+          <label><input id="scripts-new-filter" type="checkbox" /> New</label>
+          <label><input id="scripts-full-source" type="checkbox" /> Full source</label>
+        </div>
+      </div>
+      <div id="scripts-sample-status" role="status" aria-live="polite">
+        Waiting for an observed engine sample…
+      </div>
+      <div id="scripts-container" tabindex="0"
+        aria-label="Observed running script activity">
+        <div id="scripts-list" role="list"></div>
+      </div>
       <div id="scripts-empty" hidden>
-        <span>No running scripts.</span>
-        <span class="scripts-empty-hint">Start a world to see active CAOS scripts.</span>
+        <span id="scripts-empty-title">No running scripts.</span>
+        <span id="scripts-empty-hint" class="scripts-empty-hint">
+          Start a world, clear filters, or wait for an active CAOS script.
+        </span>
       </div>
     </div>
   </div>
@@ -315,7 +1341,7 @@
   </div>
 
   <!-- ── Tab: Creatures ──────────────────────────────────────────────────── -->
-  <div id="tab-creatures" class="tab-panel tab-panel--active">
+  <div id="tab-creatures" class="tab-panel" hidden>
     <div id="crt-container">
       <!-- Creature list panel (left sidebar) -->
       <aside id="crt-list-panel">
@@ -344,6 +1370,75 @@
             <button class="crt-sub-btn" data-subtab="genome">Genome</button>
           </nav>
         </div>
+        <details id="crt-observation-strip" open>
+          <summary>
+            <span>Live observation</span>
+            <output id="crt-observation-status">Select a creature to observe</output>
+          </summary>
+          <div class="observation-strip__controls">
+            <button id="crt-observation-freeze" type="button"
+              aria-pressed="false">Freeze view</button>
+            <label>
+              Capture name
+              <input id="crt-observation-name" type="text"
+                maxlength="80" placeholder="e.g. Before feeding" />
+            </label>
+            <button id="crt-observation-capture" type="button" disabled>
+              Capture live tick
+            </button>
+            <label>
+              Compare with
+              <select id="crt-observation-compare" disabled>
+                <option value="">No capture</option>
+              </select>
+            </label>
+            <label class="observation-strip__raw-toggle">
+              <input id="crt-observation-raw" type="checkbox" />
+              Raw expert state
+            </label>
+          </div>
+          <p class="observation-strip__guidance">
+            Concurrent evidence, not a certain why-chain. Each stage keeps its
+            own source and tick; gaps in evidence remain Unknown.
+          </p>
+          <output id="crt-observation-warning"
+            class="observation-strip__warning" aria-live="polite"></output>
+          <div id="crt-observation-stages" role="list"
+            aria-label="Environment through biological consequence"></div>
+        </details>
+        <details id="crt-bio-monitor" open>
+          <summary>
+            <span>Biological monitor</span>
+            <output id="crt-bio-status">Select a creature to start a world-qualified history</output>
+          </summary>
+          <div class="bio-monitor__controls">
+            <button id="crt-bio-record" type="button" aria-pressed="true">■ Recording</button>
+            <label>Interval
+              <select id="crt-bio-interval">
+                <option value="1000">1s</option>
+                <option value="2000" selected>2s</option>
+                <option value="5000">5s</option>
+              </select>
+            </label>
+            <label>Stable order
+              <select id="crt-bio-order">
+                <option value="canonical">Canonical ID</option>
+                <option value="functional_group">Functional group</option>
+                <option value="current_value">Current value</option>
+                <option value="absolute_change">Absolute Δprev</option>
+                <option value="pinned_order">Pinned order</option>
+              </select>
+            </label>
+            <button id="crt-bio-baseline" type="button">Set baseline now</button>
+            <button id="crt-bio-export" type="button">Export JSON</button>
+          </div>
+          <p class="bio-monitor__guidance">
+            Values are observed samples. Δprev compares adjacent retained samples;
+            Δbase compares the selected baseline. Gaps are explicit. Correlation
+            between signals does not establish biological cause.
+          </p>
+          <div id="crt-bio-tray" aria-label="Pinned biological signals"></div>
+        </details>
         <div id="crt-detail-content">
           <!-- Drives sub-view -->
           <div id="crt-drives" class="crt-subview crt-subview--active">
@@ -356,7 +1451,7 @@
             <div class="crt-chem-header-wrap">
               <nav id="crt-chem-sub-tabs" class="crt-internal-tabs">
                 <button class="crt-chem-tab-btn crt-chem-tab-btn--active" data-chem-tab="monitoring">Monitoring</button>
-                <button class="crt-chem-tab-btn" data-chem-tab="syringe">Syringe</button>
+                <button class="crt-chem-tab-btn" data-chem-tab="syringe">Intervene</button>
               </nav>
             </div>
 
@@ -370,22 +1465,116 @@
             </div>
 
             <div id="crt-chem-syringe-view" class="crt-chem-view" hidden>
+              <p class="chemical-intervention-intro">
+                A chemical intervention changes the live creature. Review the
+                exact target and engine clamping first; an inverse adjustment
+                cannot reverse metabolism or downstream effects.
+              </p>
               <div id="crt-syringe-search-wrap">
-                <input type="text" id="crt-syringe-search" placeholder="Search 256 chemicals…" autocomplete="off" />
+                <label for="crt-syringe-search">Chemical</label>
+                <input type="text" id="crt-syringe-search" placeholder="Search chemical IDs 1–255 and catalogue names…" autocomplete="off" />
               </div>
               <div id="crt-syringe-list">
                 <!-- populated by creatures.js -->
               </div>
               <div id="crt-syringe-action" hidden>
-                <div id="crt-syringe-selected-name">Selected: none</div>
-                <div class="crt-syringe-controls">
-                  <span class="crt-syringe-label">Dosage:</span>
-                  <input type="number" id="crt-syringe-amount" class="opt-select" step="0.1" min="-1.0" max="1.0" value="0.1" style="width: 80px;" />
-                  <button id="btn-syringe-inject" class="btn-light">Inject Payload</button>
-                  <span id="crt-syringe-feedback" style="font-size: 10px; font-weight: 600; margin-left: 8px; color: var(--orange); opacity: 0; transition: opacity 0.3s; white-space: nowrap;"></span>
+                <header class="chemical-intervention-heading">
+                  <div>
+                    <span class="section-kicker">Live mutation target</span>
+                    <strong id="crt-syringe-selected-name">Selected: none</strong>
+                  </div>
+                  <span id="chemical-selection-freshness" class="freshness-chip">No sample</span>
+                </header>
+
+                <dl class="chemical-intervention-facts">
+                  <div><dt>Creature</dt><dd id="chemical-target-creature">—</dd></div>
+                  <div><dt>Current concentration</dt><dd id="chemical-current-value">—</dd></div>
+                  <div><dt>Sample tick</dt><dd id="chemical-sample-tick">—</dd></div>
+                  <div><dt>Pause behavior</dt><dd id="chemical-pause-behavior">—</dd></div>
+                </dl>
+
+                <div class="chemical-baseline-row">
+                  <div>
+                    <strong>Before/after recording</strong>
+                    <span id="chemical-baseline-status">Baseline not captured.</span>
+                  </div>
+                  <button type="button" id="chemical-capture-baseline" class="btn-light">
+                    Capture baseline
+                  </button>
+                </div>
+
+                <fieldset class="chemical-operation">
+                  <legend>Proposed operation</legend>
+                  <label>
+                    <input type="radio" name="chemical-operation" value="adjust" checked />
+                    Adjust by dose
+                  </label>
+                  <label>
+                    <input type="radio" name="chemical-operation" value="target" />
+                    Set target concentration
+                  </label>
+                  <div class="chemical-preset-row" aria-label="Adjustment presets">
+                    <button type="button" class="chemical-preset" data-chemical-preset="positive">Small +0.05</button>
+                    <button type="button" class="chemical-preset" data-chemical-preset="negative">Small −0.05</button>
+                    <button type="button" class="chemical-preset" data-chemical-preset="protocol" disabled>Protocol-defined</button>
+                  </div>
+                  <label class="chemical-value-label" for="crt-syringe-amount">
+                    <span id="chemical-value-label">Adjustment</span>
+                    <input type="number" id="crt-syringe-amount" class="opt-select" step="0.01" min="-1" max="1" value="0.05" inputmode="decimal" />
+                  </label>
+                </fieldset>
+
+                <section class="chemical-preview" aria-labelledby="chemical-preview-title">
+                  <h4 id="chemical-preview-title">Immediate numeric preview</h4>
+                  <div class="chemical-preview-equation">
+                    <span id="chemical-preview-before">—</span>
+                    <span id="chemical-preview-operation">+</span>
+                    <span id="chemical-preview-dose">—</span>
+                    <span>=</span>
+                    <strong id="chemical-preview-after">—</strong>
+                  </div>
+                  <p id="chemical-preview-note">
+                    Select a live creature and chemical to calculate a preview.
+                  </p>
+                </section>
+
+                <div class="chemical-recording-plan">
+                  <strong>Follow-up measurements</strong>
+                  <span>Selected chemical, pinned biological signals, drives,
+                    attention/decision, behaviour timeline, and available organ readings.</span>
+                </div>
+
+                <p id="chemical-intervention-warning" class="chemical-intervention-warning" role="alert"></p>
+                <div class="chemical-intervention-actions">
+                  <button id="btn-syringe-inject" class="btn-light" type="button">
+                    Review intervention
+                  </button>
+                  <span id="crt-syringe-feedback" role="status" aria-live="polite"></span>
                 </div>
               </div>
             </div>
+            <dialog id="chemical-intervention-dialog" class="chemical-intervention-dialog" aria-labelledby="chemical-dialog-title">
+              <form method="dialog">
+                <header>
+                  <span class="section-kicker">Final mutation review</span>
+                  <h3 id="chemical-dialog-title">Review chemical intervention</h3>
+                </header>
+                <div id="chemical-dialog-summary"></div>
+                <p class="chemical-dialog-caution">
+                  The projected value is the immediate numeric result for the
+                  reviewed sample. The engine will recheck the target and sample
+                  before changing it. Biological effects may continue afterward.
+                </p>
+                <label id="chemical-extreme-confirm-row" class="chemical-extreme-confirm" hidden>
+                  <input type="checkbox" id="chemical-extreme-confirm" />
+                  I confirm this unusual or clamped concentration change.
+                </label>
+                <div class="chemical-dialog-actions">
+                  <button type="submit" value="cancel" class="btn-light">Cancel</button>
+                  <button type="button" id="chemical-dialog-apply" class="btn-light">Apply reviewed intervention</button>
+                </div>
+              </form>
+            </dialog>
           </div>
           <!-- Organs sub-view -->
           <div id="crt-organs" class="crt-subview" hidden>
@@ -395,14 +1584,27 @@
           </div>
           <!-- Brain sub-view -->
           <div id="crt-brain" class="crt-subview" hidden>
+            <div id="crt-brain-layout-toolbar" aria-label="Brain layout mode">
+              <div class="crt-brain-layout-options">
+                <button type="button" class="crt-brain-layout-btn crt-brain-layout-btn--active" data-brain-layout="genome-anatomy">Genome anatomy</button>
+                <button type="button" class="crt-brain-layout-btn" data-brain-layout="functional-flow">Functional flow</button>
+              </div>
+              <div id="crt-brain-layout-note">
+                <button type="button" id="crt-brain-layout-evidence" class="evidence-badge evidence-badge--observed">Observed</button>
+                <span id="crt-brain-layout-description">Exact lobe x/y coordinates returned by the engine from the expressed genome.</span>
+              </div>
+            </div>
             <div id="crt-brain-layout">
               <!-- Spatial brain canvas -->
-              <div id="crt-brain-viewport">
+              <div id="crt-brain-viewport" role="region"
+                aria-label="Interactive brain anatomy">
                 <div id="crt-brain-canvas">
                   <div class="crt-empty-hint">Select a creature and click Brain</div>
                 </div>
-                <svg id="crt-brain-svg"></svg>
-                <svg id="crt-brain-dendrite-svg"></svg>
+                <svg id="crt-brain-svg" role="group"
+                  aria-label="Brain tract relationships"></svg>
+                <svg id="crt-brain-dendrite-svg"
+                  aria-hidden="true"></svg>
               </div>
               <!-- Info sidebar -->
               <div id="crt-brain-info">
@@ -450,7 +1652,7 @@
     </div>
   </div>
 
-  <!-- ── Tab: CAOS IDE ──────────────────────────────────────────────────── -->
+  <!-- ── Tab: CAOS Workbench ────────────────────────────────────────────── -->
   <div id="tab-ide" class="tab-panel" hidden>
     <div id="ide-container">
       <!-- Scriptorium browser sidebar -->
@@ -472,6 +1674,42 @@
           <input id="ide-species" type="number" class="ide-classifier-input" placeholder="S" title="Species" min="0" value="0" />
           <input id="ide-event" type="number" class="ide-classifier-input" placeholder="E" title="Event" min="0" value="0" />
         </div>
+        <section id="ide-workbench-review" aria-labelledby="ide-mode-heading">
+          <div class="ide-mode-column">
+            <span id="ide-mode-heading" class="section-kicker">Authoring mode</span>
+            <div id="ide-mode-buttons" class="ide-mode-buttons"
+              role="radiogroup" aria-label="CAOS authoring mode">
+              <button type="button" class="ide-mode-button ide-mode-button--active"
+                data-mode="evaluate" role="radio" aria-checked="true">Evaluate now</button>
+              <button type="button" class="ide-mode-button"
+                data-mode="debug" role="radio" aria-checked="false">Inspect running</button>
+              <button type="button" class="ide-mode-button"
+                data-mode="install" role="radio" aria-checked="false">Install event</button>
+              <button type="button" class="ide-mode-button"
+                data-mode="replace" role="radio" aria-checked="false">Replace event</button>
+              <button type="button" class="ide-mode-button"
+                data-mode="remove" role="radio" aria-checked="false">Remove event</button>
+            </div>
+            <p id="ide-mode-description"></p>
+          </div>
+          <div class="ide-context-column">
+            <span class="section-kicker">Exact execution context</span>
+            <dl id="ide-context-summary" class="ide-context-summary"></dl>
+            <div id="ide-evaluate-options" class="ide-evaluate-options">
+              <label><input id="ide-bind-target" type="checkbox" />
+                Bind selected agent as TARG</label>
+              <label><input id="ide-pause-before-run" type="checkbox" checked />
+                Pause world during evaluation</label>
+            </div>
+          </div>
+          <div class="ide-preview-column">
+            <span class="section-kicker">Validation and preview</span>
+            <div id="ide-preview-status" role="status" aria-live="polite"></div>
+            <pre id="ide-diff-preview" hidden></pre>
+            <p class="ide-validation-caveat">Compilation checks syntax.
+              It is not a safety guarantee; review source and context.</p>
+          </div>
+        </section>
         <div id="ide-error-bar" hidden>
           <span id="ide-error-msg"></span>
           <button id="ide-error-dismiss" title="Dismiss">✕</button>
@@ -490,7 +1728,7 @@
           <div id="ide-editor-layers">
             <pre id="ide-highlight" aria-hidden="true"></pre>
             <textarea id="ide-editor" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="* Write CAOS code here…
-* Click Run to execute, or Inject to install in the scriptorium."></textarea>
+* Choose an explicit authoring mode and review its context before applying."></textarea>
             <div id="ide-autocomplete" hidden></div>
             <div id="ide-help-popup" hidden>
               <div id="ide-help-header">
@@ -512,6 +1750,25 @@
       </div>
     </div>
   </div>
+
+  <dialog id="ide-confirm-dialog" class="ide-confirm-dialog"
+    aria-labelledby="ide-confirm-title">
+    <form method="dialog">
+      <span class="section-kicker">Final CAOS review</span>
+      <h3 id="ide-confirm-title">Confirm operation</h3>
+      <div id="ide-confirm-summary"></div>
+      <label class="ide-confirm-row">
+        <input id="ide-confirm-checkbox" type="checkbox" />
+        I reviewed the exact world, target, classifier, source checksum, risk, and operation.
+      </label>
+      <output id="ide-confirm-error" role="status" aria-live="polite"></output>
+      <div class="ide-confirm-actions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button id="ide-confirm-apply" type="button"
+          class="btn btn-ide-run" disabled>Apply reviewed operation</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- ── Tab: Docs ──────────────────────────────────────────────────── -->
   <div id="tab-docs" class="tab-panel" hidden>
@@ -540,37 +1797,50 @@
         </aside>
       </div>
 
-      <div id="docs-graph-view" class="docs-subview" hidden style="flex:1; display:none; flex-direction:row; overflow:hidden;">
-        <div id="docs-viewport">
-          <!-- The actual zoomable container -->
-          <div id="docs-graph-wrap">
-            <svg id="docs-edges-svg"></svg>
-            <div id="docs-nodes-container"></div>
-          </div>
-          <!-- Legend -->
-          <div id="docs-legend">
-            <div class="docs-legend-title">Layers</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#000000"></span> Core</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#0055FF"></span> Logic</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#008000"></span> Entities</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#7700CC"></span> VM</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#FF5F00"></span> Simulation</div>
-            <div class="docs-legend-item"><span class="docs-legend-color" style="background:#555555"></span> Data</div>
-            
-            <div class="docs-legend-title" style="margin-top: 8px;">Connections</div>
-            <div class="docs-legend-item">
-              <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2"></line></svg> Strong / Inherits
+      <div id="docs-graph-view" class="docs-subview" hidden>
+        <aside id="architecture-filter-panel"
+          data-help-id="field.architecture-layers"
+          aria-label="Architecture layers and evidence legend">
+          <header>
+            <span class="section-kicker">Model v1</span>
+            <h2>Layers</h2>
+          </header>
+          <div id="architecture-layer-filters"></div>
+          <section aria-labelledby="architecture-evidence-title">
+            <h3 id="architecture-evidence-title">Relationship evidence</h3>
+            <div id="architecture-evidence-legend"></div>
+          </section>
+          <section aria-labelledby="architecture-live-title">
+            <h3 id="architecture-live-title">Live context</h3>
+            <p id="architecture-live-summary"></p>
+            <dl id="architecture-live-identifiers"></dl>
+          </section>
+        </aside>
+
+        <main id="architecture-main">
+          <div id="docs-viewport" tabindex="0"
+            aria-label="Interactive architecture graph. Use Tab to reach nodes and edges.">
+            <div id="docs-graph-wrap">
+              <svg id="docs-edges-svg" role="group"
+                aria-label="Architecture relationships"></svg>
+              <div id="docs-nodes-container"></div>
             </div>
-            <div class="docs-legend-item">
-              <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="#888" stroke-width="2" stroke-dasharray="2 2"></line></svg> Weak / Spawns
-            </div>
           </div>
-        </div>
-        <!-- Detail panel (right) -->
-        <aside id="docs-detail-panel">
-          <div class="docs-detail-header">Class Inspector</div>
+          <div id="architecture-text-view" role="tree"
+            aria-label="Architecture text representation" hidden></div>
+        </main>
+
+        <aside id="docs-detail-panel"
+          data-help-id="panel.architecture-inspector">
+          <div class="docs-detail-header">Data-path inspector</div>
+          <label class="architecture-path-label">
+            <span>Metric path</span>
+            <select id="architecture-path-select"
+              data-help-id="field.architecture-path"></select>
+          </label>
           <div id="docs-detail-content">
-            <div class="docs-empty-hint">Click a class node to see its description</div>
+            <div class="docs-empty-hint">Choose a metric or select a node or
+              relationship.</div>
           </div>
         </aside>
       </div>
@@ -587,7 +1857,7 @@
           <button id="btn-genetics-refresh" class="btn-light" title="Refresh">⟳</button>
         </div>
         <div style="display:flex; gap:8px; padding:8px 12px; border-bottom:1px solid var(--black); background:var(--slate);">
-          <button id="btn-genetics-new" class="btn-light" style="flex:1;" title="Create a new blank genome">New</button>
+          <button id="btn-genetics-new" class="btn-light" style="flex:1;" title="Create a new experimental genome draft">New draft</button>
           <button id="btn-genetics-import" class="btn-light" style="flex:1;" title="Import from JSON">Import</button>
           <button id="btn-genetics-crossover" class="btn-light" style="flex:1;" title="Cross two genomes">Cross</button>
           <input type="file" id="genetics-import-file" accept=".json" style="display:none;" />
@@ -612,7 +1882,7 @@
             <div style="display:flex; align-items:center; gap:8px;">
               <span id="genetics-inject-status" style="font-size:10px; font-weight:600; color:#00AA44; opacity:0; transition:opacity 0.3s; white-space:nowrap;">Injected ✓</span>
               <button id="btn-genetics-export" class="btn-light" title="Export current genome as JSON">Export</button>
-              <button id="btn-genetics-save" class="btn-light" title="Save back to a .gen file">Save</button>
+              <button id="btn-genetics-save" class="btn-light" title="Save the selected experimental copy">Save copy</button>
               <select id="genetics-inject-mode" class="opt-select" style="margin-left:8px;">
                 <option value="creature">Inject as Hatched Creature</option>
                 <option value="egg">Inject as Egg</option>
@@ -622,9 +1892,61 @@
                 <option value="1">Male ♂</option>
                 <option value="2">Female ♀</option>
               </select>
-              <button id="btn-genetics-inject" class="btn-light" style="background:var(--orange); color:var(--white); border-color:var(--orange);">Inject to Engine</button>
+              <button id="btn-genetics-inject" class="btn-light" style="background:var(--orange); color:var(--white); border-color:var(--orange);">Review injection</button>
             </div>
           </div>
+
+          <section id="genetics-experiment-safety" aria-label="Genome identity and copy-first workflow">
+            <div class="genetics-identity-panel">
+              <header>
+                <div>
+                  <span class="section-kicker">Trusted genome identity</span>
+                  <strong id="genetics-identity-kind">No genome selected</strong>
+                </div>
+                <span id="genetics-identity-protection" class="freshness-chip">Unknown</span>
+              </header>
+              <dl>
+                <div><dt>Current file</dt><dd id="genetics-identity-current">—</dd></div>
+                <div><dt>Source</dt><dd id="genetics-identity-source">—</dd></div>
+                <div><dt>Current checksum</dt><dd id="genetics-identity-checksum">—</dd></div>
+                <div><dt>Source checksum</dt><dd id="genetics-identity-source-checksum">—</dd></div>
+                <div><dt>Format / genes</dt><dd id="genetics-identity-format">—</dd></div>
+                <div><dt>Live reference</dt><dd id="genetics-identity-live">Unknown</dd></div>
+                <div><dt>Species / sex / generation</dt><dd id="genetics-identity-biography">Unknown / Unknown / Unknown</dd></div>
+              </dl>
+            </div>
+            <div class="genetics-copy-panel">
+              <span class="section-kicker">Copy-first experiment</span>
+              <ol id="genetics-workflow-steps">
+                <li data-genetics-step="source">Select source</li>
+                <li data-genetics-step="copy">Create copy</li>
+                <li data-genetics-step="edit">Edit copy</li>
+                <li data-genetics-step="diff">Review diff</li>
+                <li data-genetics-step="save">Save deliberately</li>
+                <li data-genetics-step="inject">Review injection</li>
+              </ol>
+              <label for="genetics-copy-name">Experimental copy name</label>
+              <div class="genetics-copy-controls">
+                <input id="genetics-copy-name" type="text" maxlength="80"
+                  autocomplete="off" placeholder="source_experiment_01" />
+                <button id="btn-genetics-create-copy" class="btn-light"
+                  type="button">Create experimental copy</button>
+              </div>
+              <output id="genetics-safety-status" role="status"
+                aria-live="polite"></output>
+            </div>
+          </section>
+
+          <details id="genetics-diff-panel" open>
+            <summary>
+              <span>Structured source → derived diff</span>
+              <output id="genetics-diff-summary">Select a source genome</output>
+            </summary>
+            <p>Field values and structure are observed from decoded genome
+              data. Biological consequences are not inferred. Unknown layouts
+              remain Unknown; raw before/after values are available below.</p>
+            <div id="genetics-diff-list">No experimental copy selected.</div>
+          </details>
 
           <div id="genetics-genome-controls" style="display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.1); flex-wrap: wrap;">
             <label class="opt-toggle"><input type="radio" name="genetics-gfilter" value="all" checked /> All</label>
@@ -707,22 +2029,82 @@
     </div>
   </div>
 
+  <dialog id="genetics-injection-dialog" class="genetics-review-dialog"
+    aria-labelledby="genetics-injection-title">
+    <form method="dialog">
+      <span class="section-kicker">Final mutation review</span>
+      <h3 id="genetics-injection-title">Review genome injection</h3>
+      <div id="genetics-injection-summary"></div>
+      <p class="genetics-injection-warning">Injection creates a new live
+        creature or egg. It does not alter the selected source genome, but it
+        changes the active world and cannot be undone by deleting the copy.</p>
+      <label class="genetics-confirm-row">
+        <input id="genetics-disposable-confirm" type="checkbox" />
+        This is the intended disposable world or explicit branch.
+      </label>
+      <label class="genetics-confirm-row">
+        <input id="genetics-final-confirm" type="checkbox" />
+        I reviewed the exact derived file, checksum, diff, mode, gender, and world.
+      </label>
+      <output id="genetics-injection-errors" role="status"
+        aria-live="polite"></output>
+      <div class="genetics-review-actions">
+        <button value="cancel" class="btn-light">Cancel</button>
+        <button id="genetics-injection-apply" value="default"
+          class="btn-light" type="button" disabled>Inject reviewed copy</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="utils.js"></script>
+  <script src="dom_patch.js"></script>
+  <script src="observatory_state.js"></script>
+  <script src="observatory_navigation.js"></script>
+  <script src="accessibility_model.js"></script>
+  <script src="contextual_help_model.js"></script>
+  <script src="architecture_model.js"></script>
+  <script src="context_strip.js"></script>
+  <script src="session_status.js"></script>
+  <script src="biological_semantics.js"></script>
+  <script src="biological_series.js"></script>
+  <script src="biological_monitor.js"></script>
+  <script src="creature_observation.js"></script>
+  <script src="ethology_timeline.js"></script>
+  <script src="comparison_model.js"></script>
+  <script src="ecology_model.js"></script>
+  <script src="experiment_model.js"></script>
+  <script src="chemical_intervention_model.js"></script>
+  <script src="genetics_experiment_model.js"></script>
+  <script src="caos_workbench_model.js"></script>
+  <script src="observatory_dashboard_model.js"></script>
 
   <script src="marked.min.js"></script>
   <script src="caos_format.js"></script>
   <script src="tooltips.js"></script>
+  <script src="provenance_transport.js"></script>
   <script src="app.js"></script>
+  <script src="contextual_help.js"></script>
+  <script src="accessibility.js"></script>
+  <script src="observatory_dashboard.js"></script>
+  <script src="log_model.js"></script>
+  <script src="log_workspace.js"></script>
   <script src="debugger.js"></script>
+  <script src="scripts_model.js"></script>
   <script src="scripts.js"></script>
   <script src="debugger_view.js"></script>
   <script src="creatures.js"></script>
+  <script src="creature_observation_strip.js"></script>
+  <script src="timeline_workspace.js"></script>
+  <script src="comparison_workspace.js"></script>
+  <script src="ecology_workspace.js"></script>
+  <script src="experiment_workspace.js"></script>
   <script src="svrule.js"></script>
   <script src="brain.js"></script>
   <script src="organs.js"></script>
   <script src="gene_renderer.js"></script>
   <script src="genome.js"></script>
   <script src="caos_ide.js"></script>
+  <script src="architecture_graph.js"></script>
   <script src="docs.js"></script>
   <script src="genetics.js"></script>
 </body>

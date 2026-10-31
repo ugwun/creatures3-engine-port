@@ -129,7 +129,7 @@ outv cati 2 99 0
 * Returns: 39 (the "something" error slot — genus 99 is unknown)
 ```
 
-Returns the category slot index for the given `(family, genus, species)` classifier. See [CATI](caos_agents.md#cati--category-id-for-classifier) in the Agents reference.
+Returns the category slot index for the given `(family, genus, species)` classifier. See [CATI](caos_agents.md#cati-category-id-for-classifier) in the Agents reference.
 
 ### CATA — Category ID for Target
 
@@ -139,7 +139,7 @@ outv cata
 * Returns: 23 (same as cati, but reads from TARG's classifier)
 ```
 
-Returns the category slot of `TARG`'s classifier. See [CATA](caos_agents.md#cata--category-id-for-target-ds) in the Agents reference.
+Returns the category slot of `TARG`'s classifier. See [CATA](caos_agents.md#cata-category-id-for-target-ds) in the Agents reference.
 
 ### CATX — Category Name
 
@@ -151,7 +151,7 @@ outs catx 39
 * Returns: "something"
 ```
 
-Returns the human-readable name for a given category slot. See [CATX](caos_agents.md#catx--category-name) in the Agents reference.
+Returns the human-readable name for a given category slot. See [CATX](caos_agents.md#catx-category-name) in the Agents reference.
 
 ---
 
@@ -247,7 +247,7 @@ The following brain lobes use category IDs as their neuron index (see [Standard 
 
 ### BHVR (Creature Permissions)
 
-The [`BHVR`](caos_agents.md#bhvr--setget-creature-permissions) command controls which actions creatures are *allowed* to perform on an agent. Even if your agent is in the right category, creatures won't interact with it unless `BHVR` is set. `BHVR` gates the `verb` lobe — it tells the brain which action neurons are valid for this agent.
+The [`BHVR`](caos_agents.md#bhvr-setget-creature-permissions) command controls which actions creatures are *allowed* to perform on an agent. Even if your agent is in the right category, creatures won't interact with it unless `BHVR` is set. `BHVR` gates the `verb` lobe — it tells the brain which action neurons are valid for this agent.
 
 ### Stimuli (STIM WRIT)
 

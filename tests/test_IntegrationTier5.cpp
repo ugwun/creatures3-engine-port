@@ -358,6 +358,12 @@ TEST_F(IntegrationTier5, MultiCreaturePopulationStress) {
 	auto listRes = cli.Get("/api/creatures");
 	ASSERT_NE(listRes, nullptr);
 	EXPECT_EQ(listRes->status, 200);
+	EXPECT_NE(listRes->body.find("\"glycogenReserve\":"), std::string::npos)
+		<< "Creature list omitted the explicit glycogen reserve field";
+	EXPECT_NE(listRes->body.find("\"glycogenChemicalId\":4"), std::string::npos)
+		<< "Creature list omitted the raw glycogen chemical ID";
+	EXPECT_NE(listRes->body.find("\"healthMeaning\":\"glycogen concentration"), std::string::npos)
+		<< "Legacy health field is missing its compatibility meaning";
 	
 	// The response should mention all our creature IDs
 	for (int id : creatureIds) {

@@ -233,7 +233,7 @@ Returns the direction that target creature is facing.
 **Syntax:** `GAIT gait_number (integer)`
 **Type:** Command
 
-Specifies the current gait for a creature. The gaits are genetically defined — see [The Digital Genome — Gait Gene](genome_deep_dive.md#subtype-4--gait-gene-g_gait) for the gene data layout.
+Specifies the current gait for a creature. The gaits are genetically defined — see [The Digital Genome — Gait Gene](genome_deep_dive.md#subtype-4-gait-gene-g_gait) for the gene data layout.
 
 ---
 
@@ -305,7 +305,7 @@ Returns 1 if creature is asleep, 0 otherwise.
 **Syntax (command):** `DREA dream (integer)`
 **Type:** Command
 
-Set to 1 to make the creature fall asleep and dream, 0 to stop dreaming. When dreaming, instincts are processed — see [Instincts — Pre-Wired Reflexes](brain_deep_dive.md#instincts--pre-wired-reflexes) for the full instinct processing sequence.
+Set to 1 to make the creature fall asleep and dream, 0 to stop dreaming. When dreaming, instincts are processed — see [Instincts — Pre-Wired Reflexes](brain_deep_dive.md#instincts-pre-wired-reflexes) for the full instinct processing sequence.
 
 **Syntax (integer RV):** `DREA`
 **Type:** Integer R-Value
@@ -467,7 +467,7 @@ State a personal opinion about a creature.
 **Syntax:** `MATE`
 **Type:** Command
 
-Male creature mates with the IT agent (if female of same genus). If successful, sperm is transmitted and conception may occur. Gene slot 1 of the mother contains the child genome if pregnancy occurs. See [The Digital Genome — Sexual Reproduction](genome_deep_dive.md#sexual-reproduction--crossover-and-mutation) for the crossover algorithm that produces the child genome.
+Male creature mates with the IT agent (if female of same genus). If successful, sperm is transmitted and conception may occur. Gene slot 1 of the mother contains the child genome if pregnancy occurs. See [The Digital Genome — Sexual Reproduction](genome_deep_dive.md#sexual-reproduction-crossover-and-mutation) for the crossover algorithm that produces the child genome.
 
 ---
 

@@ -28,7 +28,7 @@ The developer tools are an **embedded HTTP server** inside the `lc2e` binary, ac
 │                           │                              │    │
 │                           │  ┌─────────────────────┐     │    │
 │                           │  │   SSE Log Buffer    │     │    │
-│                           │  │ std::deque + CV     │     │    │
+│                           │  │ IDs + count/bytes   │     │    │
 │                           │  └─────────────────────┘     │    │
 │                           └──────────────┬───────────────┘    │
 │                                          │                    │
@@ -110,13 +110,45 @@ HTTP Thread                     Main Thread
 Log streaming works differently — it doesn't use the work queue:
 
 1. **FlightRecorder** sends UDP packets to `127.0.0.1:9999` (broadcast)
-2. **UDP relay thread** in DebugServer receives packets, pushes them into a `std::deque<std::string>` (the SSE log buffer), protected by `std::mutex` + `std::condition_variable`
-3. **SSE handler** (`GET /api/events`) uses httplib's chunked content provider. It blocks on the condition variable waiting for new log lines, then writes `data: ...\n\n` SSE events to the client
-4. The browser uses `EventSource("/api/events")` to receive the stream — EventSource automatically reconnects on disconnect
+2. **UDP relay thread** normalizes structured or legacy packets into a versioned
+   envelope. The latest main-thread world/tick snapshot is attached as
+   explicitly approximate context.
+3. The server buffer stores composite stream/record IDs and is bounded by
+   5,000 records and approximately 4 MiB. Eviction counts are retained.
+4. **SSE handler** (`GET /api/events`) resumes from `Last-Event-ID`, emits gap
+   envelopes for restart or overflow, snapshots pending payloads under the
+   mutex, then writes after releasing the mutex.
+5. `log_model.js` normalizes records and maintains a second count/byte-bounded
+   browser buffer. `log_workspace.js` renders filters, context preview,
+   bookmarks/annotations, cross-links, and text/JSON/JSONL export.
 
 ---
 
 ## File Structure
+
+### Shared browser state and navigation
+
+The observatory browser shell is deliberately independent of feature-module
+DOM:
+
+- `observatory_state.js` owns immutable world, selection, evidence, sample, and
+  navigation snapshots. A selection has one primary kind and any number of
+  related secondary kinds.
+- `observatory_navigation.js` owns `#observe?` route serialization,
+  identity-bearing link builders, History API snapshots, world validation,
+  and workspace adapters.
+- `context_strip.js` renders the shared state as accessible navigation and
+  clear controls. It does not inspect Creatures, Scripts, Debugger, Log, or
+  Docs markup.
+- Each feature registers a small `capture`/`restore`/`open` adapter. This is
+  how browser Back restores filters and scroll without one feature reaching
+  into another feature's DOM.
+
+Cross-links publish stable identifiers to the store and call the navigation
+service. Engine APIs provide agent classifier/gallery and creature
+room/metaroom fields where they can be read accurately. A route whose
+world-qualified target belongs to another active world is rejected before a
+workspace opens.
 
 ### Engine-side (C++)
 
@@ -136,18 +168,33 @@ Log streaming works differently — it doesn't use the work queue:
 |---|---|
 | [`tools/index.html`](index.html) | UI shell — tab navigation, panel containers, sidebar |
 | [`tools/utils.js`](utils.js) | Shared utilities: `escHtml()` function + `DevToolsEvents` pub/sub event bus |
-| [`tools/tooltips.js`](tooltips.js) | Global contextual tooltip system: hover event management, positioning, native title suppression, interactive doc-linking with pin-to-read, and `window.DocsWiki` bridge |
-| [`tools/app.js`](app.js) | Log tab: SSE connection, message rendering, filtering, controls, tab switching + lifecycle events |
+| [`tools/observatory_state.js`](observatory_state.js) | Immutable shared session/selection/sample store, evidence metadata, freshness, and request deduplication |
+| [`tools/observatory_navigation.js`](observatory_navigation.js) | Named route definitions, context-preserving hashes/history, capability metadata, and workspace adapters |
+| [`tools/contextual_help_model.js`](contextual_help_model.js) | Authoritative route/panel/action help registry, evidence metadata, guide/reference targets, and live identifier routing |
+| [`tools/contextual_help.js`](contextual_help.js) | Accessible non-modal help drawer, stable target resolution, F1/Escape/outside-click handling, and context-preserving Docs actions |
+| [`tools/architecture_model.js`](architecture_model.js) | Versioned architecture layers, nodes, relationships, endpoint mappings, metric paths, validation, filtering, and bounded live-context classification |
+| [`tools/architecture_graph.js`](architecture_graph.js) | Layered graph/text renderer, pan/zoom/search/filter controls, keyboard interaction, inspectors, and context-preserving links |
+| [`tools/tooltips.js`](tooltips.js) | Optional concise hover/focus tips, positioning, native title suppression, and accessible `aria-describedby` relationships |
+| [`tools/app.js`](app.js) | Browser shell: session boot, tab switching, navigation, simulation controls |
+| [`tools/log_model.js`](log_model.js) | Pure structured/legacy log normalization, bounded retention, duplicate collapse, filters, and exports |
+| [`tools/log_workspace.js`](log_workspace.js) | SSE lifecycle, Log rendering, pause semantics, context preview, annotations, and cross-links |
 | [`tools/debugger.js`](debugger.js) | Console tab: CAOS REPL with history, error display |
-| [`tools/scripts.js`](scripts.js) | Scripts tab: running scripts table with auto-refresh |
+| [`tools/scripts_model.js`](scripts_model.js) | Pure running-script state normalization, bounded transitions, grouping, stable sorting, and filtering |
+| [`tools/scripts.js`](scripts.js) | Compact Scripts workspace, active-only polling, incremental rows, source cache, and shared-navigation handoffs |
 | [`tools/debugger_view.js`](debugger_view.js) | Debugger tab: agent list panel with classifier grouping/search, source view, syntax highlighting, breakpoints, stepping, variable inspector |
 | [`tools/creatures.js`](creatures.js) | Creatures tab: creature list polling, drive bar visualization, chemistry chart, summary card, auto-refresh |
-| [`tools/brain.js`](brain.js) | Brain sub-tab: spatial heatmap with genome-positioned lobes, neuron activity cells, SVG tract lines, interactive dendrite inspection (click-on-tract, click-on-neuron), zoom controls |
+| [`tools/biological_semantics.js`](biological_semantics.js) | Pure semantic helpers: vitality indicator collection, evidence-bearing organ-role inference, and non-mutating Brain layout transforms |
+| [`tools/creature_observation.js`](creature_observation.js) | Pure seven-stage observation composer, timing/evidence warnings, competition comparisons, immutable comparison logic, and bounded capture store |
+| [`tools/creature_observation_strip.js`](creature_observation_strip.js) | Live Observation Strip controller: active-view polling, freeze/capture/compare presentation, raw evidence, and shared-navigation handoffs |
+| [`tools/brain.js`](brain.js) | Brain sub-tab: exact Genome anatomy and explicitly transformed Functional flow modes, neuron activity cells, SVG tract lines, interactive dendrite inspection, zoom controls |
 | [`tools/caos_ide.js`](caos_ide.js) | CAOS IDE tab: scriptorium browser, code editor with syntax highlighting overlay, run/inject/remove, file save/load |
-| [`tools/docs.js`](docs.js) | Docs tab: Markdown-powered Developer Wiki viewer, internal document routing, hash-based deep-linking with section scroll, and interactive Architecture Graph |
+| [`tools/docs.js`](docs.js) | Docs tab: Markdown-powered Developer Wiki viewer, internal document routing, section scrolling, and lifecycle delegation to the Architecture Graph |
+| [`tools/accessibility_model.js`](accessibility_model.js) | Pure display-preference normalization, editable-target classification, shortcut inventory, and semantic-colour contrast calculations |
+| [`tools/accessibility.js`](accessibility.js) | Shared keyboard/display dialog, persisted density and motion settings, shortcut conflict handling, tab semantics, focus restoration, and runtime semantic audit |
 | [`tools/marked.min.js`](marked.min.js) | Vendored Markdown parser (v15) used by the Developer Wiki |
-| [`tools/genetics.js`](genetics.js) | Genetics Kit tab: genome browser, structural modifiers, inline editor, SV Rule bytecodes, crossover, injection, file ops |
-| [`tools/gene_renderer.js`](gene_renderer.js) | Genetics Kit DOM factory: dynamic rendering and layout for all 19 genome subtypes with full editable inputs, SVRule visual grid editor with searchable comboboxes, and client-side byte↔entry parsing |
+| [`tools/genetics.js`](genetics.js) | Copy-first Genetics Kit: trusted identity, source→derived workflow, structured diff, bounded derived editor, reviewed injection, result navigation, and exceptional copy-only file operations |
+| [`tools/genetics_experiment_model.js`](genetics_experiment_model.js) | Pure safe-genetics model: new-name validation/suggestion, canonical model checksums, stable gene matching, structured diffs, write readiness, and injection readiness |
+| [`tools/gene_renderer.js`](gene_renderer.js) | Genetics DOM factory for all 19 decoded subtypes, serialized bounds, and the SVRule visual grid; inputs are enabled only when the parent workspace selects a verified experimental copy/draft |
 | [`tools/caos_format.js`](caos_format.js) | Shared CAOS source pretty-printer (`formatCAOS()`) and syntax highlighter (`highlightCAOS()`) |
 | [`tools/style.css`](style.css) | Bright-Fi design system — all styling for all tabs |
 
@@ -166,143 +213,188 @@ Log streaming works differently — it doesn't use the work queue:
 
 Script tags in `index.html` load in this order:
 
-1. `utils.js` — shared `escHtml()` + `DevToolsEvents` event bus (must be first)
-2. `caos_format.js` — exposes `formatCAOS()` and `highlightCAOS()` on `window`
-3. `tooltips.js` — adds the contextual tooltip system (`window.DevToolsTooltips`)
-4. `app.js` — Log tab + tab switching / lifecycle events
-5. `debugger.js`, `scripts.js`, `debugger_view.js` — Console, Scripts, Debugger tabs
-6. `creatures.js`, `brain.js` — Creatures tab + Brain sub-tab
-7. `caos_ide.js` — CAOS IDE tab (depends on `highlightCAOS`, `escHtml`, `DevToolsEvents`)
-8. `gene_renderer.js`, `genetics.js` — Genetics Kit tab and DOM renderers
-9. `docs.js` — Developer Wiki + Architecture Graph (must load after `marked.min.js`; exposes `window.DocsWiki`)
+1. `utils.js`, `observatory_state.js`, and `observatory_navigation.js` establish
+   shared utilities, immutable state, and named context routes.
+2. `contextual_help_model.js` registers authoritative help before any
+   controller creates or annotates targets.
+3. Pure state/model modules load next: session context, architecture,
+   biological semantics
+   and series, creature observation, timeline, comparison, ecology,
+   experiments, chemical/genetics safety, CAOS Workbench, and dashboard.
+4. `marked.min.js` and `caos_format.js` provide documentation parsing and CAOS
+   formatting.
+5. `tooltips.js`, `provenance_transport.js`, and `app.js` establish optional
+   Tips, provenance transport, the shell, navigation, and simulation controls.
+6. `contextual_help.js` binds the shared drawer after the shell has rendered
+   route buttons. `accessibility.js` then applies persisted display
+   preferences, internal tab semantics, labelled-input fallbacks, and global
+   shortcut exclusions. Their mutation observers annotate later dynamic
+   targets without owning domain state.
+7. Dashboard, Logs, Console, Scripts, Debugger, Creatures, Timeline, Compare,
+   Ecology, and Experiment controllers load after their pure models.
+8. Brain, organ, genome, Workbench, Architecture, Docs, and Genetics
+   controllers finish the feature graph. `architecture_graph.js` depends on
+   `architecture_model.js`; `docs.js` depends on `marked.min.js` and delegates
+   graph lifecycle to `ArchitectureGraph`; `genetics.js` depends on the gene
+   renderer and genetics model.
 
-All modules (except `utils.js` and `caos_format.js`) are wrapped in IIFEs `(() => { ... })()` to prevent global scope pollution. Shared functions are either defined at global scope by earlier scripts (`escHtml`, `formatCAOS`, `DevToolsEvents`, `DevToolsTooltips`) or communicated via the event bus.
+### Live Architecture Model
 
-### Tooltip → Documentation Bridge
+`architecture_model.js` is maintained documentation, not a runtime call graph.
+Its nodes identify stable components across engine, domain, transport, browser,
+surface, and external layers. Relationships carry an explicit static,
+observed, derived, or inferred evidence vocabulary. Metric paths separately
+record unit, transformation, cadence, and evidence for each hop.
 
-The tooltip system in `tooltips.js` provides an interactive link from UI elements to the Developer Wiki in `docs.js`. This bridge uses three mechanisms:
+`architecture_graph.js` derives layout from layer and order. It reads bounded
+Resource Timing entries to identify recently completed, mapped API requests;
+current route and Observatory selections are context only. No response bodies
+are retained and no engine tracing is added. Consequently, a selected or
+highlighted static path is never promoted to observed execution.
 
-#### 1. TIPS Registry — `doc` Property
+Source locations are optional maintained metadata. The model's Node test
+checks every declared source and documentation target in the repository. See
+[`docs/live_architecture_graph.md`](docs/live_architecture_graph.md) for the
+user-facing evidence contract.
 
-Each entry in the `TIPS` array can include an optional `doc` string. The format is:
+Feature modules are wrapped in IIFEs `(() => { ... })()` to prevent global
+scope pollution. Cross-module lifecycle notifications use `DevToolsEvents`.
+Authoritative session, identity, selection, and evidence-bearing sample state
+uses `ObservatoryState`.
 
-```
-doc: 'filename.md'                    // links to the page (scrolls to top)
-doc: 'filename.md:section-slug'       // links to a specific heading within the page
-```
+### Shared Observatory State Ownership
 
-The section slug is the heading text converted to a URL-safe ID: lowercased, spaces replaced with hyphens, special characters stripped. For example, the markdown heading `## Brain Sub-Tab` produces the slug `brain-sub-tab`.
+`observatory_state.js` owns facts that must agree across tabs:
 
-**Adding a new doc link to a tooltip:**
+- connection and pause state;
+- current world identity, ticks, speed, and load transition;
+- shared selections;
+- the current bounded sample cache;
+- recording, experiment, intervention, navigation, and display-preference
+  contracts.
 
-```javascript
-// In tooltips.js TIPS array:
+Feature modules continue to own transport calls and temporary rendering state.
+They pass loaders to `ObservatoryState.requestShared()`, which deduplicates
+concurrent requests and reduces validated samples. This separation makes
+transport replaceable in tests and prevents the store from starting permanent
+polling loops.
 
-// Page-level link (scrolls to top of page)
-{ selector: '#my-button', text: 'Does something useful', doc: 'my_page.md' },
+State changes are actions reduced into deeply frozen snapshots. Feature
+modules subscribe with a selector, so only a changed slice invokes a listener.
+World-scoped identities use `worldName:localId`; a load transition, changed
+world name, or disconnect invalidates them centrally. Samples from an old
+world or older tick are rejected. History is capped at 120 samples per key and
+intervention provenance at 200 entries.
 
-// Section-level link (scrolls directly to a specific heading)
-{ selector: '#my-panel', text: 'A complex panel', doc: 'my_page.md:my-section-heading' },
-```
+The exact public state and evidence contract is documented in
+[`docs/observatory_state.md`](docs/observatory_state.md). Unit coverage lives
+in `tools/tests/observatory_state.test.cjs` and runs without browser or package
+dependencies:
 
-To determine the correct section slug for a heading:
-1. Take the heading text (e.g. `## Inspector Panel`)
-2. Convert to lowercase: `inspector panel`
-3. Replace spaces with hyphens: `inspector-panel`
-4. Strip special characters: no change → `inspector-panel`
-
-#### 2. Pin Mechanism — `Tab` Key
-
-Tooltips with a `doc` property are rendered with `pointer-events: auto` (normal tooltips use `none`) and include a "📖 Read docs" link. Since the user cannot easily move their cursor from the target element to the tooltip without triggering other tooltips on adjacent elements, a keyboard-based pin mechanism is used:
-
-**State management:**
-
-```
-let pinned = false;  // tracks whether the current tooltip is pinned
-```
-
-**Key bindings:**
-- **`Tab`** — when a doc-linked tooltip is visible and not pinned, sets `pinned = true` and adds the CSS class `tooltip-pinned`. `e.preventDefault()` suppresses browser focus cycling.
-- **`Escape`** (or any other key) — calls `hideTooltip()` which resets `pinned = false`.
-
-**Mouse event guards:** When `pinned` is `true`, `onMouseOver`, `onMouseOut`, `onScroll`, and `scheduleHide` are all short-circuited (they return immediately). This prevents any mouse movement from dismissing the pinned tooltip.
-
-**Unpin click handler:** A regular-phase `document.addEventListener('click', ...)` dismisses pinned tooltips when clicking outside. Clicks **inside** the tooltip (e.g. the doc link) pass through normally.
-
-**Visual feedback (CSS):**
-
-```css
-.tooltip-pinned {
-    border-left-color: #fff;
-    box-shadow: 0 4px 24px rgba(255, 95, 0, 0.3);
-}
-.tooltip-pin-hint {
-    /* Italic grey text "press Tab to pin" — hidden when pinned */
-}
-```
-
-#### 3. Deep-Link Hash Routing — `docs.js`
-
-When the "Read docs" link is clicked, it opens a new browser tab using `window.open()` with a hash-based URL:
-
-```
-http://localhost:9980/#docs/tab_creatures.md:brain-sub-tab
-```
-
-On the receiving end, `loadWikiIndex()` in `docs.js` checks `window.location.hash` on page load:
-
-```javascript
-const hash = window.location.hash;     // e.g. '#docs/tab_creatures.md:brain-sub-tab'
-if (hash.startsWith('#docs/')) {
-    const fragment = hash.substring(6);         // 'tab_creatures.md:brain-sub-tab'
-    const colonIdx = fragment.indexOf(':');
-    const file = colonIdx >= 0 ? ... : ...;     // 'tab_creatures.md'
-    const section = colonIdx >= 0 ? ... : null; // 'brain-sub-tab'
-    // Switch tabs, load page, scroll to section
-    loadWikiPage(file, section);
-    history.replaceState(null, '', window.location.pathname);  // clear hash
-}
+```bash
+node tools/tests/observatory_state.test.cjs
 ```
 
-**`loadWikiPage(filename, section)`** fetches the markdown, renders it with `marked.parse()`, generates the TOC, then (if `section` is provided) uses `requestAnimationFrame` to scroll to the heading element via `document.getElementById(section).scrollIntoView()`.
+### Reusable Biological Series
 
-**Heading ID generation** is performed in `generateWikiTOC()`:
+`biological_series.js` is a DOM-independent bounded store for drive, chemical,
+organ, and selected-neuron samples. A series belongs to a world-qualified
+subject session and carries world/system/wall time, pause and speed state,
+sampling interval, source endpoint, evidence level, explicit gaps, and
+intervention markers. Tick regression creates a new epoch. Storage is capped
+at 300 samples per metric and 60,000 total samples, with min/max-envelope
+downsampling for display and loss counts retained for export.
 
-```javascript
-const slug = h.textContent
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')   // strip special chars
-    .replace(/\s+/g, '-');       // spaces → hyphens
-h.id = slug;
+`biological_monitor.js` is the browser controller and presentation adapter. It
+owns pin order, functional navigation groups, baselines, stale detection,
+sparklines, and schema-versioned JSON export. Feature views ingest observations
+but do not own history rendering, allowing Timeline and Comparison to consume
+the same pure store later.
+
+Unit coverage runs without DOM or package dependencies:
+
+```bash
+node tools/tests/biological_series.test.cjs
 ```
 
-This is necessary because `marked v15` does **not** auto-generate heading IDs. The slug format matches the `doc` property convention used in the TIPS registry.
+### Atomic Creature Observation
 
-#### 4. Global API — `window.DocsWiki`
+`GET /api/creature/:id/observation` samples Environment through Action inside
+one main-thread `WorkItem`. This prevents the browser from assembling a
+present-tense view out of unrelated endpoint ticks. The response includes its
+world, tick, wall/system time, pause/speed context, explicit unavailable
+lobes, limited nearby-agent evidence, competing neural activities, current
+attention target, decision/motor state, and owning-agent CAOS VM state.
 
-`docs.js` exposes the `loadWikiPage` function globally for cross-module access:
+`creature_observation.js` is transport- and DOM-independent. It composes the
+fixed seven-stage schema, attaches evidence records, preserves raw sources,
+detects mixed timing, derives weak/close/overtaken competition signals, and
+compares immutable captures. Consequence deliberately uses
+`BiologicalSeries` adjacent-sample deltas and therefore retains its different
+tick and Derived evidence level.
 
-```javascript
-window.DocsWiki = { loadWikiPage };
+`creature_observation_strip.js` polls only for a world-qualified selected
+creature while the Creatures tab and strip are visible. A frozen display does
+not stop polling or the engine. World/creature changes reset live, frozen, and
+captured state, and serial guards reject late responses from old contexts.
+Capture retention is capped at 20 per active subject session.
+
+Pure coverage runs with:
+
+```bash
+node tools/tests/creature_observation.test.cjs
 ```
 
-This can be called from any module to programmatically navigate the wiki:
+### Contextual Help and Documentation Routes
 
-```javascript
-window.DocsWiki.loadWikiPage('tab_console.md');              // load page
-window.DocsWiki.loadWikiPage('tab_creatures.md', 'brain-sub-tab');  // load page + scroll
-```
+`contextual_help_model.js` owns durable help content. Every definition contains
+a stable ID, concise meaning, activity, evidence source/cadence, caution,
+guide/reference targets, terminology, and review owner. Route IDs use
+`route.<route-id>`; fields, panels, and actions use stable prefixes such as
+`field.`, `panel.`, and `action.`.
 
-#### Adding a New Doc-Linked Tooltip (Checklist)
+Static targets can declare `data-help-id` directly. A definition can also own a
+CSS `selector`; `contextual_help.js` applies its ID to existing matches and
+future dynamic nodes through a `MutationObserver`. Registered targets receive
+`aria-keyshortcuts="F1"` without changing their native input behavior.
 
-1. **Ensure the wiki page exists** in `tools/docs/` and is registered in `tools/docs/index.json`
-2. **Identify the heading slug** for section-level links (see slug rules above)
-3. **Add the `doc` property** to the TIPS entry in `tooltips.js`:
-   ```javascript
-   { selector: '#my-element', text: 'Description', doc: 'page.md:section-slug' },
-   ```
-4. **Test:** Hover the element, press `Tab` to pin, click "📖 Read docs", verify it opens the correct page and scrolls to the correct section
+The non-modal drawer resolves help in this order:
+
+1. the directly focused or activated registered target;
+2. the most recent registered target, only while it remains connected and
+   visible in the active workspace;
+3. the current named route.
+
+F1 opens target-specific help, except inside the Workbench editor where its
+command-reference F1 behavior remains authoritative. Escape, the visible close
+button, or an outside pointer action closes the drawer. Focus returns to the
+trigger for keyboard dismissal. Tab is never intercepted.
+
+Optional Tips remain in `tooltips.js`. They are non-interactive hover/focus
+descriptions connected with `aria-describedby`; a small hint advertises F1.
+The legacy `doc` property only identifies entries that merit that hint during
+migration. It no longer creates a link or owns documentation navigation.
+
+Guide/reference actions build an explicit `route=guides` route through
+`ContextualHelpModel.documentationRoute()`. The route carries confirmed world
+identity, stable selections, and the current world-tick cursor/range.
+`docs.js` then renders the named Markdown document and section in the same
+investigation history. Legacy `#docs/...` hashes remain supported by
+`observatory_navigation.js` as migration aliases.
+
+#### Adding Contextual Help
+
+1. Add the guide/reference Markdown to `tools/docs/` and register new pages in
+   `tools/docs/index.json`.
+2. Add a complete definition to `contextual_help_model.js`, including owner,
+   evidence metadata, caution, and guide target.
+3. Add `data-help-id` to a static target or a stable registry selector for a
+   dynamic target.
+4. Add the exact ID and owner to `contextual_help_inventory.md`.
+5. Run `node --test tools/tests/*.test.cjs`; documentation integrity rejects
+   missing files/sections, stale routes, and inventory drift.
+6. Verify mouse, Tab, F1, Escape, focus return, and narrow/wide layouts in
+   Firefox. See `tools/docs/contextual_help_authoring.md` for editorial rules.
 
 ### DevToolsEvents — Cross-Module Communication
 
@@ -324,7 +416,10 @@ DevToolsEvents.emit('creature:selected', 42);
 |---|---|---|---|
 | `tab:activated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js`, `caos_ide.js` |
 | `tab:deactivated` | tab name string | `app.js` | `scripts.js`, `debugger_view.js`, `creatures.js`, `brain.js`, `caos_ide.js` |
-| `creature:selected` | agent ID number | `creatures.js` | `brain.js` |
+| `creature:selected` | agent ID number (legacy compatibility) | `creatures.js` | legacy extensions |
+
+Persistent selections do not use this transient event. Creature, brain,
+organs, and genome modules select or subscribe through `ObservatoryState`.
 
 ### Tab-Aware Polling
 
@@ -558,14 +653,23 @@ When the VM is in `stateBreakpoint`, `UpdateVM()` returns `false` (not finished)
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/genetics/files` | Lists all `.gen` files available in the world's `GENETICS_DIR` |
-| `GET` | `/api/genetics/file/:moniker` | Reads and parses a binary `.gen` file into a JSON genome object |
-| `POST` | `/api/genetics/crossover` | Cross-breeds two genomes dynamically via `Genome::Cross` and saves the child |
-| `POST` | `/api/genetics/save` | Serializes a modified JSON genome back into binary and saves it to disk |
-| `POST` | `/api/genetics/rename` | Safely renames a genome file on disk (rejects if marked as a CORE file) |
-| `POST` | `/api/genetics/delete/:moniker` | Safely deletes a genome file from disk (rejects if marked as a CORE file) |
-| `POST` | `/api/genetics/inject` | Serializes, saves, and executes a CAOS injection macro to hatch the creature |
+| `GET` | `/api/genetics/file/:name` | Parses `dna3` and returns genes plus checksum-backed original/copy/source identity |
+| `POST` | `/api/genetics/copy` | Creates a verified source→experimental copy without overwrite |
+| `POST` | `/api/genetics/crossover` | Creates a no-overwrite native crossover and records both parents |
+| `POST` | `/api/genetics/save` | Create-only first save for a normalized new/import browser draft |
+| `POST` | `/api/genetics/save-experiment` | Schema/range/stale-checked transactional save of a verified copy |
+| `POST` | `/api/genetics/rename` | Explicit confirmed rename of a checksum-matching verified copy |
+| `POST` | `/api/genetics/delete/:name` | Explicit confirmed deletion of a checksum-matching verified copy |
+| `POST` | `/api/genetics/inject` | Revalidates one exact saved copy/world review, executes construction, and returns the engine-confirmed agent |
 
-**Thread Safety**: All `POST` operations in the Genetics module (`crossover`, `save`, `rename`, `delete`, `inject`) touch the engine's `GenomeStore`, `Genome` binary operations, file system, and `CAOSMachine` structures. As a result, they use the `WorkItem` queue to block HTTP worker threads and execute strictly on the **main thread**.
+**Thread safety:** All genetics POST operations touch engine state, native
+`Genome` operations, files, or `CAOSMachine`; each executes through the
+main-thread `WorkItem` queue.
 
-**Data Integrity & Security**: `CORE` genome files are strictly immutable in the API and UI to prevent engine corruption. For user-modifiable files, the frontend implements non-destructive in-memory state snapshotting (`_originalStr`) to track and visualise uncommitted edits dynamically via the "Modified Genes" UI.
-
+**Data integrity:** Originals are read-only through ordinary and direct API
+paths. A `.gxp.json` sidecar is trusted only when its schema, derived filename,
+algorithm, and derived checksum match the selected binary. Copy/create install
+uses no-overwrite primitives. Derived save validates known layouts and fixed
+ranges, checks every recorded source, requires the last-read checksum, and
+rolls back the binary if metadata cannot be committed. Injection accepts
+identity/checksum review fields rather than browser gene content.

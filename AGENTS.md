@@ -32,9 +32,9 @@ Use an isolated game-data copy or disposable world for experiments; developer to
 ./build/lc2e -d "/path/to/Docking Station" --headless --world "Test World"
 ```
 
-All modes expose the engine API on `http://localhost:9980`; run only one instrumented engine at a time. `--tools` also serves the seven-tab UI at that URL and needs no Node process. Its static files resolve from `<executable>/../tools`, then `./tools`; override with `--tools /absolute/path`.
+All modes expose the engine API on `http://localhost:9980`, bound to loopback; pass `--allow-remote-tools` for token-protected access from other machines. Run only one instrumented engine at a time. `--tools` also serves the seven-tab UI at that URL and needs no Node process. Its static files resolve from `<executable>/../tools`, then `./tools`; override with `--tools /absolute/path`.
 
-MCP requires Node.js 18+ and a one-time `cd mcp && npm install`. Configure the client for stdio with command `node`, argument `/absolute/path/to/repo/mcp/server.js`, and optional `ENGINE_URL` (default `http://localhost:9980`). The client spawns this adapter; starting `lc2e --mcp` alone does not create the stdio process. Prefer MCP tools for live inspection/control rather than calling REST directly. Read `mcp/MCP.md`, `tools/TOOLS.md`, and `.agents/skills/caos-mcp/SKILL.md` before issuing CAOS. Pause, inspect, and resume deliberately; do not leave the world paused.
+MCP requires Node.js 18+ and a one-time `cd mcp && npm install`. Configure the client for stdio with command `node`, argument `/absolute/path/to/repo/mcp/server.js`, and optional `ENGINE_URL` (default `http://127.0.0.1:9980`) and `ENGINE_TOKEN` (remote engines only). The client spawns this adapter; starting `lc2e --mcp` alone does not create the stdio process. Prefer MCP tools for live inspection/control rather than calling REST directly. Read `mcp/MCP.md`, `tools/TOOLS.md`, and `.agents/skills/caos-mcp/SKILL.md` before issuing CAOS. Pause, inspect, and resume deliberately; do not leave the world paused.
 
 ## Coding Style & Naming Conventions
 
@@ -42,7 +42,15 @@ Match the surrounding legacy style and avoid unrelated formatting. Engine files 
 
 ## Testing Guidelines
 
-Add focused GoogleTest regression coverage for behavior changes. Prefer pure unit tests; isolate singleton-heavy behavior in `*_Logic.cpp` and use existing fake interfaces or `tests/stub_*`. Register tests in `tests/CMakeLists.txt`. Integration tests require proprietary data and must run serially because port 9980 is shared:
+Add focused GoogleTest regression coverage for behavior changes. Prefer pure unit tests; isolate singleton-heavy behavior in `*_Logic.cpp` and use existing fake interfaces or `tests/stub_*`. Register tests in `tests/CMakeLists.txt`.
+
+Developer Tools changes need more than model tests. `ctest` also runs `tools/tests/*.test.cjs` and the real Firefox suites in `tools/tests/browser/`, which click at the 1530×840 notebook viewport against a synthetic engine. Polled panels must update through `DomPatch` with delegated listeners, or a refresh undoes what the user is doing. To run the mutating workflows, point them at a live engine on a disposable data copy:
+
+```bash
+OBSERVATORY_URL=http://127.0.0.1:9980/ OBSERVATORY_ALLOW_CHANGES=1 \
+  node --test --test-concurrency=1 tools/tests/browser/workflows.browser.cjs
+```
+ Integration tests require proprietary data, including the sibling `Creatures 3` folder for docked worlds, and must run serially because port 9980 is shared:
 
 ```bash
 cmake -S . -B build -DENABLE_INTEGRATION_TESTS=ON

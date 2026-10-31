@@ -60,7 +60,7 @@ Edit `.gemini/antigravity/mcp_config.json` (click "Open MCP Config" in the MCP S
       "command": "node",
       "args": ["/absolute/path/to/creatures3/mcp/server.js"],
       "env": {
-        "ENGINE_URL": "http://localhost:9980"
+        "ENGINE_URL": "http://127.0.0.1:9980"
       }
     }
   }
@@ -80,7 +80,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "command": "node",
       "args": ["/absolute/path/to/creatures3/mcp/server.js"],
       "env": {
-        "ENGINE_URL": "http://localhost:9980"
+        "ENGINE_URL": "http://127.0.0.1:9980"
       }
     }
   }
@@ -92,7 +92,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 Any MCP client that supports stdio transport can connect. The server expects:
 - **Command:** `node`
 - **Args:** `["/path/to/creatures3/mcp/server.js"]`
-- **Environment:** `ENGINE_URL=http://localhost:9980` (optional — defaults to `http://localhost:9980`)
+- **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, and the default)
 
 ---
 
@@ -108,10 +108,10 @@ Any MCP client that supports stdio transport can connect. The server expects:
 
 | Tool | Description |
 |---|---|
-| `list_creatures` | List all creatures (Norns, Grendels, Ettins) with species, name, health, life stage, position, and drive levels |
-| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature, plus organ health/status |
-| `get_creature_brain` | Overview of a creature's brain — all lobes and tracts with neuron counts, geometry, and aggregate activity |
-| `get_brain_lobe` | Detailed neuron states for a specific lobe — activity level, winner state, and semantic labels (drive names, action names, etc.) |
+| `list_creatures` | List all creatures with species, name, life stage/state, glycogen reserve (chemical 4), position, and drive levels. Legacy `health` is also glycogen, not overall health |
+| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature, plus organ life-force/execution state |
+| `get_creature_brain` | Overview of a creature's brain — all lobes and tracts with neuron counts, exact genome geometry, semantic labels, winner indices, and dendrite counts |
+| `get_brain_lobe` | Detailed neuron states with semantic labels both in a top-level array and on each neuron record |
 | `get_brain_tract` | Dendrite connections for a specific tract — source/destination neuron pairs with synaptic weights (capped at 1000) |
 
 ### Agent & Script Inspection
@@ -137,6 +137,7 @@ Any MCP client that supports stdio transport can connect. The server expects:
 | `pause_engine` | Pause the entire simulation. The world freezes but the API remains responsive for queries |
 | `resume_engine` | Resume the simulation after pausing |
 | `get_engine_state` | Check whether the engine is currently paused or running |
+| `get_session_status` | Get a coherent world/session sample including world type, ticks, pause state, speed, creature count, and pending switch |
 
 ### World Management
 
@@ -161,7 +162,7 @@ Any MCP client that supports stdio transport can connect. The server expects:
 | `set_tick_rate` | Change simulation speed (multiplier or WOLF fastest mode) |
 | `advance_ticks` | Run exactly N ticks then pause — for controlled stepping |
 | `get_world_stats` | Aggregate stats: creature count by species, age/sex distribution, engine state |
-| `snapshot_all_creatures` | Bulk dump of all creature states (drives, health, position, top 5 chemicals) |
+| `snapshot_all_creatures` | Bulk dump of all creature states (drives, glycogen reserve, position, top 5 chemicals) |
 
 ---
 
@@ -170,7 +171,7 @@ Any MCP client that supports stdio transport can connect. The server expects:
 Once connected, an AI agent can interact with the game naturally:
 
 **"How many creatures are in the world?"**
-→ Agent calls `list_creatures` → gets a JSON array of all creatures with health, drives, etc.
+→ Agent calls `list_creatures` → gets a JSON array of all creatures with glycogen reserve, drives, life stage, and life state.
 
 **"What is this Norn's highest drive?"**
 → Agent calls `list_creatures`, reads the `highestDrive` field and `drives` array.
@@ -190,7 +191,8 @@ Once connected, an AI agent can interact with the game naturally:
 
 | Variable | Default | Description |
 |---|---|---|
-| `ENGINE_URL` | `http://localhost:9980` | Base URL of the engine's API server |
+| `ENGINE_URL` | `http://127.0.0.1:9980` | Base URL of the engine's API server |
+| `ENGINE_TOKEN` | none | Token for an engine started with `--allow-remote-tools` on another machine. Local engines need none. |
 
 ---
 
@@ -240,6 +242,42 @@ The MCP server and the browser-based developer tools are **independent but share
 | SSE log stream | ✅ | ✅ | ✅ |
 
 The MCP server always connects to the API at `ENGINE_URL`; it doesn't matter whether the engine was started with `--tools` or `--mcp`.
+
+## Observatory Scope and Limitations
+
+The MCP adapter exposes the focused 25-tool engine surface listed above. It
+shares the REST backend and biological terminology with the browser, but it
+does not expose every browser Observatory workflow or narrow reviewed-change
+endpoint.
+
+In particular, the browser currently owns the shared selection/time context,
+Observation Strip, Timeline, cohort comparison, Ecology workspace, experiment
+manifest recorder, Architecture graph, contextual help, and accessible
+alternatives. The adapter also has no dedicated wrapper for safe chemical
+intervention, copy-first genetics, reviewed CAOS validation/evaluation, or
+checksum-bound exact-event script management. Those contracts are available
+through the documented REST API and browser workflow, but should not be
+silently reconstructed with a generic tool call.
+
+`execute_caos` is deliberately powerful and can mutate almost any reachable
+engine state. Using it can bypass browser previews, stale-target checks,
+copy-first rules, duplicate-submit prevention, and provenance records. Read
+the repository's `caos-mcp` skill before writing CAOS; prefer dedicated
+read-only MCP inspection tools, and use an isolated world for any deliberate
+change.
+
+MCP clients should preserve the same evidence boundary as the browser:
+endpoint values are **Observed**, calculations are **Derived**, interpretations
+are **Inferred**, and inadequately sourced values are **Unknown**. The legacy
+`health` property returned by creature listings is glycogen reserve (chemical
+4), not overall health. A successful MCP call does not prove why a creature
+acted.
+
+Browser and MCP support are capability-based rather than inferred from
+connectivity alone. Check `get_session_status`, stable subject identity, and
+the relevant response fields before an operation. See the browser's
+[API reference](../tools/docs/api_reference.md) and
+[migration boundary](../tools/docs/observatory_migration_and_rollback.md).
 
 ---
 

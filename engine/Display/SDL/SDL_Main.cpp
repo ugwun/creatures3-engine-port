@@ -20,6 +20,8 @@
 #include "TickRateUtils.h"
 
 #include <atomic>
+#include <string>
+#include <vector>
 
 #include <cstdlib> // atof
 #include <time.h>
@@ -204,9 +206,42 @@ static float gameSpeedMultiplier = 1.0f;
 static bool enableTools = false;
 static bool enableMCP = false;
 static bool sHeadlessMode = false;
+static bool sAllowRemoteTools = false;
 static std::string toolsPathOverride;
+static std::vector<std::string> sanitizedLaunchOptions;
 
 bool IsHeadlessMode() { return sHeadlessMode; }
+bool IsDeveloperToolsMode() { return enableTools; }
+bool IsMCPMode() { return enableMCP; }
+const std::vector<std::string> &GetSanitizedLaunchOptions() {
+  return sanitizedLaunchOptions;
+}
+
+static void CaptureSanitizedLaunchOptions(int argc, char *argv[]) {
+  sanitizedLaunchOptions.clear();
+  for (int i = 1; i < argc; ++i) {
+    const std::string option(argv[i]);
+    sanitizedLaunchOptions.push_back(option);
+    const bool pathValue =
+        option == "--game-dir" || option == "-d" ||
+        option == "--run-cos";
+    const bool ordinaryValue =
+        option == "--gamespeed" || option == "-s" ||
+        option == "--world" || option == "-w" ||
+        option == "--max-ticks";
+    if ((pathValue || ordinaryValue) && i + 1 < argc) {
+      sanitizedLaunchOptions.push_back(
+          pathValue ? "[local path omitted]" : std::string(argv[++i]));
+      if (pathValue)
+        ++i;
+      continue;
+    }
+    if (option == "--tools" && i + 1 < argc && argv[i + 1][0] != '-') {
+      sanitizedLaunchOptions.push_back("[local path omitted]");
+      ++i;
+    }
+  }
+}
 
 // Global engine pause flag — controlled via Developer Tools.
 // When true, the main loop skips theApp.UpdateApp() but still
@@ -244,6 +279,7 @@ static void HandleEvent(const SDL_Event &event);
 int main(int argc, char *argv[]) {
   try {
     ourRunning = true;
+    CaptureSanitizedLaunchOptions(argc, argv);
 
     // -----------------------------------------------------------------------
     // Parse command-line arguments.
@@ -281,6 +317,12 @@ int main(int argc, char *argv[]) {
                 "                      Optional path overrides tools/ directory\n"
                 "  --mcp               Start API-only server on port 9980\n"
                 "                      For use with MCP clients (AI agents)\n"
+                "  --allow-remote-tools\n"
+                "                      Accept other machines on the API/tools "
+                "port (local-only\n"
+                "                      by default). Prints an access URL; set "
+                "LC2E_TOOLS_TOKEN\n"
+                "                      to choose its token\n"
                 "  --no-music          Disable music on startup\n"
                 "  --no-sound          Disable all sound on startup\n"
                 "  --help, -h          Show this help message\n"
@@ -317,6 +359,8 @@ int main(int argc, char *argv[]) {
         }
       } else if (arg == "--mcp") {
         enableMCP = true;
+      } else if (arg == "--allow-remote-tools") {
+        sAllowRemoteTools = true;
       } else if (arg == "--headless") {
         sHeadlessMode = true;
         enableTools = true;   // headless implies --tools (full API + static files)
@@ -351,6 +395,10 @@ int main(int argc, char *argv[]) {
 
     // Start debug/API server if --tools or --mcp was passed.
     if (enableTools || enableMCP) {
+      if (sAllowRemoteTools) {
+        const char *token = getenv("LC2E_TOOLS_TOKEN");
+        theDebugServer.AllowRemoteAccess(token ? token : "");
+      }
       if (enableTools) {
         // Resolve tools/ directory for static file serving
         std::string toolsDir;

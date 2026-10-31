@@ -10,6 +10,10 @@
 //   The HTTP server runs in a background thread. Requests that touch engine
 //   state are queued and processed on the main thread via Poll().
 //
+//   The API can execute arbitrary CAOS and rewrite genomes, so it serves only
+//   this machine unless AllowRemoteAccess() is called. See
+//   DebugServerLogic::DecideApiAccess for the request rules.
+//
 // Usage:
 //   theDebugServer.Start(9980, "tools/");
 //   // in main loop: theDebugServer.Poll();
@@ -24,6 +28,10 @@ class DebugServer {
 public:
 	DebugServer();
 	~DebugServer();
+
+	// Also accept other machines, authenticated by a token. An empty token
+	// generates a random one. Must be called before Start().
+	void AllowRemoteAccess(const std::string& token);
 
 	// Start the server on the given port, serving static files from staticDir.
 	void Start(int port, const std::string& staticDir);
@@ -44,6 +52,8 @@ public:
 private:
 	struct Impl;
 	Impl* myImpl;
+	bool myAllowRemoteAccess;
+	std::string myRemoteAccessToken;
 };
 
 // Global singleton — mirrors theFlightRecorder pattern.

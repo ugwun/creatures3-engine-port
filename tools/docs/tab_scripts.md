@@ -1,49 +1,111 @@
-# Scripts Tab
+# Running Scripts Workspace
 
-The **Scripts** tab displays a live, polling table of all currently running CAOS scripts across all agents in the world.
+The **Scripts** workspace is a compact, live inventory of agent CAOS virtual
+machines. It answers which owners are active, what classifier/event each VM is
+executing, what source statement is currently mapped, and where to inspect it
+next.
 
-![Scripts Tab](/docs/media/tab_scripts.png)
+![Compact grouped Running Scripts workspace in
+Firefox](/docs/media/tab_scripts.png)
 
-## Overview
+## Reading a Row
 
-The table provides a comprehensive snapshot of the active script ecosystem. 
+Each compact row shows:
 
-| Column | Description |
+| Field | Meaning |
 |---|---|
-| **Agent ID** | The unique ID of the agent executing the script (`GetUniqueID()`). |
-| **Classifier** | The script's Family, Genus, Species, and Event number, often accompanied by a human-readable name (e.g., `2 13 100 9 (Timer)`). |
-| **State** | The current execution state of the script: `running`, `blocking` (waiting on commands like `wait`, `over`), or `paused` (hit an IDE breakpoint). |
-| **IP** | The current Instruction Pointer offset within the compiled bytecode. |
-| **Current Source** | The CAOS source code surrounding the current IP, automatically formatted with line breaks and 4-space indentation for readability. |
+| Owner | Catalogue identity or gallery name plus the engine's unique agent ID |
+| Classifier | Exact script family, genus, species, and event |
+| Event | Catalogue event name when one is available |
+| State | Running, Waiting, Blocking, Paused, or recently Finished |
+| Statement | Source line mapped near the observed bytecode instruction pointer |
+| Focus | Moves the game camera to the owner; it does not change simulation state |
+| Debugger | Opens the exact owner, classifier, and event in Debugger |
+| Details | Reveals IP, blocking command/reason, TARG, IT, capture tick, and full source |
 
-## Features
+The shared selected agent is moved to the top, marked **Selected**, and kept
+expanded inside its classifier group.
 
-* **Auto-Refresh:** By default, the table polls the underlying `GET /api/scripts` endpoint every 2 seconds to keep the data fresh.
-* **Manual Refresh:** Click the "Refresh" button in the toolbar for an immediate, synchronous update.
-* **Toggle Auto-Polling:** Uncheck the "Auto" box to disable automatic polling. This is useful if you want to inspect a specific snapshot of execution state without it jumping.
-* **Empty State Handling:** When no scripts are running (for example, if no world is loaded), a helpful message is displayed rather than an empty table.
+## State and Evidence Terminology
 
-## Under the Hood: How it Works
+- **Running** is the engine's directly reported non-blocking VM state. The
+  sample observes the VM between scheduler yields; it is not a CPU profiler.
+- **Waiting** is used only when the engine reports that the blocking command is
+  `WAIT`.
+- **Blocking** means another command is retaining the VM across ticks. `OVER`
+  is labelled as waiting for animation completion. For other commands, the UI
+  shows the command and **Reason unavailable** instead of guessing.
+- **Paused** means this one agent VM is stopped at a Debugger breakpoint. The
+  world can still be running; use the global session ribbon for world pause.
+- **Finished** is derived when a previously observed instance disappears from
+  the next `/api/scripts` samples. It remains for five seconds and is not a
+  direct engine completion event.
+- **New** and **Changed** are also derived from successive samples. Changed
+  compares state, IP, statement, blocking command, TARG, and IT.
 
-When the frontend polls the `GET /api/scripts` endpoint, the `DebugServer` schedules a `WorkItem` to run on the engine's main thread (to avoid data races). 
+The status line reports the API capture tick, active count, response payload
+size, request time, render time, and recently finished count. A script row's
+exact capture tick is available under **Details**.
 
-Here is the exact pipeline the engine follows to gather this data (refer to `engine/DebugServer.cpp`):
+## Grouping, Filtering, and Stable Refresh
 
-1.  **Agent Traversal:** The server accesses the global `AgentManager::GetAgentIDMap()` and iterates through every active agent in the game.
-2.  **VM State Check:** For each agent, it inspects its internal `CAOSMachine` (Virtual Machine). It skips any agent where `vm.IsRunning()` is false.
-3.  **Classifier Extraction:** If the VM is active, it retrieves the associated `MacroScript*` to extract the script's `Classifier` (Family, Genus, Species, Event).
-4.  **Source Code Mapping:** To provide the contextual "Current Source" snippet, the engine leverages the compiler's `DebugInfo` map. It takes the VM's current instruction pointer (`vm.GetIP()`) and resolves it backwards into the original `std::string` source code, extracting the exact text of the current executing line.
+**Group identical** combines instances with the same
+family/genus/species/event classifier. Groups with multiple owners begin
+collapsed and show a count plus state summary. Activate the group header to
+expand it. Single-instance classifiers stay as direct rows.
 
-Because this traversal is executed directly within the main thread's game tick execution loop, the state presented is a guaranteed, exact snapshot of that specific tick, free from multi-threading artifacts.
+Filters can be combined:
 
-## Visual Badges
+- free text searches owner ID/name, gallery, classifier, event, statement,
+  blocking command/reason, TARG, and IT;
+- State selects one normalized VM state;
+- Classifier, Event, and Gallery/kind have dedicated filters;
+- Creatures limits owners to agent family 4;
+- Changed and New use the derived successive-sample flags.
 
-To make scanning the script table easier, the state of each script is represented by a colour-coded badge:
+Rows keep a stable first-observed order, except that the shared selected owner
+is deliberately prioritized. Auto-refresh reconciles membership while reusing
+existing row DOM, preserving focus, scroll, expanded details, source
+disclosure, grouping, and filters.
 
-* **Green Badge:** The script is actively `running`.
-* **Orange Badge:** The script is `blocking` (waiting on a timer or animation).
-* **Orange Outlined Badge (with ⏸):** The script is `paused` at a user-defined breakpoint.
+## Full Source and Payload Behavior
 
-If you identify a script that requires deeper investigation, you can set breakpoints for it in the [CAOS IDE](tab_caos_ide.md) and step through its execution in the [Debugger](tab_debugger.md).
+The normal `/api/scripts` response contains only the mapped current statement,
+not a copy of every full script. **Load full source** uses the installed
+script's classifier endpoint. The browser caches and formats one source per
+classifier plus source revision, so identical owners reuse it. The global
+**Full source** option expands sources for visible rows and remains explicitly
+opt-in.
 
-*For details on interacting with the script data programmatically, check the [API Reference](api_reference.md).*
+## Workflow: Busy or Failed Script to Context
+
+1. Open **Scripts** and leave **Group identical** enabled to see which
+   classifiers dominate the active population.
+2. Filter by a state, gallery, event, or **Changed**. A runtime failure may
+   already have finished, so also check the contextual [Log](tab_log.md).
+3. Expand the classifier group and identify the owner. If it is the current
+   shared selection, look for the orange **Selected** row.
+4. Open **Details**. Record the observed tick, exact classifier, IP, TARG/IT,
+   and any blocking command/reason. Load full source only if the statement is
+   insufficient.
+5. Choose **Debugger**. The handoff preserves owner identity, classifier,
+   event, gallery, and shared investigation context.
+6. In Debugger, inspect variables and source. Set a breakpoint deliberately;
+   **Paused** will then synchronize back to Scripts on its next sample.
+7. Use browser **Back** to restore Scripts filters, grouping, expansions, Auto
+   setting, and scroll position.
+
+For a failed script, treat a Log error record as separate observed evidence.
+Task 06 adds richer log time/context correlation; this workspace does not infer
+that a changed statement caused a logged failure.
+
+## Empty, Disconnected, and Historical States
+
+A successful empty sample transitions prior rows to recently Finished, then
+removes them after five seconds. A network/API failure does not falsely finish
+everything: the last sample remains visible and the status line says
+**Disconnected/stale**. A world transition clears all script activity before
+new-world data renders.
+
+The workspace polls only while Scripts is active and Auto is enabled. Manual
+refresh remains available when Auto is off.

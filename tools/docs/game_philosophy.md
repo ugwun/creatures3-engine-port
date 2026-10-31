@@ -183,7 +183,7 @@ Gene switch-on times are themselves mutable — a mutation could cause a gene no
 
 Creatures reproduce sexually. When two creatures mate, the engine generates an entirely new genome for the offspring through a sophisticated crossover algorithm that simulates biological meiosis.
 
-> **Deep Dive:** For the complete crossover algorithm walkthrough, mutation probability formulas, and cutting error mechanics, see [The Digital Genome — Deep Dive](genome_deep_dive.md#sexual-reproduction--crossover-and-mutation).
+> **Deep Dive:** For the complete crossover algorithm walkthrough, mutation probability formulas, and cutting error mechanics, see [The Digital Genome — Deep Dive](genome_deep_dive.md#sexual-reproduction-crossover-and-mutation).
 
 > **CAOS Reference:** [`GENE CROS`](caos_genetics.md) performs crossover from CAOS. [`MATE`](caos_creatures.md) triggers the in-game mating sequence. Mutation counts can be queried with [`HIST MUTE`](caos_history.md) and crossover points with [`HIST CROS`](caos_history.md).
 
@@ -472,7 +472,7 @@ This ST→LT convergence mechanism means the creature has both short-term workin
 
 ## Tracts and Dendrites — Neural Wiring and Learning
 
-> **Deep Dive:** For the complete dendrite migration algorithm, connectivity modes, ST/LT weight convergence formulas, and the reinforcement processing internals, see [Brain & SVRules Deep Dive — Tracts](brain_deep_dive.md#tracts--neural-wiring).
+> **Deep Dive:** For the complete dendrite migration algorithm, connectivity modes, ST/LT weight convergence formulas, and the reinforcement processing internals, see [Brain & SVRules Deep Dive — Tracts](brain_deep_dive.md#tracts-neural-wiring).
 
 While lobes contain the computing neurons, communication between lobes is handled by **tracts** — genetically defined connections specifying a source lobe, a destination lobe, and neuron range mappings.
 

@@ -1390,6 +1390,10 @@ bool World::Save() {
 
   try {
     std::fstream file(tempPath.c_str(), std::ios::out | std::ios::binary);
+    if (!file.good()) {
+      ErrorMessageHandler::Show("archive_error", 3, "World::Save");
+      return false;
+    }
     CreaturesArchive archive(file, CreaturesArchive::Save);
     Write(archive);
   } catch (BasicException &e) {

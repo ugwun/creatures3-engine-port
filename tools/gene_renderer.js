@@ -32,11 +32,8 @@
     24: 'Dissolved carbon dioxide',
     25: 'Urea',
     26: 'Ammonia',
-    27: 'Antibody 3',
-    28: 'Antibody 4',
     29: 'Air',
     30: 'Oxygen',
-    31: 'Antibody 7',
     33: 'Water',
     34: 'Energy',
     35: 'ATP',
@@ -182,7 +179,6 @@
     211: 'Brain chemical 14',
     212: 'Pre-REM sleep',
     213: 'REM sleep',
-    247: 'Alcohol',
     248: 'Defibrillator',
     249: 'Medicine One',
     250: 'Medicine Two',
@@ -248,10 +244,10 @@
     
     if (isInteractive) {
       html += `<div style="display:flex; gap:4px; margin-left:8px;" class="crt-gene-actions">`;
-      html += `<button class="btn-light g-btn-up" data-idx="${index}" title="Move Up" onclick="event.stopPropagation()" style="padding: 2px 6px; font-size: 8px;">▲</button>`;
-      html += `<button class="btn-light g-btn-down" data-idx="${index}" title="Move Down" onclick="event.stopPropagation()" style="padding: 2px 6px; font-size: 8px;">▼</button>`;
-      html += `<button class="btn-light g-btn-dup" data-idx="${index}" title="Duplicate Gene" onclick="event.stopPropagation()" style="padding: 2px 6px; font-size: 10px;">⎘</button>`;
-      html += `<button class="btn-light g-btn-del" data-idx="${index}" title="Delete Gene" onclick="event.stopPropagation()" style="padding: 2px 6px; font-size: 10px; color:var(--red); border-color:rgba(255,0,0,0.3);">✖</button>`;
+      html += `<button class="btn-light g-btn-up" data-idx="${index}" title="Move Up" style="padding: 2px 6px; font-size: 8px;">▲</button>`;
+      html += `<button class="btn-light g-btn-down" data-idx="${index}" title="Move Down" style="padding: 2px 6px; font-size: 8px;">▼</button>`;
+      html += `<button class="btn-light g-btn-dup" data-idx="${index}" title="Duplicate Gene" style="padding: 2px 6px; font-size: 10px;">⎘</button>`;
+      html += `<button class="btn-light g-btn-del" data-idx="${index}" title="Delete Gene" style="padding: 2px 6px; font-size: 10px; color:var(--red); border-color:rgba(255,0,0,0.3);">✖</button>`;
       html += `</div>`;
     }
     
@@ -490,7 +486,19 @@
          }
          html += `</select>`;
       } else {
-         html += `<input type="${type}" class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" value="${window.engineFormat ? window.engineFormat.escapeHtml(val.toString()) : val}" style="width: 100%; max-width: 100px; padding: 2px 4px; font-family: var(--font-mono); font-size: 11px;" />`;
+         let bounds = '';
+         if (type === 'number') {
+           const u16Fields = new Set([
+             'updateTime', 'x', 'y', 'sLower', 'sUpper', 'sNum',
+             'dLower', 'dUpper', 'dNum'
+           ]);
+           const stimulusAmount = gene.type === 2 && gene.subtype === 0 &&
+             /^amount[0-3]$/.test(keyPath);
+           bounds = stimulusAmount
+             ? ' min="-1" max="0.9921875" step="0.0078125"'
+             : ` min="0" max="${u16Fields.has(keyPath) ? 65535 : 255}" step="1"`;
+         }
+         html += `<input type="${type}" class="crt-gene-input" data-idx="${index}" data-key="${keyPath}" value="${window.engineFormat ? window.engineFormat.escapeHtml(val.toString()) : val}"${bounds} style="width: 100%; max-width: 100px; padding: 2px 4px; font-family: var(--font-mono); font-size: 11px;" />`;
       }
       html += `</div>`;
       return html;

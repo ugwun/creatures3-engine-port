@@ -215,8 +215,31 @@ function formatCAOS(raw) {
 }
 
 // Export for use by other modules
+
+// formatCAOS only rearranges whitespace, but the engine reports positions in the
+// original text. Returns, for each formatted line, the position in `raw` where
+// that line starts, so breakpoints and the current line land where they appear.
+function sourceOffsetsForFormattedLines(raw, formatted) {
+    const offsets = [];
+    let rawIndex = 0;
+    const skipWhitespace = () => {
+        while (rawIndex < raw.length && /\s/.test(raw[rawIndex])) rawIndex++;
+    };
+    String(formatted).split("\n").forEach(line => {
+        skipWhitespace();
+        offsets.push(rawIndex);
+        for (const character of line) {
+            if (/\s/.test(character)) continue;
+            skipWhitespace();
+            rawIndex++;
+        }
+    });
+    return offsets;
+}
+
 if (typeof window !== "undefined") {
     window.formatCAOS = formatCAOS;
+    window.sourceOffsetsForFormattedLines = sourceOffsetsForFormattedLines;
 }
 
 /**
@@ -308,4 +331,8 @@ function highlightCAOS(line) {
 
 if (typeof window !== "undefined") {
     window.highlightCAOS = highlightCAOS;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = { formatCAOS, sourceOffsetsForFormattedLines };
 }

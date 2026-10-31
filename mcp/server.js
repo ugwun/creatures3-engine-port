@@ -15,11 +15,18 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 // ── Configuration ──────────────────────────────────────────────────────
-const ENGINE_URL = process.env.ENGINE_URL || "http://localhost:9980";
+// 127.0.0.1 rather than localhost: lc2e binds IPv4 loopback, and Node 18 tries
+// the IPv6 address first without falling back.
+const ENGINE_URL = process.env.ENGINE_URL || "http://127.0.0.1:9980";
+// Required only when lc2e runs with --allow-remote-tools on another machine.
+const ENGINE_TOKEN = process.env.ENGINE_TOKEN || "";
+const AUTH_HEADERS = ENGINE_TOKEN
+  ? { Authorization: `Bearer ${ENGINE_TOKEN}` }
+  : {};
 
 // ── HTTP helpers ───────────────────────────────────────────────────────
 async function apiGet(path) {
-  const res = await fetch(`${ENGINE_URL}${path}`);
+  const res = await fetch(`${ENGINE_URL}${path}`, { headers: AUTH_HEADERS });
   if (!res.ok) throw new Error(`GET ${path}: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -27,7 +34,7 @@ async function apiGet(path) {
 async function apiPost(path, body = {}) {
   const res = await fetch(`${ENGINE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...AUTH_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`POST ${path}: ${res.status} ${res.statusText}`);
@@ -77,7 +84,8 @@ server.tool(
 server.tool(
   "list_creatures",
   "List all creatures (Norns, Grendels, Ettins) in the world with their species, name, " +
-  "health, life stage, and top drive levels.",
+  "life stage, life state, glycogen reserve (chemical 4), and drive levels. The legacy " +
+  "health field is retained by the API but is also glycogen, not an overall health score.",
   {},
   async () => {
     try {
@@ -93,8 +101,9 @@ server.tool(
 // ── get_creature_chemistry ─────────────────────────────────────────────
 server.tool(
   "get_creature_chemistry",
-  "Get the full biochemistry of a specific creature — all 256 chemical concentrations. " +
-  "Returns chemical ID, name, and concentration for each non-zero chemical.",
+  "Get the full biochemistry of a specific creature — a 256-entry concentrations array " +
+  "indexed by raw chemical ID, plus organ life-force and execution state. The payload does " +
+  "not include chemical names.",
   { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
   async ({ agentId }) => {
     try {
@@ -109,7 +118,7 @@ server.tool(
 server.tool(
   "get_creature_brain",
   "Get the brain overview of a creature — all neural lobes and tracts with neuron counts, " +
-  "geometry, and aggregate activity.",
+  "exact genome/engine geometry, semantic labels, winner indices, and dendrite counts.",
   { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
   async ({ agentId }) => {
     try {
@@ -124,7 +133,8 @@ server.tool(
 server.tool(
   "get_brain_lobe",
   "Get detailed neuron states for a specific brain lobe — activity level, winner state, " +
-  "and semantic label (drive name, action name, etc.) for each neuron.",
+  "and semantic label (drive name, action name, etc.) for each neuron. Labels are included " +
+  "both in the top-level labels array and on individual neuron records.",
   {
     agentId: z.number().describe("The creature's agent ID"),
     lobeIndex: z.number().describe("Lobe index (from get_creature_brain)"),
@@ -299,6 +309,20 @@ server.tool(
   }
 );
 
+// ── get_session_status ─────────────────────────────────────────────────
+server.tool(
+  "get_session_status",
+  "Get one coherent world/session sample: world name and type, ticks, pause state, game speed, creature count, and any pending world switch.",
+  {},
+  async () => {
+    try {
+      return textResult(await apiGet("/api/session"));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
 // ═══════════════════════════════════════════════════════════════════════
 // PHASE 3: HEADLESS OPERATION — World, Creature, Experiment Tools
 // ═══════════════════════════════════════════════════════════════════════
@@ -443,7 +467,8 @@ server.tool(
 // ── snapshot_all_creatures ─────────────────────────────────────────────
 server.tool(
   "snapshot_all_creatures",
-  "Bulk dump of all creature states at the current tick: drives, health, position, top chemicals. " +
+  "Bulk dump of all creature states at the current tick: drives, glycogen reserve, position, " +
+  "and top chemicals. The legacy health field is glycogen, not an overall health score. " +
   "More efficient than calling get_creature_chemistry for each creature individually.",
   {},
   async () => {

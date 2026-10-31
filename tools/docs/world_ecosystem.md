@@ -299,7 +299,7 @@ This pipeline means that creatures genuinely **smell their environment** through
 
 ## How Creatures Sense the Environment
 
-Beyond smell, creatures sense numerous environmental properties through the biochemistry's **[emitter loci](biochemistry_deep_dive.md#the-locus-system--binding-everything-together)** system. The [`GetLocusAddress()`](../../engine/Creature/Creature.cpp) method in `Creature.cpp` maps environment state to locus addresses that [emitter genes](genome_deep_dive.md#subtype-1--emitter-gene-g_emitter) read and convert to chemical concentrations.
+Beyond smell, creatures sense numerous environmental properties through the biochemistry's **[emitter loci](biochemistry_deep_dive.md#the-locus-system-binding-everything-together)** system. The [`GetLocusAddress()`](../../engine/Creature/Creature.cpp) method in `Creature.cpp` maps environment state to locus addresses that [emitter genes](genome_deep_dive.md#subtype-1-emitter-gene-g_emitter) read and convert to chemical concentrations.
 
 ### Sensorimotor Emitter Loci
 
@@ -322,13 +322,13 @@ The following emitter loci (defined in [`BiochemistryConstants.h`](../../engine/
 | `LOC_HEADWIND` | 12 | *(unwired)* | Defined as "speed of wind coming towards me" but not implemented |
 | `LOC_TAILWIND` | 13 | *(unwired)* | Defined as "speed of wind coming from behind" but not implemented |
 | `LOC_E_INVOLUNTARY0–7` | 14–21 | `MotorFaculty` | Trigger [involuntary actions](caos_events.md#involuntary-actions-6472) (coughing, sneezing, shivering) |
-| `LOC_E_GAIT0–15` | 22–37 | Biochemistry | Trigger specific walking [gaits](genome_deep_dive.md#subtype-4--gait-gene-g_gait) based on chemical state |
+| `LOC_E_GAIT0–15` | 22–37 | Biochemistry | Trigger specific walking [gaits](genome_deep_dive.md#subtype-4-gait-gene-g_gait) based on chemical state |
 | `LOC_E_GAIT16` | 38 | *(unwired)* | Defined in enum but not handled by `GetLocusAddress()` |
 
 > [!IMPORTANT]
 > Several loci defined in `BiochemistryConstants.h` (LOC_COLDNESS, LOC_HOTNESS, LOC_LIGHTLEVEL, LOC_RADIATION, LOC_TIMEOFDAY, LOC_SEASON, LOC_HEADWIND, LOC_TAILWIND) are **not wired** in the C3/DS engine. They have no `case` in the `GetLocusAddress()` emitter dispatch and resolve to `myInvalidLocus` (always 0.0). These were likely intended for future implementation or were implemented in earlier Creatures versions.
 >
-> **How creatures actually sense temperature, light, and radiation:** The `SensoryFaculty` reads all 20 CA values from the creature's current room and writes them directly to **[smell chemicals](biochemistry_deep_dive.md#smell-chemicals-ids-165184)** (chemicals 165–184). Genome-defined [emitter genes](genome_deep_dive.md#subtype-1--emitter-gene-g_emitter) can then read from these smell chemicals and convert them to [drive-affecting chemicals](drives_and_learning.md#the-20-drives). The environmental sensing pathway is: **Room CA → SensoryFaculty → Smell Chemical → Emitter Gene → Drive Chemical**, *not* through the LOC_ emitter loci.
+> **How creatures actually sense temperature, light, and radiation:** The `SensoryFaculty` reads all 20 CA values from the creature's current room and writes them directly to **[smell chemicals](biochemistry_deep_dive.md#smell-chemicals-ids-165184)** (chemicals 165–184). Genome-defined [emitter genes](genome_deep_dive.md#subtype-1-emitter-gene-g_emitter) can then read from these smell chemicals and convert them to [drive-affecting chemicals](drives_and_learning.md#the-20-drives). The environmental sensing pathway is: **Room CA → SensoryFaculty → Smell Chemical → Emitter Gene → Drive Chemical**, *not* through the LOC_ emitter loci.
 
 The **crowdedness** and **air quality** loci are particularly notable because they are computed directly in [`Creature::Update()`](../../engine/Creature/Creature.cpp):
 
@@ -459,7 +459,7 @@ Plant agents (seeds, fruits, herbs, vegetables) are typically assigned to simple
 
 ### Food → Creature Biochemistry
 
-When a creature eats a food agent (firing [event script 12](caos_events.md#core-agent-events-014) = `Eat`), the agent's eat script typically uses [`STIM WRIT`](caos_messages.md) or [`STIM SHOU`](caos_messages.md) to deliver a stimulus to the eating creature. The creature's genetically-defined **[Stimulus genes](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus)** then convert the eat event into:
+When a creature eats a food agent (firing [event script 12](caos_events.md#core-agent-events-014) = `Eat`), the agent's eat script typically uses [`STIM WRIT`](caos_messages.md) or [`STIM SHOU`](caos_messages.md) to deliver a stimulus to the eating creature. The creature's genetically-defined **[Stimulus genes](genome_deep_dive.md#subtype-0-stimulus-gene-g_stimulus)** then convert the eat event into:
 
 - **Chemical injections:** Nutrient chemicals (starch, fat, protein) enter the bloodstream
 - **Drive reduction:** Hunger chemicals decrease, generating a reward signal
@@ -526,10 +526,10 @@ The exact assignments are fully configurable by the bootstrap scripts. The engin
 - [Game Philosophy — Overview](game_philosophy.md) — High-level design philosophy
 - [Map & Rooms — CAOS Reference](caos_map.md) — All map/room/CA CAOS commands
 - [Agents — CAOS Reference](caos_agents.md) — Agent creation and manipulation
-- [Creatures — CAOS Reference](caos_creatures.md) — Creature commands including [`APPR`](caos_creatures.md#appr--approach-it) (CA-guided approach)
+- [Creatures — CAOS Reference](caos_creatures.md) — Creature commands including [`APPR`](caos_creatures.md#appr-approach-it) (CA-guided approach)
 - [Agent Categories](caos_categories.md) — The 40-slot category system
 - [Script Events & Messages](caos_events.md) — Event numbers, creature decisions, and [involuntary actions](caos_events.md#involuntary-actions-6472)
-- [Biochemistry Deep Dive](biochemistry_deep_dive.md) — Chemical simulation, [smell chemicals](biochemistry_deep_dive.md#smell-chemicals-ids-165184), and the [locus system](biochemistry_deep_dive.md#the-locus-system--binding-everything-together)
+- [Biochemistry Deep Dive](biochemistry_deep_dive.md) — Chemical simulation, [smell chemicals](biochemistry_deep_dive.md#smell-chemicals-ids-165184), and the [locus system](biochemistry_deep_dive.md#the-locus-system-binding-everything-together)
 - [Drives & Reinforcement Learning](drives_and_learning.md) — The stimulus system, [sensory lobe inputs](drives_and_learning.md#situation-lobe-situ), and learning loop
 - [Brain & SVRules Deep Dive](brain_deep_dive.md) — Neural architecture, [lobe table](brain_deep_dive.md#standard-norn-brain-lobes), and processing pipeline
-- [The Digital Genome](genome_deep_dive.md) — Gene definitions for [emitters](genome_deep_dive.md#subtype-1--emitter-gene-g_emitter), [stimuli](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus), and [gaits](genome_deep_dive.md#subtype-4--gait-gene-g_gait)
+- [The Digital Genome](genome_deep_dive.md) — Gene definitions for [emitters](genome_deep_dive.md#subtype-1-emitter-gene-g_emitter), [stimuli](genome_deep_dive.md#subtype-0-stimulus-gene-g_stimulus), and [gaits](genome_deep_dive.md#subtype-4-gait-gene-g_gait)

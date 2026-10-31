@@ -518,6 +518,27 @@ TEST_F(IntegrationTier3, WorldStatsEndpoint) {
 	std::string statsWorldName = ExtractJsonString(body, "worldName");
 	EXPECT_EQ(statsWorldName, dockedWorldName)
 	    << "Stats world name mismatch";
+
+	auto sessionRes = cli.Get("/api/session");
+	ASSERT_NE(sessionRes, nullptr) << "GET /api/session returned null";
+	ASSERT_EQ(sessionRes->status, 200);
+	const std::string session = sessionRes->body;
+	EXPECT_NE(session.find("\"worldName\":"), std::string::npos)
+	    << "Missing worldName in session: " << session;
+	EXPECT_NE(session.find("\"worldType\":\"docked\""), std::string::npos)
+	    << "Incorrect worldType in session: " << session;
+	EXPECT_NE(session.find("\"worldTick\":"), std::string::npos)
+	    << "Missing worldTick in session: " << session;
+	EXPECT_NE(session.find("\"systemTick\":"), std::string::npos)
+	    << "Missing systemTick in session: " << session;
+	EXPECT_NE(session.find("\"paused\":"), std::string::npos)
+	    << "Missing paused in session: " << session;
+	EXPECT_NE(session.find("\"gameSpeed\":"), std::string::npos)
+	    << "Missing gameSpeed in session: " << session;
+	EXPECT_NE(session.find("\"creatureCount\":"), std::string::npos)
+	    << "Missing creatureCount in session: " << session;
+	EXPECT_NE(session.find("\"loadPending\":"), std::string::npos)
+	    << "Missing loadPending in session: " << session;
 }
 
 // ---------------------------------------------------------------------------

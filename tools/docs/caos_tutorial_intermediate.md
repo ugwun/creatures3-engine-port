@@ -34,7 +34,7 @@ These are **compound agents**, and they're the backbone of the game's gadget eco
 
 ### 1.2 — Your First Compound Agent
 
-Let's start by creating a compound agent to understand the pattern. In the **CAOS IDE**, type and run (**▶ Run**):
+Let's start by creating a compound agent to understand the pattern. In the **CAOS Workbench**, type and run (**Evaluate now**):
 
 ```caos
 * === Part 1: Basic Compound Agent ===
@@ -115,7 +115,7 @@ Our feeder will use these game mechanics:
 | **Player interaction** | Event 1 also handles player left-click (see §4.3) | Input/activation system |
 | **Status check** | Event 2 (Pull) — shows remaining food count | Creature interaction permissions |
 
-This design mirrors how real game agents are structured. Browse the **Scriptorium** in the CAOS IDE and look at any complex agent — you'll find the same pattern: an install script that creates and configures the agent, plus a set of event scripts that define its behaviour.
+This design mirrors how real game agents are structured. Browse the **Scriptorium** in the CAOS Workbench and look at any complex agent — you'll find the same pattern: an install script that creates and configures the agent, plus a set of event scripts that define its behaviour.
 
 ### 2.2 — Choosing a Classifier
 
@@ -131,7 +131,7 @@ We'll use:
 >
 > Family 2, genus 23 maps to the **"dispenser"** category (brain slot 23). This means Norns will perceive our feeder as a dispenser, allowing their brains to form associations like *"when I push a dispenser, my hunger goes down"* through the reinforcement learning system. If we used an unrecognised genus (like 100), the feeder would fall into the catch-all **"something"** error category (slot 39) — the creature could physically interact with it, but its brain couldn't form meaningful memories about it.
 >
-> Some key genus-to-category mappings for family 2: genus 8 = "fruit", genus 11 = "food", genus 21 = "toy", genus 23 = "dispenser", genus 24 = "tool". You can verify any classifier's category in the Console: `outv cati 2 23 0` returns `23` (the "dispenser" slot).
+> Some key genus-to-category mappings for family 2: genus 8 = "fruit", genus 11 = "food", genus 21 = "toy", genus 23 = "dispenser", genus 24 = "tool". You can verify any classifier's category in the Scratchpad: `outv cati 2 23 0` returns `23` (the "dispenser" slot).
 >
 > **Species** (800) can be anything — the brain only distinguishes by family and genus. Species differentiates your agent at the script level (so your feeder's scripts don't clash with other dispensers).
 >
@@ -158,14 +158,16 @@ The install script is the foundation of any agent — it creates the agent in th
 
 ### 3.1 — The Install Script
 
-This is the **Run** script that creates the feeder agent and initialises all its state. Type this in the CAOS IDE and click **▶ Run**:
+This is the one-time agent creation script that initialises the feeder. Type it
+in the CAOS Workbench, choose **Evaluate now**, and review its world-changing
+commands before applying:
 
 ```caos
 * =============================================
 * CREATURE FEEDER — Install Script
 * =============================================
 * Creates the feeder agent and sets up initial state.
-* Run this once with the Run button.
+* Evaluate this once through the Workbench review.
 
 * Create the compound agent
 * Using "ball" sprite: 6 frames, starting at 0, plane 500
@@ -240,8 +242,11 @@ outv ov01
 
 After running the install script, let's confirm the agent was created properly:
 
-1. Switch to the **Console** and run: `outv totl 2 23 800` — you should see `1`
-2. Switch to the **Scripts** tab — you won't see anything for our agent *yet*, because the timer event script hasn't been injected into the Scriptorium. The `tick 100` command tells the agent to *fire* event 9 every 100 ticks, but the script that *handles* event 9 doesn't exist until we inject it in Part 4. The timer will simply fire into the void until then.
+1. Switch to the **Scratchpad** and run: `outv totl 2 23 800` — you should see `1`
+2. Switch to the **Scripts** tab — you won't see anything for our agent *yet*,
+   because the timer event script has not been installed in the Scriptorium.
+   The `tick 100` command tells the agent to *fire* event 9 every 100 ticks, but
+   the handler does not exist until we install it in Part 4.
 
 > **Don't see the Scripts tab updating?** Click **Refresh** or ensure "Auto" polling is enabled.
 
@@ -249,7 +254,7 @@ After running the install script, let's confirm the agent was created properly:
 
 The physics properties we set are crucial — they determine how the feeder interacts with the physical world: gravity, room boundaries, and creature movement.
 
-Let's verify they're applied correctly. Go to the **Console** and run:
+Let's verify they're applied correctly. Go to the **Scratchpad** and run:
 
 ```caos
 rtar 2 23 800
@@ -283,13 +288,24 @@ Notice we used `mvsf 1000 8900` instead of `mvto 1000 8900`. The `mvsf` command 
 
 Now comes the core of the tutorial: giving the feeder **behaviour** through event scripts. Each event script is injected into the Scriptorium under our classifier.
 
-Remember the distinction from the beginner tutorial: **Run** executes code immediately and it's gone. **Inject** stores the script permanently in the Scriptorium, where the engine calls it automatically whenever the corresponding event fires on a matching agent. This is how the entire game world works — every carrot, every door, every teleporter has event scripts in the Scriptorium defining its behaviour.
+Remember the distinction from the beginner tutorial: **Evaluate now** executes
+reviewed source immediately in a fresh ownerless VM and then discards it.
+**Install event** stores a previously absent exact classifier in the active
+world's Scriptorium, where the engine calls it whenever that event fires on a
+matching agent. Use **Replace event** when the exact event already exists and
+review the source diff first.
+
+In the steps below, “Install event” means: select that mode, verify the exact
+classifier is absent, review the source checksum and context, then acknowledge
+the final dialog and click **Install reviewed script**. Mutating snippets typed
+in Scratchpad intentionally offer a link to Workbench **Evaluate now** rather
+than executing without review.
 
 ### 4.1 — The Timer Script (Event 9)
 
 The timer script handles automatic food recharging. This models a real-world concept: the feeder has an internal reservoir that slowly refills. Many game agents use this pattern — plants regrow, machines recharge, environmental effects cycle.
 
-Set the classifier header in the CAOS IDE to **Family: 2, Genus: 23, Species: 800, Event: 9**, type the following, and click **Inject**:
+Set the classifier header in the CAOS Workbench to **Family: 2, Genus: 23, Species: 800, Event: 9**, type the following, and click **Install event**:
 
 ```caos
 * =============================================
@@ -318,9 +334,10 @@ doif ov00 lt ov01
 endi
 ```
 
-After injecting, verify it's working:
+After installing, verify it is working:
 
-1. Go to the **Console** and drain the food: `rtar 2 23 800 setv ov00 0`
+1. Enter `rtar 2 23 800 setv ov00 0` in **Scratchpad**. Because it writes an
+   agent variable, follow the Workbench link and confirm the immediate mutation.
 2. Wait ~25 seconds (5 timer fires × 5 seconds each)
 3. Check the food level: `rtar 2 23 800 outv ov00`
 4. It should have refilled back towards 5!
@@ -347,7 +364,7 @@ Our feeder will take a shortcut and directly manipulate these drive chemicals, b
 
 > **Tip:** You can explore this pipeline yourself using the **Creatures** tab. Select a creature and compare the **Chemistry** sub-tab (raw chemical levels), the **Drives** sub-tab (processed drive levels), and the **Brain** sub-tab (neural activation). Watch how they're connected!
 
-Now set the classifier to **2 / 23 / 800 / 1** and **Inject**:
+Now set the classifier to **2 / 23 / 800 / 1** and **Install event**:
 
 ```caos
 * =============================================
@@ -436,7 +453,7 @@ endi
 
 > **Key concept: TARG switching.** The `chem` command operates on TARG, so we need to change TARG to the creature. But this changes TARG away from our feeder! We save our own ID in `va00` first, then use `targ agnt va00` to switch back afterwards. Forgetting this restore step is one of the most common CAOS bugs — subsequent commands would accidentally operate on the creature instead of the feeder, causing subtle and confusing misbehaviour.
 
-> **Why not use `stim writ` instead of `chem`?** You might wonder why we don't just use `stim writ targ 79` (the stimulus for "Ate Food") like a Carrot does. The `stim writ` command sends a stimulus to the creature, which triggers the brain's reinforcement learning system — the creature needs to have *attention* on the feeder, and the [stimulus gene](genome_deep_dive.md#subtype-0--stimulus-gene-g_stimulus) for "Ate Food from a dispenser" needs to exist in the creature's genome. Our direct `chem` approach bypasses all of that and works reliably regardless of the creature's attention state. In a production agent, you'd ideally use *both*: `stim writ` so the creature learns, plus `chem` as a guaranteed fallback. For this tutorial, `chem` alone keeps things simple and predictable.
+> **Why not use `stim writ` instead of `chem`?** You might wonder why we don't just use `stim writ targ 79` (the stimulus for "Ate Food") like a Carrot does. The `stim writ` command sends a stimulus to the creature, which triggers the brain's reinforcement learning system — the creature needs to have *attention* on the feeder, and the [stimulus gene](genome_deep_dive.md#subtype-0-stimulus-gene-g_stimulus) for "Ate Food from a dispenser" needs to exist in the creature's genome. Our direct `chem` approach bypasses all of that and works reliably regardless of the creature's attention state. In a production agent, you'd ideally use *both*: `stim writ` so the creature learns, plus `chem` as a guaranteed fallback. For this tutorial, `chem` alone keeps things simple and predictable.
 
 ### 4.3 — Understanding Event Numbers
 
@@ -459,7 +476,7 @@ This means our Push Script (Event 1) handles *both* creature pushes AND player c
 
 ### 4.4 — The Pull Script (Event 2) — Status Report
 
-When a creature pulls the feeder, it reports its status. Set classifier to **2 / 23 / 800 / 2** and **Inject**:
+When a creature pulls the feeder, it reports its status. Set classifier to **2 / 23 / 800 / 2** and **Install event**:
 
 ```caos
 * =============================================
@@ -474,7 +491,7 @@ anim [0 3 0 255 2]
 
 ### 4.5 — Enabling Creature Permissions (`bhvr`)
 
-Now that all event scripts are installed in the Scriptorium, we can finally set the creature interaction permissions. Run this in the **Console**:
+Now that all event scripts are installed in the Scriptorium, we can finally set the creature interaction permissions. Run this in the **Scratchpad**:
 
 ```caos
 rtar 2 23 800
@@ -485,9 +502,13 @@ outv bhvr
 
 > **Why didn't we set `bhvr` in the install script?** The `bhvr` command validates that the corresponding event scripts actually exist in the Scriptorium. Setting `bhvr 3` (Push + Pull) requires scripts for events 1 and 2 to be installed for classifier `2 23 800`. If you try to set `bhvr` before injecting those scripts, the engine throws: *"Tried to set BHVR when the agent doesn't have one of the appropriate scripts."*
 >
-> This is a safety mechanism — the engine prevents you from advertising capabilities that don't exist. A creature's brain would try to Push the agent, but with no Push script to handle the event, nothing would happen. The engine catches this mistake at setup time rather than letting it fail silently at runtime.
+> This engine validation prevents you from advertising capabilities that don't
+> exist. It is distinct from the Workbench review: compilation and command
+> classification do not prove arbitrary CAOS safe.
 >
-> **The takeaway:** Always inject your event scripts *before* setting `bhvr`. The correct workflow is: **create agent → inject scripts → set permissions.**
+> **The takeaway:** Always install your event scripts *before* setting `bhvr`.
+> The correct workflow is: **create agent → install reviewed scripts → set
+> permissions.**
 
 Let's verify the creature permissions are now active:
 
@@ -503,7 +524,7 @@ You should see `Behaviour: 3` — creatures can now Push (1) and Pull (2) the fe
 
 ### 4.6 — Testing the Complete Agent
 
-Now let's test everything together. In the **Console**:
+Now let's test everything together. In the **Scratchpad**:
 
 ```caos
 * Check the feeder's state
@@ -522,7 +543,9 @@ rtar 2 23 800
 mesg wrt+ targ 0 0 0 0
 ```
 
-The feeder's Push Script fires: it decrements the food counter, plays the dispensing animation, and uses the `rtar 4 0 0` fallback to find a creature to feed (since `FROM` from the Console is null, not a creature).
+The feeder's Push Script fires: it decrements the food counter, plays the
+dispensing animation, and uses the `rtar 4 0 0` fallback to find a creature to
+feed (since `FROM` from the Scratchpad is null, not a creature).
 
 > **Important:** After triggering the feeder, you must wait a few seconds before checking the creature's drives. The `chem` command modifies the creature's chemical concentrations immediately, but the creature's **biochemistry organs** need several ticks to process those chemicals into drive changes. Check the **Drives** sub-tab after 5–10 seconds to see the hunger reduction.
 
@@ -539,13 +562,16 @@ The **Creatures** tab is the most powerful tool for verifying that your agent ac
 1. Switch to the **Creatures** tab
 2. Select a creature from the list — pick one that's awake and active
 3. Click the **Focus** button in the toolbar to snap the camera to this creature
-4. Note the creature's current state in the **Summary Card** on the right: health, highest drive, age
+4. Note the creature's current state in the **Summary Card** on the right:
+   glycogen reserve, separate vitality indicators, highest drive, life stage,
+   tick age, and life state
 
 ### 5.2 — Watching Drive Changes
 
 1. Click the **Drives** sub-tab
 2. Note the current Hunger levels — pay attention to **Hunger for Protein (drive 1)** and **Hunger for Carbohydrate (drive 2)**.
-3. Go back to Console and trigger the feeder a few times with the `mesg wrt+` command from section 4.6.
+3. Go back to Scratchpad and trigger the feeder a few times with the
+   `mesg wrt+` command from section 4.6.
 4. Wait a few seconds for the biochemistry to tick, then return to **Creatures** — the hunger drives should have dropped significantly!
 
 The negative `chem` commands we used inject directly into the creature's drive chemical slots (chemicals 149 and 150), which are the actual chemicals that the `driv` lobe reads. Within a few biochemistry ticks, the drives recalculate from the new chemical levels and the creature feels satisfied.
@@ -557,20 +583,26 @@ If you were to inject chemicals via script (e.g., `chem 5 0.5`), you could obser
 
 1. With the same creature selected, click the **Chemistry** sub-tab
 2. Toggle **"Non-zero only"** to reduce clutter — this filters out the ~200 chemicals that are at zero concentration
-3. If you used the Syringe to inject Chemical 5 (Starch), look for it near the top of the list
+3. If you used **Intervene** to adjust Chemical 5 (Starch), locate raw ID 5
+   in the canonical list or search for it
 4. The concentration will gradually decay
-5. The decay is driven by **chemical half-lives** — each chemical has a genetically defined decay rate (see [Half-Lives Gene](genome_deep_dive.md#subtype-3--half-lives-gene-g_halflife)). You can inspect these in the creature's genome via the **Genome** sub-tab (look for the "Halflives" gene under Biochemistry)
+5. The decay is driven by **chemical half-lives** — each chemical has a genetically defined decay rate (see [Half-Lives Gene](genome_deep_dive.md#subtype-3-half-lives-gene-g_halflife)). You can inspect these in the creature's genome via the **Genome** sub-tab (look for the "Halflives" gene under Biochemistry)
 
-### 5.4 — Using the Syringe for Experimentation
+### 5.4 — Using a Recorded Intervention
 
-Before committing chemical choices to code, the **Syringe** is invaluable for rapid prototyping:
+Before committing a chemical choice to code, use the safer **Intervene**
+workspace in an isolated world:
 
-1. Click the **Syringe** toggle in the Chemistry sub-tab toolbar
-2. Search for a chemical by name or ID
-3. Set a dosage (e.g., 0.5) and click inject
-4. Immediately observe the effect on the Drives sub-tab
+1. Click **Intervene** in Chemistry and search by raw ID or catalogue name.
+2. Capture a baseline and observe several samples.
+3. Prefer a small `+0.05` or `−0.05` adjustment; read the immediate clamping
+   preview and review the exact creature/chemical target.
+4. Apply once, then inspect engine-confirmed before/after values, the pinned
+   chemistry marker, Timeline, drives, attention, behaviour, and organ values.
 
-This workflow — **Syringe → observe Drives → code into agent** — is much faster than editing CAOS scripts and re-injecting. Use it to discover which chemicals have the most interesting effects before wiring them into your feeder.
+Timing after the operation is correlation, not proof that the chemical caused
+one observed action. Returning the number with an inverse adjustment is not an
+undo. See [Safe Chemical Interventions](safe_chemical_interventions.md).
 
 ---
 
@@ -605,7 +637,7 @@ outv unid
 
 ### 6.2 — Beacon Response Script
 
-The beacon listens for a custom message. Set classifier to **2 / 23 / 801 / 100** and **Inject**:
+The beacon listens for a custom message. Set classifier to **2 / 23 / 801 / 100** and **Install event**:
 
 ```caos
 * =============================================
@@ -635,7 +667,8 @@ mesg wrt+ agent message_id param1 param2 delay
 
 This sends a message to another agent with two parameters and an optional tick delay.
 
-Let's update the Push script. Set classifier to **2 / 23 / 800 / 1** and re-inject this updated version:
+Let's update the Push script. Set classifier to **2 / 23 / 800 / 1**, choose
+**Replace event**, and review the installed-to-editor diff for this version:
 
 ```caos
 * =============================================
@@ -711,7 +744,7 @@ This section teaches the full **IDE → Debugger** workflow — the same process
 
 ### 7.1 — Setting Cross-Script Breakpoints
 
-1. In the **CAOS IDE**, load the Push script: find `2 23 800` in the scriptorium sidebar and click event `1`
+1. In the **CAOS Workbench**, load the Push script: find `2 23 800` in the scriptorium sidebar and click event `1`
 2. Click the line number next to `subv ov00 1` to set a breakpoint (red dot)
 3. In the **Breakpoint Panel**, click the agent tag to bind it (turns orange)
 
@@ -723,7 +756,7 @@ Now load the beacon's handler: find `2 23 801`, event `100`:
 
 ### 7.2 — Triggering and Stepping
 
-Trigger the feeder from the Console:
+Trigger the feeder from the Scratchpad:
 
 ```caos
 inst
@@ -779,11 +812,11 @@ Here's a summary of everything we've built:
 
 | Script | Classifier | Purpose |
 |---|---|---|
-| Feeder Install | Run once | Creates feeder, sets physics, initialises state |
+| Feeder creation | Evaluate once | Creates feeder, sets physics, initialises state |
 | Feeder Timer | 2 23 800 / 9 | Auto-refills food supply |
 | Feeder Push | 2 23 800 / 1 | Dispenses food when pushed or clicked |
 | Feeder Pull | 2 23 800 / 2 | Status acknowledgement animation |
-| Beacon Install | Run once | Creates notification beacon |
+| Beacon creation | Evaluate once | Creates notification beacon |
 | Beacon Handler | 2 23 801 / 100 | Reacts to feeder notifications |
 
 ### 8.2 — Monitoring in the Scripts Tab

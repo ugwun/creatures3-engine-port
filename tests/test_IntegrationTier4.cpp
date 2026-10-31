@@ -369,6 +369,9 @@ TEST_F(IntegrationTier4, NeuralNetworkValidation) {
 	// Check for presence of lobes
 	EXPECT_NE(body.find("\"lobes\":["), std::string::npos) << "No lobes found in brain data";
 	EXPECT_NE(body.find("\"tracts\":["), std::string::npos) << "No tracts found in brain data";
+	EXPECT_NE(body.find("\"x\":"), std::string::npos) << "Brain overview omitted genome x coordinates";
+	EXPECT_NE(body.find("\"y\":"), std::string::npos) << "Brain overview omitted genome y coordinates";
+	EXPECT_NE(body.find("\"labels\":["), std::string::npos) << "Brain overview omitted semantic labels";
 	
 	// Wait/Advance ticks to ensure neurons are firing
 	for (int i = 0; i < 10; ++i) {
@@ -383,4 +386,8 @@ TEST_F(IntegrationTier4, NeuralNetworkValidation) {
 
 	std::string lobeBody = lobeRes->body;
 	EXPECT_NE(lobeBody.find("\"neurons\":["), std::string::npos) << "No neurons found in lobe 0";
+	EXPECT_NE(lobeBody.find("\"labels\":["), std::string::npos)
+		<< "Detailed lobe response omitted semantic labels";
+	EXPECT_NE(lobeBody.find("\"label\":"), std::string::npos)
+		<< "Detailed neuron records omitted semantic labels";
 }

@@ -259,6 +259,8 @@ void Lobe::DoUpdate()
 		}
 	}
 
+	myWinnerWasSelected = mySpareNeuronVariables != &dummySpare.states;
+
 	// make sure dummy is not winner
 	if(mySpareNeuronVariables == &dummySpare.states)
 	{

@@ -1,5 +1,5 @@
-// debugger.js — Creatures 3 Developer Tools — CAOS Console Tab
-// Interactive REPL for sending CAOS commands to the engine.
+// debugger.js — Creatures 3 Developer Tools — CAOS Evaluate-now Scratchpad
+// Fast path for compile-checked, read-only snippets in a fresh ownerless VM.
 "use strict";
 
 (() => {
@@ -18,18 +18,59 @@
         appendEntry("command", code);
 
         try {
-            const resp = await fetch("/api/execute", {
+            const validationResponse = await fetch("/api/caos/validate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ caos: code })
+                body: JSON.stringify({ mode: "evaluate", source: code })
+            });
+            const validation = await validationResponse.json();
+            if (!validation.ok) {
+                const location = validation.location &&
+                    validation.location.line
+                    ? ` (line ${validation.location.line}, column ` +
+                        `${validation.location.column})`
+                    : "";
+                appendEntry("error",
+                    (validation.error || "Compilation failed") + location);
+                return;
+            }
+            const context = CaosWorkbenchModel.contextSnapshot(
+                ObservatoryState.getState(), null,
+                window.ExperimentWorkspace &&
+                    window.ExperimentWorkspace.isRecording());
+            const review = CaosWorkbenchModel.plan({
+                mode: "evaluate",
+                context,
+                source: code,
+                validation
+            });
+            if (review.risk.requiresAcknowledgement) {
+                appendEntry("error",
+                    "Workbench review required: " +
+                    review.risk.explanation);
+                appendWorkbenchLink(code);
+                return;
+            }
+            if (!review.canApply) {
+                appendEntry("error", review.errors[0] ||
+                    "Evaluation context is not ready.");
+                return;
+            }
+            const operation = CaosWorkbenchModel.apiRequest(review);
+            const resp = await fetch(operation.url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(operation.body)
             });
             const data = await resp.json();
 
             if (data.ok) {
                 if (data.output && data.output.trim()) {
-                    appendEntry("result", data.output);
+                    appendEntry("result", data.output +
+                        ` · ticks ${data.worldTickStart}→${data.worldTickEnd}`);
                 } else {
-                    appendEntry("result", "(ok — no output)");
+                    appendEntry("result", "(ok — no output) · " +
+                        `ticks ${data.worldTickStart}→${data.worldTickEnd}`);
                 }
             } else {
                 appendEntry("error", data.error || "Unknown error");
@@ -37,6 +78,26 @@
         } catch (e) {
             appendEntry("error", `Network error: ${e.message}`);
         }
+    }
+
+    function appendWorkbenchLink(code) {
+        const row = document.createElement("div");
+        row.className = "console-entry console-result";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "console-workbench-link";
+        button.textContent = "Review this source in CAOS Workbench";
+        button.addEventListener("click", () => {
+            window.CaosWorkbenchDraft = code;
+            const world = ObservatoryState.getState().world.identity;
+            window.DevToolsNavigation.navigate({
+                tab: "ide",
+                worldKey: world && world.key
+            });
+        });
+        row.appendChild(button);
+        output.appendChild(row);
+        output.scrollTop = output.scrollHeight;
     }
 
     // ── Output rendering ──────────────────────────────────────────────────

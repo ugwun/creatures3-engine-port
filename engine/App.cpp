@@ -68,6 +68,7 @@ App::App() {
 
   mySaveNextTick = false;
   myLoadThisWorldNextTick = "";
+  myWorldLoadGeneration = 0;
   myQuitNextTick = false;
   myPrayManager = NULL;
   myProgressBar = NULL;
@@ -1687,6 +1688,7 @@ void App::DoLoadWorld(std::string worldName) {
     myWorld->Init();
     loaded = myWorld->Load(worldName, true);
   }
+  ++myWorldLoadGeneration;
 
   if (loaded) {
     // Camera enablement and viewport dimensions are runtime state.  In

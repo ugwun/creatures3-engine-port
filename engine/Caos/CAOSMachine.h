@@ -513,6 +513,11 @@ public:
   // Description:
   // ---------------------------------------------------------------------
   OpType GetCurrentCmd() { return myCurrentCmd; }
+  const std::string& GetCurrentCommandName() const {
+    static const std::string empty;
+    const size_t index = static_cast<size_t>(myCurrentCmd);
+    return index < ourCommandNames.size() ? ourCommandNames[index] : empty;
+  }
 
   // ---------------------------------------------------------------------
   // Method:      ValidateTarg

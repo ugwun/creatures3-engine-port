@@ -449,6 +449,42 @@ target_include_directories(test_InputManager PRIVATE
 target_link_libraries(test_InputManager PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_InputManager)
 
+# ---------------------------------------------------------------------------
+# test_DebugServerLogic — pure source-statement extraction for Scripts API
+# ---------------------------------------------------------------------------
+add_executable(test_DebugServerLogic
+  test_DebugServerLogic.cpp
+  ../engine/DebugServerLogic.cpp
+)
+target_include_directories(test_DebugServerLogic PRIVATE
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_DebugServerLogic PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_DebugServerLogic)
+
+# ---------------------------------------------------------------------------
+# Developer Tools — model tests, and real Firefox interaction tests at the
+# notebook viewport. Browser tests use a synthetic engine, so they need no game
+# data, and skip themselves when Firefox is not installed.
+# ---------------------------------------------------------------------------
+find_program(NODE_EXECUTABLE node)
+if(NODE_EXECUTABLE)
+  add_test(NAME DeveloperToolsModels
+    COMMAND sh -c "${NODE_EXECUTABLE} --test tools/tests/*.test.cjs"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+  set_tests_properties(DeveloperToolsModels PROPERTIES LABELS "tools")
+
+  add_test(NAME DeveloperToolsBrowser
+    COMMAND sh -c "${NODE_EXECUTABLE} --test --test-concurrency=1 tools/tests/browser/*.browser.cjs"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+  set_tests_properties(DeveloperToolsBrowser PROPERTIES
+    LABELS "tools;browser"
+    TIMEOUT 300
+  )
+endif()
+
 # ===========================================================================
 # Integration Tests (Tier 1+)
 #

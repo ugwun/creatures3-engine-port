@@ -172,7 +172,12 @@ Point the engine at your game asset directory using the `--game-dir` flag (or it
 
 ## Developer Tools
 
-The engine includes a browser-based developer tools suite — an engine log monitor, interactive CAOS console, live script inspector, source-level debugger, creature brain/chemistry inspector, and a **CAOS IDE** for editing and hot-patching scripts in the running engine. The tools server is embedded directly in the `lc2e` binary with **zero external dependencies** (no Node.js, no relay scripts).
+The engine includes a browser-based developer tools suite — an engine log
+monitor, guarded CAOS Scratchpad, live script inspector, source-level debugger,
+creature brain/chemistry inspector, and a **CAOS Workbench** with explicit
+Evaluate, Inspect, Install, Replace, and Remove modes. The tools server is
+embedded directly in the `lc2e` binary with **zero external dependencies** (no
+Node.js or relay scripts).
 
 ```bash
 ./build/lc2e -d "/path/to/Docking Station" --tools
@@ -181,7 +186,7 @@ The engine includes a browser-based developer tools suite — an engine log moni
 
 ![Developer Tools — Debugger](tools/developer_tools_debugger.png)
 
-![Developer Tools — CAOS IDE](tools/developer_tools_caos_ide.png)
+![Developer Tools — CAOS Workbench](tools/developer_tools_caos_ide.png)
 
 When `--tools` is not passed, the tools server does not start and there is zero overhead.
 

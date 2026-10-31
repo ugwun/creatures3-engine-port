@@ -607,7 +607,7 @@ The reinforcement propagates through the brain via the SVRule opcodes:
 - `setRewardRate` — how fast to adjust Short-Term weights
 - `setPunishmentChemicalIndex`, `setPunishmentThreshold`, `setPunishmentRate` — same for punishment
 
-> **Deep Dive:** For the complete SVRule reinforcement opcode mechanics and ST/LT weight convergence, see [Brain & SVRules Deep Dive — Reinforcement Learning via SVRules](brain_deep_dive.md#reinforcement-learning-via-svrules).
+> **Deep Dive:** For the complete SVRule reinforcement opcode mechanics and ST/LT weight convergence, see [Brain & SVRules Deep Dive — Reinforcement Learning via SVRules](brain_deep_dive.md#reward-and-punishment-reinforcement).
 
 ---
 

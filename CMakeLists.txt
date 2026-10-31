@@ -197,9 +197,27 @@ set(SRC_FILES
   engine/unix/File.cpp
   engine/unix/FileFuncs.cpp
   engine/DebugServer.cpp
+  engine/DebugServerLogic.cpp
 )
 
 add_executable(lc2e ${SRC_FILES})
+
+# A source identifier lets exported experiment manifests identify the binary
+# that produced their observations without exposing filesystem paths.  Archives
+# built outside a Git checkout remain explicitly unknown.
+find_package(Git QUIET)
+set(C3_BUILD_IDENTITY_DIR ${CMAKE_BINARY_DIR}/generated)
+add_custom_target(c3_build_identity
+  COMMAND ${CMAKE_COMMAND}
+    -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+    -DOUTPUT=${C3_BUILD_IDENTITY_DIR}/EngineBuildIdentity.h
+    -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
+    -P ${CMAKE_SOURCE_DIR}/cmake/WriteBuildIdentity.cmake
+  BYPRODUCTS ${C3_BUILD_IDENTITY_DIR}/EngineBuildIdentity.h
+  COMMENT "Recording engine source revision"
+)
+add_dependencies(lc2e c3_build_identity)
+target_include_directories(lc2e PRIVATE ${C3_BUILD_IDENTITY_DIR})
 
 # Include directories
 target_include_directories(lc2e PRIVATE

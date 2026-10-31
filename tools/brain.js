@@ -12,12 +12,16 @@
   let lobeNeurons = {};       // lobeIdx → { neurons:[], winner:int }
   let cachedLobePositions = {};  // lobeIdx → { px, py, pw, ph, lobe }
   let cachedBounds = null;
+  let layoutMode = ObservatoryState.getState().preferences.brainLayoutMode || 'genome-anatomy';
 
   // Dendrite inspection state
   let selectedTractIdx = null;
   let selectedNeuronKey = null; // "lobeIdx:neuronIdx" or null
+  let focusedNeuronKey = null;
+  let focusedTractIdx = null;
   let tractDetail = null;       // fetched dendrite data for selected tract
   let neuronDetail = null;      // fetched deep neuron detail from /api/.../neuron/:id
+  let brainRequestSerial = 0;
 
   // Zoom state
   let zoomLevel = 1.0;
@@ -29,18 +33,57 @@
   const CELL_SIZE = 12;
   const PADDING = 20;
 
-  // Updated via DevToolsEvents 'creature:selected' — no DOM coupling to creatures.js
-  let selectedCreatureId = null;
+  // Shared selection survives tab navigation and resets with world identity.
+  const initialCreatureSelection = ObservatoryState.getState().selection.creature;
+  let selectedCreatureId = initialCreatureSelection ? initialCreatureSelection.id : null;
 
   function getSelectedCreatureId() {
     return selectedCreatureId;
   }
 
+  function selectedCreatureDescriptor() {
+    const selection = ObservatoryState.getState().selection.creature;
+    if (!selection) return null;
+    return {
+      agentId: selection.id,
+      moniker: selection.moniker || null,
+      name: selection.name || null
+    };
+  }
+
   // ── DOM refs ───────────────────────────────────────────────────────────
+  const NAVIGATION_KEYS = [
+    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'
+  ];
   const brainCanvas = document.getElementById('crt-brain-canvas');
   const brainSvg = document.getElementById('crt-brain-svg');
   const dendriteSvg = document.getElementById('crt-brain-dendrite-svg');
   const infoContent = document.getElementById('crt-brain-info-content');
+  const layoutDescription = document.getElementById('crt-brain-layout-description');
+  const layoutEvidence = document.getElementById('crt-brain-layout-evidence');
+
+  function displayedLobes() {
+    return brainData
+      ? BiologicalSemantics.layoutBrainLobes(brainData.lobes, layoutMode)
+      : [];
+  }
+
+  function updateLayoutModeUI() {
+    const description = BiologicalSemantics.brainLayoutDescription(layoutMode);
+    document.querySelectorAll('[data-brain-layout]').forEach(button => {
+      const active = button.dataset.brainLayout === layoutMode;
+      button.classList.toggle('crt-brain-layout-btn--active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (layoutDescription) layoutDescription.textContent = description.description;
+    if (layoutEvidence) {
+      layoutEvidence.textContent = description.evidenceLevel === 'observed' ? 'Observed' : 'Derived';
+      layoutEvidence.className = 'evidence-badge evidence-badge--' + description.evidenceLevel;
+      layoutEvidence.title = description.evidenceLevel === 'observed'
+        ? 'Engine coordinates shown without transformation.'
+        : 'Layout positions are mechanically transformed from engine coordinates.';
+    }
+  }
 
   // ── Colour mapping ─────────────────────────────────────────────────────
   function neuronColour(val, lobeName) {
@@ -110,37 +153,19 @@
     return l ? l.index : -1;
   }
 
+  let tractRequestSerial = 0;
+
   // ── Fetch brain overview ───────────────────────────────────────────────
   async function fetchBrain(creatureId) {
+    const requestSerial = ++brainRequestSerial;
     try {
       const resp = await fetch('/api/creature/' + creatureId + '/brain');
       if (!resp.ok) return;
       const data = await resp.json();
+      if (requestSerial !== brainRequestSerial ||
+          creatureId !== getSelectedCreatureId()) return;
       if (data.error) { brainData = null; return; }
       brainData = data;
-
-      // UI OVERRIDE: Mathematically align the 'noun', 'visn', and 'stim' lobes 
-      // perfectly flush with the 'comb' lobe on the X-axis so columns map cleanly,
-      // and stack them vertically above comb to group semantic sensory inputs.
-      const combLobe = brainData.lobes.find(l => l.name === 'comb');
-      if (combLobe) {
-        brainData.lobes.forEach(l => {
-          if (l.name === 'noun') {
-            l.x = combLobe.x;
-            l.y = combLobe.y - 12; // Top of the stack
-          } else if (l.name === 'visn') {
-            l.x = combLobe.x;
-            l.y = combLobe.y - 8;
-          } else if (l.name === 'stim') {
-            l.x = combLobe.x;
-            l.y = combLobe.y - 4; // Right above comb
-          } else if (l.name === 'move') {
-            // Push move lobe under comb to prevent collision with the new stack
-            l.x = combLobe.x;
-            l.y = combLobe.y + combLobe.height + 4; 
-          }
-        });
-      }
 
       // Fetch all lobe neuron data in parallel
       const fetches = brainData.lobes.map(lobe =>
@@ -149,6 +174,8 @@
           .catch(() => null)
       );
       const results = await Promise.all(fetches);
+      if (requestSerial !== brainRequestSerial ||
+          creatureId !== getSelectedCreatureId()) return;
 
       lobeNeurons = {};
       for (let i = 0; i < results.length; i++) {
@@ -158,6 +185,20 @@
       }
 
       renderSpatialBrain();
+      if (selectedNeuronKey !== null) {
+        const [lobeIndex, neuronId] = selectedNeuronKey.split(':').map(Number);
+        const response = await fetch('/api/creature/' + creatureId +
+          '/brain/lobe/' + lobeIndex + '/neuron/' + neuronId);
+        const detail = response.ok ? await response.json() : null;
+        if (detail && !detail.error &&
+            requestSerial === brainRequestSerial &&
+            creatureId === getSelectedCreatureId() &&
+            selectedNeuronKey === lobeIndex + ':' + neuronId) {
+          neuronDetail = detail;
+          BiologicalMonitor.ingestNeuron(selectedCreatureDescriptor(), detail);
+          renderInfoPanel();
+        }
+      }
     } catch (e) {
       console.warn('DevTools: brain fetch failed', e);
     }
@@ -165,10 +206,15 @@
 
   // ── Fetch tract dendrite detail ────────────────────────────────────────
   async function fetchTractDetail(creatureId, tractIdx) {
+    const requestSerial = ++tractRequestSerial;
     try {
       const resp = await fetch('/api/creature/' + creatureId + '/brain/tract/' + tractIdx);
       if (!resp.ok) return;
       const data = await resp.json();
+      // A slower response for an earlier tract must not fill in this one.
+      if (requestSerial !== tractRequestSerial ||
+          creatureId !== getSelectedCreatureId() ||
+          tractIdx !== selectedTractIdx) return;
       if (data.error) { tractDetail = null; return; }
       tractDetail = data;
       renderDendriteLines();
@@ -179,9 +225,9 @@
   }
 
   // ── Compute brain bounds ───────────────────────────────────────────────
-  function computeBounds() {
+  function computeBounds(lobes) {
     let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-    for (const lobe of brainData.lobes) {
+    for (const lobe of lobes) {
       minX = Math.min(minX, lobe.x);
       minY = Math.min(minY, lobe.y);
       maxX = Math.max(maxX, lobe.x + lobe.width);
@@ -197,7 +243,8 @@
       return;
     }
 
-    cachedBounds = computeBounds();
+    const lobes = displayedLobes();
+    cachedBounds = computeBounds(lobes);
     const bounds = cachedBounds;
     const cs = CELL_SIZE * zoomLevel;
     const pad = PADDING * zoomLevel;
@@ -217,10 +264,9 @@
     });
 
     let html = '';
-    brainSvg.innerHTML = '';
     cachedLobePositions = {};
 
-    for (const lobe of brainData.lobes) {
+    for (const lobe of lobes) {
       const px = (lobe.x - bounds.minX) * cs + pad;
       const py = (lobe.y - bounds.minY) * cs + pad;
       const pw = lobe.width * cs;
@@ -258,33 +304,36 @@
               tip += '\nS' + s + ': ' + neuron.states[s].toFixed(3);
             }
           }
-          tip += '\nClick to show connections';
+          tip += '\nActivate to show connections';
 
-          html += '<div class="crt-brain-neuron' +
+          html += '<button type="button" class="crt-brain-neuron' +
             (isWinner ? ' crt-brain-neuron--winner' : '') +
             '" style="' +
             'left:' + (gx * cs) + 'px;' +
             'top:' + (gy * cs) + 'px;' +
             'width:' + nw + 'px;height:' + nw + 'px;' +
             'background:' + neuronColour(activity, lobe.name) + ';"' +
-            ' title="' + tip.replace(/"/g, '&quot;') + '"' +
+            ' title="' + escapeHtml(tip) + '"' +
+            ' aria-label="' + escapeHtml(tip) + '"' +
             ' data-lobe="' + lobe.index + '" data-neuron="' + neuron.id + '">' +
-            '</div>';
+            '</button>';
         }
       }
       html += '</div>';
     }
 
-    brainCanvas.innerHTML = html;
+    DomPatch.update(brainCanvas, html);
 
-    // Attach neuron click handlers
-    brainCanvas.querySelectorAll('.crt-brain-neuron').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const lobeIdx = parseInt(el.dataset.lobe);
-        const neuronId = parseInt(el.dataset.neuron);
-        handleNeuronClick(lobeIdx, neuronId);
-      });
+    // Roving tabindex; handlers are delegated from brainCanvas below.
+    const neurons = Array.from(
+      brainCanvas.querySelectorAll('.crt-brain-neuron'));
+    const focusKey = focusedNeuronKey || selectedNeuronKey;
+    const hasFocusKey = focusKey && neurons.some(el =>
+      el.dataset.lobe + ':' + el.dataset.neuron === focusKey);
+    neurons.forEach((el, index) => {
+      const key = el.dataset.lobe + ':' + el.dataset.neuron;
+      el.tabIndex = hasFocusKey ? (key === focusKey ? 0 : -1) :
+        (index === 0 ? 0 : -1);
     });
 
     renderTractLines();
@@ -303,10 +352,11 @@
 
     let svgContent = '';
     const drawnPairs = new Map(); // pairKey → array of tract indices
+    const lobes = displayedLobes();
 
     for (const tract of brainData.tracts) {
-      const srcLobe = brainData.lobes.find(l => l.name === tract.srcLobe);
-      const dstLobe = brainData.lobes.find(l => l.name === tract.dstLobe);
+      const srcLobe = lobes.find(l => l.name === tract.srcLobe);
+      const dstLobe = lobes.find(l => l.name === tract.dstLobe);
       if (!srcLobe || !dstLobe) continue;
 
       const srcPos = cachedLobePositions[srcLobe.index];
@@ -335,21 +385,118 @@
         ' stroke-width="' + (isSelected ? 3 : thickness.toFixed(1)) + '"' +
         ' stroke-linecap="round"' +
         ' data-tract="' + tract.index + '"' +
+        ' tabindex="0" role="button"' +
+        ' aria-label="' + escapeHtml(tract.name) + ', ' +
+          tract.dendriteCount + ' dendrites. Activate to inspect."' +
         ' style="cursor:pointer;pointer-events:stroke"' +
-        '><title>' + tract.name + ' (' + tract.dendriteCount + ' dendrites) — click to inspect</title></line>';
+        '><title>' + escapeHtml(tract.name) + ' (' +
+          tract.dendriteCount +
+          ' dendrites) — activate to inspect</title></line>';
     }
 
-    brainSvg.innerHTML = svgContent;
+    DomPatch.update(brainSvg, svgContent);
 
     // Attach click handlers to tract lines
-    brainSvg.querySelectorAll('line').forEach(line => {
-      line.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const tractIdx = parseInt(line.dataset.tract);
-        handleTractClick(tractIdx);
-      });
+    const lines = Array.from(brainSvg.querySelectorAll('line'));
+    const hasFocusedTract = focusedTractIdx != null &&
+      lines.some(line =>
+        parseInt(line.dataset.tract) === focusedTractIdx);
+    const hasSelectedTract = selectedTractIdx != null &&
+      lines.some(line =>
+        parseInt(line.dataset.tract) === selectedTractIdx);
+    lines.forEach((line, index) => {
+      const tractIdx = parseInt(line.dataset.tract);
+      line.tabIndex = hasFocusedTract
+        ? (focusedTractIdx === tractIdx ? 0 : -1)
+        : hasSelectedTract
+          ? (selectedTractIdx === tractIdx ? 0 : -1)
+          : (index === 0 ? 0 : -1);
     });
   }
+
+  // ── Delegated brain interaction ─────────────────────────────────────────
+  // These elements persist across refreshes, so handlers live on the parents.
+  function neuronFrom(event) {
+    return event.target.closest && event.target.closest('.crt-brain-neuron');
+  }
+
+  function tractFrom(event) {
+    return event.target.closest && event.target.closest('line[data-tract]');
+  }
+
+  function moveRoving(items, current, key) {
+    const forward = key === 'ArrowRight' || key === 'ArrowDown';
+    const next = key === 'Home' ? 0 :
+      key === 'End' ? items.length - 1 :
+      (current + (forward ? 1 : -1) + items.length) % items.length;
+    items[next].focus();
+  }
+
+  brainCanvas.addEventListener('focusin', event => {
+    const neuron = neuronFrom(event);
+    if (!neuron) return;
+    focusedNeuronKey = neuron.dataset.lobe + ':' + neuron.dataset.neuron;
+    brainCanvas.querySelectorAll('.crt-brain-neuron').forEach(candidate => {
+      candidate.tabIndex = candidate === neuron ? 0 : -1;
+    });
+  });
+  brainCanvas.addEventListener('click', event => {
+    const neuron = neuronFrom(event);
+    if (!neuron) return;
+    event.stopPropagation();
+    handleNeuronClick(
+      parseInt(neuron.dataset.lobe), parseInt(neuron.dataset.neuron));
+  });
+  brainCanvas.addEventListener('keydown', event => {
+    if (!NAVIGATION_KEYS.includes(event.key) || !neuronFrom(event)) return;
+    const neurons = Array.from(
+      brainCanvas.querySelectorAll('.crt-brain-neuron'));
+    const current = neurons.indexOf(event.target);
+    if (current < 0) return;
+    event.preventDefault();
+    moveRoving(neurons, current, event.key);
+  });
+
+  function activateTract(event, line) {
+    event.stopPropagation();
+    const tractIdx = parseInt(line.dataset.tract);
+    handleTractClick(tractIdx);
+    requestAnimationFrame(() => {
+      const replacement = brainSvg.querySelector(
+        'line[data-tract="' + tractIdx + '"]');
+      if (replacement) replacement.focus();
+    });
+  }
+
+  brainSvg.addEventListener('focusin', event => {
+    const line = tractFrom(event);
+    if (!line) return;
+    focusedTractIdx = parseInt(line.dataset.tract);
+    brainSvg.querySelectorAll('line[data-tract]').forEach(candidate => {
+      candidate.tabIndex = candidate === line ? 0 : -1;
+    });
+  });
+  brainSvg.addEventListener('click', event => {
+    const line = tractFrom(event);
+    if (line) activateTract(event, line);
+  });
+  brainSvg.addEventListener('keydown', event => {
+    const line = tractFrom(event);
+    if (!line) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      activateTract(event, line);
+      return;
+    }
+    if (!NAVIGATION_KEYS.includes(event.key)) return;
+    event.preventDefault();
+    const lines = Array.from(brainSvg.querySelectorAll('line[data-tract]'));
+    moveRoving(lines, lines.indexOf(line), event.key);
+  });
+  infoContent.addEventListener('click', event => {
+    const tract = event.target.closest('[data-tract-info]');
+    if (tract) handleTractClick(parseInt(tract.dataset.tractInfo));
+  });
 
   // ── Handle tract click — fetch and show dendrites ──────────────────────
   function handleTractClick(tractIdx) {
@@ -419,9 +566,12 @@
     );
 
     Promise.all([neuronFetch, Promise.all(tractFetches)]).then(([nDetail, tractResults]) => {
+      if (creatureId !== getSelectedCreatureId() ||
+          selectedNeuronKey !== key) return;
       // Store neuron detail
       if (nDetail && !nDetail.error) {
         neuronDetail = nDetail;
+        BiologicalMonitor.ingestNeuron(selectedCreatureDescriptor(), nDetail);
       }
 
       // Filter dendrites connected to this neuron (for canvas lines)
@@ -484,7 +634,7 @@
         '><title>S' + d.src + ' → D' + d.dst + ': ' + d.weights[0].toFixed(3) + '</title></line>';
     }
 
-    dendriteSvg.innerHTML = svgContent;
+    DomPatch.update(dendriteSvg, svgContent);
   }
 
   // ── Render dendrite lines for a selected neuron ────────────────────────
@@ -521,7 +671,7 @@
         ' fill="none" stroke="rgba(255,0,255,0.9)" stroke-width="2"/>';
     }
 
-    dendriteSvg.innerHTML = svgContent;
+    DomPatch.update(dendriteSvg, svgContent);
   }
 
   // Simple HTML escape
@@ -562,15 +712,21 @@
       html += '<div class="crt-nd-section-title">State Variables</div>';
       html += '<div class="crt-nd-states">';
       for (const sv of nd.states) {
+        const stateIndex = nd.states.indexOf(sv);
+        const metricId = 'neuron:' + nd.lobeName + ':' + nd.neuronId +
+          ':state:' + stateIndex;
         const absVal = Math.min(1, Math.abs(sv.value));
         const isNeg = sv.value < 0;
         const barColour = isNeg ? 'var(--magenta)' : 'var(--orange)';
         html += '<div class="crt-nd-state-row">' +
+          BiologicalMonitor.pinButtonHtml(metricId, nd.lobeName + ' #' +
+            nd.neuronId + ' · ' + sv.name) +
           '<span class="crt-nd-state-name">' + sv.name + '</span>' +
           '<div class="crt-nd-state-bar-bg">' +
           '<div class="crt-nd-state-bar" style="width:' + (absVal * 100) + '%;background:' + barColour + '"></div>' +
           '</div>' +
           '<span class="crt-nd-state-val">' + sv.value.toFixed(3) + '</span>' +
+          BiologicalMonitor.trendHtml(metricId, 3) +
           '</div>';
       }
       html += '</div>';
@@ -691,14 +847,7 @@
     }
     html += '</div>';
 
-    infoContent.innerHTML = html;
-
-    // Attach click handlers to tract items in sidebar
-    infoContent.querySelectorAll('[data-tract-info]').forEach(el => {
-      el.addEventListener('click', () => {
-        handleTractClick(parseInt(el.dataset.tractInfo));
-      });
-    });
+    DomPatch.update(infoContent, html);
   }
 
   // ── Render connection table for neuron detail ──────────────────────────
@@ -818,6 +967,24 @@
     applyZoom(zoomLevel + delta);
   }, { passive: false });
 
+  document.querySelectorAll('[data-brain-layout]').forEach(button => {
+    button.addEventListener('click', () => {
+      const nextMode = button.dataset.brainLayout;
+      if (nextMode === layoutMode) return;
+      layoutMode = nextMode;
+      ObservatoryState.dispatch({
+        type: 'preference/set',
+        payload: { key: 'brainLayoutMode', value: layoutMode }
+      });
+      updateLayoutModeUI();
+      if (brainData) renderSpatialBrain();
+    });
+  });
+  if (layoutEvidence) {
+    layoutEvidence.addEventListener('click', event => ObservatoryState.openEvidenceHelp(event));
+  }
+  updateLayoutModeUI();
+
   // ── Integration ────────────────────────────────────────────────────────
   let lastCreatureId = null;
   let brainTimer = null;
@@ -843,7 +1010,7 @@
       checkForCreatureChange();
       const id = getSelectedCreatureId();
       if (id !== null) fetchBrain(id);
-    }, 2000);
+    }, BiologicalMonitor.intervalMs());
   }
 
   function stopBrainPolling() {
@@ -858,10 +1025,16 @@
     if (tab === 'creatures') stopBrainPolling();
   });
 
-  // Listen for creature selection from creatures.js (decoupled via event bus)
-  DevToolsEvents.on('creature:selected', (agentId) => {
-    selectedCreatureId = agentId;
+  ObservatoryState.subscribe(state => state.selection.creature, selection => {
+    selectedCreatureId = selection ? selection.id : null;
     if (isBrainVisible()) checkForCreatureChange();
+  });
+
+  window.addEventListener('biological-monitor:interval', () => {
+    if (brainTimer) startBrainPolling();
+  });
+  window.addEventListener('biological-monitor:changed', () => {
+    if (isBrainVisible() && brainData) renderInfoPanel();
   });
 
   document.querySelectorAll('.crt-sub-btn').forEach(btn => {

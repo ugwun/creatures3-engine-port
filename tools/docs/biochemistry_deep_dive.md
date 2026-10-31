@@ -8,7 +8,7 @@ The biochemistry is arguably the most complex runtime system in the game, and th
 
 > **CAOS Commands:** Use [`CHEM`](caos_creatures.md) to read or adjust chemical concentrations. Use [`LOCI`](caos_creatures.md) to read or set biochemical locus values. Use [`ORGN`](caos_creatures.md), [`ORGF`](caos_creatures.md), and [`INJR`](caos_creatures.md) to inspect and damage organs. The [Creatures Tab](tab_creatures.md) shows live biochemistry in the developer tools.
 
-> **Genome Reference:** For the binary gene format of biochemistry genes (Receptor, Emitter, Reaction, Half-Lives, Initial Concentration, Neuroemitter), see [The Digital Genome — Deep Dive](genome_deep_dive.md#type-1--biochemistry-genes-biochemistrygene).
+> **Genome Reference:** For the binary gene format of biochemistry genes (Receptor, Emitter, Reaction, Half-Lives, Initial Concentration, Neuroemitter), see [The Digital Genome — Deep Dive](genome_deep_dive.md#type-1-biochemistry-genes-biochemistrygene).
 
 > **Brain Reference:** The biochemistry system bridges to the neural network through NeuroEmitters (brain→chemistry) and SVRule `chem` operands (chemistry→brain). For the full brain architecture, neuron state variables, and the 69-opcode SVRule instruction set, see [Brain & SVRules Deep Dive](brain_deep_dive.md).
 
@@ -162,11 +162,11 @@ The 256 chemical slots are organized into functional groups. While the engine pr
 | 24 | Dissolved Carbon Dioxide | Respiratory waste |
 | 25 | Urea | Metabolic waste |
 | 26 | Ammonia | Protein catabolism byproduct |
-| 27 | Antibody 3 | *(also mapped in immune range)* |
-| 28 | Antibody 4 | *(also mapped in immune range)* |
+| 27 | *(catalogue-unassigned)* | Preserve raw ID; no engine-defined biological label |
+| 28 | *(catalogue-unassigned)* | Preserve raw ID; no engine-defined biological label |
 | 29 | Air | Breathable atmosphere |
 | 30 | Oxygen | Respiratory input |
-| 31 | Antibody 7 | *(also mapped in immune range)* |
+| 31 | *(catalogue-unassigned)* | Preserve raw ID; no engine-defined biological label |
 | 33 | Water | Hydration |
 
 ### Energy System (IDs 34–36)
@@ -398,7 +398,7 @@ These chemicals are used by the brain's SVRule system for reinforcement learning
 | 17 | Downatrophin | Reduces down-drive |
 | 18 | Upatrophin | Reduces up-drive |
 | 129 | Sleepase | Sleep-inducing enzyme |
-| 247 | Alcohol | Alternate alcohol entry |
+| 247 | *(catalogue-unassigned)* | Preserve raw ID; no engine-defined biological label |
 | 248 | Defibrillator | Emergency cardiac intervention |
 | 249 | Medicine One | Alternate medicine |
 | 250 | Medicine Two | Second-line treatment |
@@ -424,7 +424,10 @@ This offset ensures that stimulus chemical 0 maps to biochemistry chemical 148 �
 
 ## The Organ System
 
-Creatures possess multiple internal **organs** (up to 128), each defined by an Organ gene. Every organ is an independent biological engine with its own clock, health, and a collection of receptors, emitters, and reactions.
+Creatures possess multiple internal **organs** (up to 128), each defined by an
+Organ gene. Every organ is an independent biochemical compartment with its own
+clock, life-force state, and a collection of receptors, emitters, and
+reactions. These compartments do not inherently map to mammalian organs.
 
 **Source:** [Organ.h](../../engine/Creature/Biochemistry/Organ.h) and [Organ.cpp](../../engine/Creature/Biochemistry/Organ.cpp).
 
@@ -440,7 +443,7 @@ Each organ maintains several genetically-defined properties:
 |---|---|---|
 | `loc_ClockRate` | Organ gene | How frequently the organ activates. A rate of 0.5 means the organ processes every 2 ticks |
 | `myInitialLifeForce` | `loc_LifeForce × myBaseLifeForce` | Total structural integrity at birth. `myBaseLifeForce = 1,000,000` |
-| `myShortTermLifeForce` | Dynamic | Current health — reduced by injury, partially restored by repair |
+| `myShortTermLifeForce` | Dynamic | Short-term life force — reduced by injury, partially restored by repair |
 | `myLongTermLifeForce` | Dynamic | Irreversible damage tracker — trends slowly toward `myShortTermLifeForce` but is NOT restored by healing |
 | `myLongTermRateOfRepair` | Organ gene | How quickly the organ can heal (rate of ST→LT convergence) |
 | `myEnergyCost` | Computed | ATP cost per activation = `0.0078 + (receptors + emitters + reactions) / 2550` |
@@ -489,7 +492,7 @@ This creates the fundamental metabolic pressure: creatures must continuously bre
 
 ### Organ Damage & Repair
 
-Organ health uses a **dual-track** system:
+Organ life force uses a **dual-track** system:
 
 - **Short-Term Life Force (`myShortTermLifeForce`)** — fluctuates with injury and repair. Can be healed.
 - **Long-Term Life Force (`myLongTermLifeForce`)** — slowly trends toward the short-term value but is **never healed**. Represents permanent, irreversible aging damage.
@@ -511,7 +514,10 @@ Repair ([RepairInjury()](../../engine/Creature/Biochemistry/Organ.cpp#L486-L508)
 - If energy is available, the short-term life force is repaired toward the long-term value
 - The Injury chemical is consumed during repair
 
-An organ **fails** when `myLongTermLifeForce ≤ 0.5` (`myMinLifeForce`). A failed organ performs no processing — all its reactions, receptors, and emitters stop. This is catastrophic if it's a vital organ like the stomach or liver.
+An organ **fails** when `myLongTermLifeForce ≤ 0.5`
+(`myMinLifeForce`). A failed organ performs no processing — all its reactions,
+receptors, and emitters stop. Consequences depend on the components assigned
+to that genome compartment; a mammalian role name should not be assumed.
 
 Natural decay occurs at a rate of `myRateOfDecay = 1.0e-5` per activation, meaning organs very slowly degrade even without injury — creatures age.
 
@@ -867,7 +873,7 @@ Complete emitter locus mapping from [BiochemistryConstants.h](../../engine/Creat
 | Creature | 5 Drives | 0–19 | Drive 0–19 | Drive chemical emission |
 | Organ | — | 0 | Clock Rate | Emit organ's current processing speed |
 | Organ | — | 1 | Rate of Repair | Emit organ's current repair rate |
-| Organ | — | 2 | Life Force | Emit organ's current health |
+| Organ | — | 2 | Life Force | Emit organ's current life-force value |
 
 > **The Constant Locus (`LOC_CONST`):** This emitter locus is always 1.0. By attaching an emitter to it, genome designers can create a chemical that is continuously produced at a fixed rate — useful for baseline metabolic chemicals. The creature sets `myConstantLocus = 1.0f` during [Init()](../../engine/Creature/Creature.cpp#L364).
 
@@ -893,7 +899,7 @@ To illustrate how these systems interact, here's a complete trace of what happen
 
 1. **Creature eats a food agent** → the agent's eat script fires a stimulus (`STIM WRIT`)
 2. **Stimulus gene activates** → injects Starch (5) and other nutrient chemicals into the bloodstream
-3. **Stomach organ's reactions process:**
+3. **An organ containing digestion-related reactions processes:**
    - `Starch + Glycolase → Glucose + ∅` (enzyme-catalysed breakdown)
    - `Glucose + ∅ → Glycogen + ∅` (storage)
    - `Glycogen + Dehydrogenase → ATP + ADP` (energy production)
@@ -924,37 +930,44 @@ Use the **Non-zero only** toggle to filter out inactive chemicals and focus on w
 
 ### Creatures Tab — Organs View
 
-The [Organs sub-tab](tab_creatures.md) lists all organs as expandable cards showing health bars, status badges, and component counts. Click to expand and view:
+The [Organs sub-tab](tab_creatures.md) lists genome-defined compartments as
+expandable cards showing life-force ratios, observed execution-state badges,
+explicitly inferred likely roles, and component counts. Click to expand and
+view:
 
 - **Reactions** with chemical formulas and rate bars
 - **Receptors** with locus bindings and thresholds
 - **Emitters** with source loci and gain values
 
-### Syringe Tool
+### Safe Chemical Intervention Tool
 
-The Chemistry syringe tool allows you to inject or extract specific chemicals directly into a creature's bloodstream for testing. Select a chemical, set a dosage (−1.0 to +1.0), and inject.
+The Chemistry **Intervene** workspace binds a signed adjustment or absolute
+target to a fresh live creature sample, previews 0–1 clamping, and requires a
+final review. It records the engine-confirmed before/after values and operation
+tick; it does not claim that an inverse numeric adjustment can undo downstream
+biology. See [Safe Chemical Interventions](safe_chemical_interventions.md).
 
 ### CAOS Commands
 
 | Command | Description |
 |---|---|
 | `chem <chemId>` | Read current concentration of a chemical (float 0.0–1.0) |
-| `chem <chemId> <amount>` | Set chemical concentration directly |
+| `chem <chemId> <amount>` | Add a signed adjustment, clamped to 0.0–1.0 (chemical 0 is ignored) |
 | `driv <driveNum>` | Read a drive level |
 | `drv!` | Returns the creature's highest current drive index |
 | `loci <type> <organ> <tissue> <locus>` | Read a locus value |
 | `loci <type> <organ> <tissue> <locus> <value>` | Set a locus value |
-| `orgn <organNum>` | Returns organ count or a specific organ's health |
+| `orgn <organNum>` | Returns organ count or a specific organ's life-force value |
 | `orgf <organNum>` | Returns whether an organ has failed |
 | `injr <organNum> <amount>` | Inflict damage on a specific organ |
 
 ### MCP Tools
 
-The [MCP server](../mcp/MCP.md) provides:
+The [MCP server](../../mcp/MCP.md) provides:
 
 | Tool | Description |
 |---|---|
-| `get_creature_chemistry` | All 256 chemical concentrations + organ health for a creature |
+| `get_creature_chemistry` | All 256 chemical concentrations + organ life-force/execution state for a creature |
 | `snapshot_all_creatures` | Bulk dump including top 5 chemicals for each creature |
 
 ---

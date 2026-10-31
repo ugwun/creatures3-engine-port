@@ -10,8 +10,9 @@
   let currentFilter = 'all'; // all, brain, biochemistry, creature, organ
   let currentSearch = '';
   let currentAgeFilter = 'all'; // all, 0-6
-  let selectedCreatureId = null;
-  let isFetching = false;
+  const initialCreatureSelection = ObservatoryState.getState().selection.creature;
+  let selectedCreatureId = initialCreatureSelection ? initialCreatureSelection.id : null;
+  let requestSerial = 0;
 
   // DOM Refs
   const genomeContent = document.getElementById('crt-genome-content');
@@ -19,11 +20,15 @@
   const genomeAge = document.getElementById('crt-genome-age');
   const filterRadios = document.querySelectorAll('input[name="gfilter"]');
 
-  // We are updated from devtools events
-  DevToolsEvents.on('creature:selected', (id) => {
-    selectedCreatureId = id;
+  // Selection is shared across tabs and invalidated centrally on world changes.
+  ObservatoryState.subscribe(state => state.selection.creature, selection => {
+    selectedCreatureId = selection ? selection.id : null;
     if (document.getElementById('crt-genome').classList.contains('crt-subview--active')) {
-      fetchGenome();
+      if (selectedCreatureId) fetchGenome();
+      else {
+        genomeData = null;
+        genomeContent.innerHTML = '<div class="crt-empty-hint">Select a creature to view genetics</div>';
+      }
     } else {
       genomeData = null; // Stale, require refetch
     }
@@ -52,27 +57,32 @@
   });
 
   async function fetchGenome() {
-    if (!selectedCreatureId || isFetching) return;
-    isFetching = true;
+    if (!selectedCreatureId) return;
+    // Only the latest request may render: an older response belongs to a
+    // subject the user has left, even if its data looks valid.
+    const serial = ++requestSerial;
+    const creatureId = selectedCreatureId;
+    const isCurrent = () =>
+      serial === requestSerial && creatureId === selectedCreatureId;
     genomeContent.innerHTML = '<div class="crt-empty-hint">Loading genetics...</div>';
 
     try {
-      const resp = await fetch('/api/creature/' + selectedCreatureId + '/genome');
+      const resp = await fetch('/api/creature/' + creatureId + '/genome');
       if (!resp.ok) throw new Error('API Error');
       const data = await resp.json();
-      
+      if (!isCurrent()) return;
+
       if (data.error) {
-        genomeContent.innerHTML = '<div class="crt-empty-hint">Error: ' + data.error + '</div>';
+        genomeContent.innerHTML = '<div class="crt-empty-hint">Error: ' + escHtml(data.error) + '</div>';
         genomeData = null;
       } else {
         genomeData = data;
         renderGenome();
       }
     } catch (e) {
+      if (!isCurrent()) return;
       console.warn('DevTools: genome fetch failed', e);
       genomeContent.innerHTML = '<div class="crt-empty-hint">Failed to load genome.</div>';
-    } finally {
-      isFetching = false;
     }
   }
 

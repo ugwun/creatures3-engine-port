@@ -4,7 +4,7 @@ At the foundation of every creature in Creatures 3 is its **genome**: a binary f
 
 > **Conceptual Overview:** For a high-level introduction to how genetics fits into the A-Life architecture, see [Game Philosophy & Overview](game_philosophy.md).
 
-> **CAOS Commands:** For loading, crossing, and manipulating genomes via CAOS scripts, see [CAOS: Genetics](caos_genetics.md). The [Genetics Kit Tab](tab_genetics_kit.md) provides a visual interface for inspecting and editing genomes.
+> **CAOS Commands:** For loading and crossing genomes via CAOS scripts, see [CAOS: Genetics](caos_genetics.md). The [Genetics Kit](tab_genetics_kit.md) provides a copy-first visual experiment workflow: originals are read-only, derived edits are diffed and checksum-checked, and only a reviewed saved copy can be injected.
 
 > **Brain Reference:** Brain genes (Lobe, Tract, Brain Organ) define the neural network. For the complete runtime architecture — lobes, tracts, dendrites, SVRule microcode, dendrite migration, instincts, and the 69-opcode instruction set — see [Brain & SVRules Deep Dive](brain_deep_dive.md).
 
@@ -459,6 +459,11 @@ Links drive levels to facial expressions. When the weighted sum of the specified
 #### Subtype 0 — Organ Gene (`G_ORGAN`)
 
 Defines an internal biological organ. Every creature can have up to **128 organs**, each independently processing the biochemical reactions, receptors, and emitters that are assigned to it.
+
+An organ gene defines a biochemical compartment, not a mammalian organ name.
+The Developer Tools keep the raw `Organ N` identity and mark any likely role
+derived from participating chemicals as **Inferred**. See [How to Read
+Biological Labels](biological_labels.md#organ-role-inference).
 
 | Offset | Field | Size | Description |
 |---|---|---|---|

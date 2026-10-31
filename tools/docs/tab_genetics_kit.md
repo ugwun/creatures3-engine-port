@@ -1,124 +1,247 @@
-# Genetics Kit Tab
+# Genetics Kit
 
-The **Genetics Kit** tab is a standalone, powerful tool for manipulating, cross-breeding, and injecting genomes directly into the engine, bypassing the normal biological reproduction cycle. 
+The Genetics Kit is a copy-first workspace for inspecting genome identity,
+editing a derived version, reviewing exact differences, and deliberately
+introducing a saved version into a disposable or chosen branch world.
 
-It is ideal for instantly drafting new creatures or orchestrating precise genetic crosses without waiting for in-game life cycles.
+![A saved experimental genome in Firefox, with trusted identity, source and derived checksums, the copy-first workflow, and one observed field change](images/observatory/safe-genetics-experiment-firefox.png)
 
-![Genetics Kit Tab](/docs/media/tab_genetics_kit.png)
+Originals are read-only in the ordinary workflow. The tool never needs to
+delete a source in order to edit it, and no genome binary is embedded in
+documentation, an experiment manifest, or Git.
 
-## Basic Concepts
+## Read the identity before the genes
 
-* **Moniker:** Every genome in the game has a unique hash called a "moniker" (e.g., `985-haze-kszy7-dqh74...`). This designates the `.gen` file located in the game's *Genetics* directory.
-* **Cross-Breeding:** The engine uses a native crossover algorithm to shuffle genes from two parent genomes using biological inheritance and mutation rules to produce a unique child.
+The **Trusted genome identity** panel distinguishes facts that the engine can
+verify from metadata that is unavailable:
 
----
+- **Current file** is the exact file selected in the engine Genetics
+  directory.
+- **Source** is the recorded origin of an experimental copy. A crossover also
+  retains its second parent.
+- **Current checksum** is an FNV-1a-64 digest of the saved binary bytes. An
+  additional model checksum appears while browser edits are unsaved.
+- **Source checksum** is captured when the copy or crossover is created and is
+  checked again before save and injection.
+- **Format / genes** reports the observed `dna3` format and decoded gene count.
+- **Live reference** reports an engine-confirmed result from an injection made
+  in the current browser session. Otherwise it stays **Unknown** because the
+  engine exposes no persistent live-creature-to-source-file reference.
+- **Species / sex / generation** stays **Unknown** unless a reliable live
+  reference supplies the value. A filename is not treated as biography.
 
-## Interface & Workflow
+Library badges have narrow meanings:
 
-The Genetics Kit uses a split-pane layout to maximize vertical space (the global developer toolbar is hidden).
+| Badge | Meaning | Ordinary editing |
+|---|---|---|
+| `CORE` | A protected source has a matching `.gno` file | Read-only |
+| no badge | An original source without experiment provenance | Read-only |
+| `COPY` | A `.gxp.json` sidecar verifies this exact filename and binary checksum | Editable |
+| `STALE META` | A sidecar exists but its identity or checksum does not verify | Write blocked |
 
-### 1. Genome Library (Left Sidebar)
-Lists all `.gen` files in the world's `Genetics/` directory.
-* Core engine genetics are protected and marked with a `CORE` badge.
-* Hover over non-core files to access inline **Rename** (✏️) and **Delete** (🗑️) actions.
-* Global actions allow you to create a **New** genome, **Import** from JSON, or **Cross** two parent genomes.
+Internal dots in existing names such as `norn.astro.48` are safe. New copy
+names use letters, numbers, hyphens, and underscores; path separators,
+parent-directory notation, extensions, ambiguous names, and collisions are
+rejected by both the browser and the engine.
 
-### 2. Inspect & Search (Right Panel)
-Selecting a genome loads it into the inspector.
-* Genes are categorized (Brain / Biochemistry / Creature / Organ).
-* Use the search filter to deeply search through genetic literal structures (e.g., search for chemical ID `148`).
+## Copy-first workflow
 
-### 3. Inline Property Editing
-All gene properties are natively editable.
-* Toggle mutability flags and activation states.
-* Tune biochemical thresholds, brain coordinates, clock rates, and reactions.
-* *(Editing is disabled for `CORE` files to protect the engine).*
-* A **Modified Genes** summary tracks all edits. Click a badge to scroll to the modified gene. Click **Save** to commit changes to disk.
+The six steps above the editor are the normal route:
 
-### 4. Structural Chromosome Modifiers
-Dynamically groom the DNA strand without hex editing.
-* **Duplicate**, **Delete**, or **Move** genes up or down the chromosome sequence.
-* Add a completely blank gene of any subtype at the end of the genome.
+1. Select an original or protected source.
+2. Accept or edit the collision-free **Experimental copy name**.
+3. Choose **Create experimental copy**. The engine copies without overwrite,
+   fingerprints both files, verifies that the source did not change during
+   copying, and records provenance.
+4. Edit only the derived copy. Numeric controls expose their serialized
+   bounds, and the engine validates fixed strings, byte arrays, headers, and
+   supported type/subtype layouts again on save.
+5. Read the structured source-to-derived diff, then choose **Save copy**.
+   Saving requires the exact checksum last loaded from disk. A stale tab
+   cannot silently replace a newer file.
+6. Choose **Review injection**, verify the world and operation, and make both
+   final confirmations.
 
-### 5. Editing Complex SV Rules
-Brain Lobe and Neural Tract genes use State Variable Rules (SVRules) to define neuron logic. See [SVRule Opcode Reference](brain_deep_dive.md#svrule-opcode-reference) for the complete 69-opcode instruction set.
-* Edited through a **16-row visual grid editor**.
-* **Opcode:** Searchable combobox (e.g., `store`, `load`, `if=0`).
-* **Operand:** Abstractions like `acc`, `neuron`, `chem`.
-* **Value:** Numeric inputs or chemical comboboxes.
-* The human-readable pseudo-code (e.g., `store neuron[0] -> stop`) updates in **real-time** as you change values.
+**New draft** and **Import** are browser-only drafts. Their first save is a
+create-only operation with a new name; it cannot overwrite an existing
+`.gen`, `.gno`, or experiment metadata file. Imported JSON is normalized for
+display and must pass the same known-layout and serialized-range checks.
 
----
+## Structured source-to-derived diff
 
-## Operations
+Genes are matched by type, subtype, gene ID, and duplicate occurrence. The
+diff reports:
 
-### Crossover Algorithm (`Genome::Cross`)
+- added and removed genes;
+- reordered genes;
+- enabled or disabled genes;
+- header, age, sex-link, mutation-flag, variability, and decoded data-field
+  changes;
+- source and derived indices;
+- observed before and after values.
 
-When the **Cross** button is clicked, the REST API reads both parent `.gen` files into `Genome` objects and calls `Genome::Cross()`. The crossover algorithm (`CrossLoop()` in `Genome.cpp`) simulates biological meiosis:
+Expand **Raw before/after evidence** on any record to inspect the structured
+values used to produce it. The word **Observed** means a value was decoded
+from the supported binary layout; it does not mean that a biological effect
+was observed. Unknown type/subtype layouts remain **Unknown** and block
+serialization. The tool does not claim that a changed gene caused a later
+behaviour.
 
-1. **Initialization:** A parent strand (`src`) is chosen randomly (50/50 mum or dad). Both parent genomes are reset to their first gene.
-2. **Gene copying:** Genes are copied from `src` to the child genome sequentially. The gene's data codons may undergo point mutations:
-   * **Mutation probability:** `1 / (MUTATIONRATE × (256 − Mutability) / 256 × (256 − ParentChanceOfMutation) / 256)` per codon (base rate is `1/4800`).
-   * **Mutation magnitude:** Controlled by `ParentDegreeOfMutation`. Higher values produce wider bit-flips via `pow(random, degree)` shaping.
-3. **Crossover points:** After copying a block of genes (randomly between 10 and `LINKAGE×2`, where `LINKAGE=50`), the algorithm attempts to swap strands. It only crosses over when both strands are synchronized (the alternate parent has a gene with the same `GeneID`). This ensures genes near each other on the chromosome tend to stay together.
-4. **Cutting errors:** At each crossover point, there is a `1/CUTERRORRATE` (1/80) chance of a structural error:
-   * **Duplication (50%):** The gene from the previous strand is copied *again* before continuing on the new strand. Only occurs if the gene's `DUP` flag is set.
-   * **Deletion (50%):** One gene on the new strand is skipped entirely. Only occurs if the gene's `CUT` flag is set.
-5. **Termination:** When the end-of-genome marker (`gend`) is reached on the source strand, the child genome is terminated, and both parent monikers are written into the child's Genus gene header.
+When the current browser session has an engine-confirmed injected creature,
+a diff record can open its related Brain, Chemistry, Organs, or Genome
+inspector through shared navigation. No cross-navigation button is offered
+from a filename match or other guessed relationship.
 
-### Injection Pipeline (CAOS Macro)
+## Editing rules
 
-Select your mode ("Hatched Creature" or "Egg"), choose the **gender** (Random ♂♀, Male ♂, or Female ♀), and click **Inject to Engine**. 
+The gene cards preserve the existing `dna3` editor:
 
-**Step 1: Binary Serialization**
-The frontend sends the full genome JSON (including any edits, the selected inject mode, and gender) to `POST /api/genetics/inject`. The server re-serializes the gene array back into a `dna3` binary file. Genes with `active: false` are omitted. A fresh moniker is generated by appending `_<random>` to the input moniker, and the `.gen` file is written to the world's Genetics directory.
+- filter by Brain, Biochemistry, Creature, or Organ;
+- search decoded fields;
+- filter by switch-on age;
+- edit bounded decoded fields;
+- toggle active, mutable, duplicatable, and cuttable states;
+- add, duplicate, remove, or reorder genes;
+- edit the 48-byte Lobe and Tract SVRules in the visual instruction grid.
 
-**Step 2: CAOS Execution**
-The server constructs and executes a CAOS macro on the main thread. 
+Only a verified experimental copy or browser draft is interactive. The
+serializer refuses unknown layouts, out-of-range fixed fields, malformed
+arrays, more than one active Genus gene, or more than one active Half-lives
+gene. Save is transactional: if provenance metadata cannot be updated, the
+prior genome is restored rather than leaving a successful-looking partial
+write.
 
-```caos
-new: simp 1 1 1 "blnk" 1 0 0      \ Create temporary "blank" agent
-gene load targ 1 "<moniker>"        \ Load the .gen file into genome slot 1
-setv va00 unid                      \ Store temp agent's unique ID in va00
-new: crea 4 targ 1 <sex> 0          \ Hatch creature from genome slot 1 (Family 4 = Norn)
-                                     \ -> AgentManager::CreateCreature()
-born                                 \ Register birth in HistoryStore (fires LifeEvent::typeBorn)
-accg game "c3_creature_accg"         \ Set gravitational acceleration (default: 5.0)
-attr game "c3_creature_attr"         \ Set agent attributes (default: 198)
-bhvr game "c3_creature_bhvr"         \ Set click behaviours (default: 15)
-perm game "c3_creature_perm"         \ Set wall permeability (default: 100)
-setv va01 unid                       \ Store new creature's unique ID in va01
-targ agnt va00                       \ Re-select the temporary blank agent
-kill targ                            \ Destroy the temporary agent
-targ agnt va01                       \ Re-select the newly hatched creature
-mvsf 1000 8900                       \ Move to safe floor position in Norn Meso
-```
+The reader and writer in `DebugServer.cpp` are parallel structured codecs and
+must remain synchronized with the engine's `Genome` format. A malformed or
+truncated file is reported explicitly and is never offered as a writable
+genome.
 
-**Why the temporary agent?** 
-The `GENE LOAD` CAOS command (`SubCommand_GENE_LOAD`) calls `GenomeStore::LoadEngineeredFile()`, which requires an existing agent to hold the genome slot. The temporary `blnk` agent serves as a genome carrier. When `NEW: CREA` executes, `AgentManager::CreateCreature()` reads the genome from the carrier, constructs the full `Creature` object (brain, biochemistry, skeleton, body parts), and adds it to the world. After hatching, the temp agent is cleanly destroyed.
+## Crossover
 
-**Step 3: History Registration**
-The `BORN` command explicitly calls `LifeFaculty::SetProperlyBorn()`, which enables tick aging and registers the `LifeEvent::typeBorn` in the `CreatureHistory` singleton. This ensures the injected creature is properly tracked by the in-game UI.
+**Cross** calls the engine's native `Genome::Cross` implementation with two
+named parents. It creates a new derived file rather than modifying either
+parent. The destination must be unused, both parent checksums are captured,
+and the child is installed without overwrite. The experiment sidecar records
+both parent names and checksums.
 
----
+The structured diff compares a crossover with its primary recorded source.
+The identity and final injection review also display the second parent. Both
+parents must still match their recorded checksums before the derived genome
+can be saved or injected.
 
-## Technical Architecture
+For the byte-level crossover and mutation algorithm, see
+[The Digital Genome](genome_deep_dive.md#sexual-reproduction-crossover-and-mutation).
 
-The Genetics Kit operates across four layers:
-1. **Frontend (`genetics.js`):** Browser UI, editing, and crossover logic.
-2. **REST API (`DebugServer.cpp`):** HTTP endpoints (`/api/genetics/*`) dispatching work to the main thread.
-3. **Engine Core (`Genome.cpp`):** Handles binary file I/O, `Genome::Cross`, and gene expression.
-4. **CAOS VM:** Executes the injection macros (`NEW: SIMP`, `GENE LOAD`, `NEW: CREA`).
+## Review and inject
 
-> **⚠️ MAINTENANCE WARNING:** The tool uses parallel binary codecs in `DebugServer.cpp` (one for parsing to JSON, one for serializing back to binary) that must remain perfectly mirrored with `Genome.cpp`. Any structural changes to gene layouts in the engine must be updated in all three locations.
+Injection accepts no browser genome payload. It operates only on the exact
+saved experimental file and checksum shown in the review dialog. Opening the
+dialog starts one review, good for a single injection in this load of the world
+for 12,000 ticks. Injecting again, or after a reload, needs a new review.
 
----
+The dialog identifies:
 
-## See Also
+- active world;
+- derived filename and saved checksum;
+- source name and checksum, plus a second parent when present;
+- structured diff record and field counts;
+- creature or egg mode and requested sex;
+- whether the engine is currently paused or running.
 
-* **[The Digital Genome — Deep Dive](genome_deep_dive.md)** — Authoritative reference for the `dna3` binary format, all 19 gene subtypes with byte-level layouts, and the crossover/mutation algorithms that `Genome::Cross()` implements.
-* **[Brain & SVRules Deep Dive](brain_deep_dive.md)** — Complete neural architecture reference: how the Lobe and Tract genes you edit here are processed at runtime, neuron state variables, the 69-opcode SVRule instruction set, and common SVRule patterns.
-* **[Biochemistry Deep Dive](biochemistry_deep_dive.md)** — Full reference for how the biochemistry genes you edit here (reactions, receptors, emitters) are processed at runtime: organ architecture, chemical IDs, rate formulas, and the locus system.
-* **[Creatures](tab_creatures.md)** — After injecting a genome, use the Creatures tab to inspect your new creature's drives, chemistry, organs, and brain in real time.
-* **[CAOS: Genetics](caos_genetics.md)** — The CAOS commands (`GENE LOAD/CROS/CLON`, `GTOS`, `MTOC`) that drive genome manipulation from scripts.
-* **[API Reference](api_reference.md)** — Endpoint documentation for all `/api/genetics/*` routes.
+Injection is blocked when the engine is disconnected, the world is
+`Startup`, edits are unsaved, the saved checksum is stale, provenance is
+invalid, or either confirmation is absent. **Cancel**, Escape, and clicking
+outside the dialog close it without changing the world.
+
+After confirmation, the engine:
+
+1. rechecks the world name, derived bytes, recorded sources, and all reviewed
+   checksums;
+2. makes a private temporary copy for `GENE LOAD`;
+3. executes the existing engine/CAOS creature or egg construction path on the
+   main thread;
+4. removes the private template;
+5. identifies the newly created live agent from the engine agent map;
+6. returns its agent ID, classifier, generated genome moniker, world/system
+   tick, and pause state.
+
+The derived experiment file remains available. `GenomeStore` creates the
+engine's unique live genome moniker; that engine-generated moniker is reported
+instead of the temporary template name.
+
+On success, **Open resulting creature** moves to the Creatures Genome
+inspector through shared context. Failure text never assumes that an
+unconfirmed result succeeded.
+
+## Provenance
+
+Every mutating genetics request passes through the experiment provenance
+transport. An active experiment ledger records the requested operation,
+sanitized parameters, engine result, correlation ID, and timing without
+embedding genome genes or binary content.
+
+A verified injection record links, in one entry:
+
+- reviewed source name and checksum;
+- reviewed second parent when applicable;
+- derived filename and checksum;
+- mode, sex, and confirmed world;
+- returned agent ID and generated moniker;
+- result world tick.
+
+Copy and save entries are verified when the engine returns their exact
+checksums. Rename and delete are exceptional, separate confirmed operations
+available only for a verified experimental copy. Deletion uses a typed
+confirmation and expected checksum; it is never part of ordinary editing.
+
+## Task guide: one bounded experiment
+
+Use an isolated game-data copy and a disposable world.
+
+1. Open **Genetics Kit** and select a `CORE` source. Confirm that the identity
+   says **Protected original genome**, gene cards are read-only, and Save and
+   Review injection are disabled.
+2. Create the suggested experimental copy. Confirm that source and current
+   checksums initially match and the diff says **No source differences**.
+3. Find a Biochemistry **InitConc** gene. Expand it and change **Amount** by
+   one within `0–255`.
+4. Confirm that the diff names `data.amount`, displays its exact before and
+   after values, and offers raw evidence.
+5. Choose **Save copy**. Confirm that the engine reports a new binary
+   checksum while the source checksum remains unchanged.
+6. Optionally start an Experiment Workspace with this disposable world so the
+   mutation enters its ledger.
+7. Choose creature/egg mode and sex, then **Review injection**.
+8. First press Escape and verify that the creature count did not change.
+9. Reopen the review, confirm the intended disposable/branch world and final
+   summary, then inject.
+10. Read the engine-confirmed agent and tick. Open the resulting creature and,
+    if recording, inspect the verified `genome_injection` ledger entry.
+11. Stop the experiment, leave the engine unpaused at `x1`, and keep all
+    generated worlds and genome binaries outside Git.
+
+## API summary
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/genetics/files` | List protected/original/verified-copy identities |
+| `GET` | `/api/genetics/file/:name` | Decode a file and return trusted identity and checksum |
+| `POST` | `/api/genetics/copy` | Create a no-overwrite experimental copy |
+| `POST` | `/api/genetics/crossover` | Create a two-parent derived genome |
+| `POST` | `/api/genetics/save` | Create the first file for a new/imported draft only |
+| `POST` | `/api/genetics/save-experiment` | Stale-checked transactional save of a verified copy |
+| `POST` | `/api/genetics/rename` | Confirmed rename of a verified copy |
+| `POST` | `/api/genetics/delete/:name` | Confirmed deletion of a verified copy |
+| `POST` | `/api/genetics/inject` | Inject one exact reviewed saved copy and return the engine result |
+
+See [API Reference](api_reference.md#genetics-endpoints) for request and
+response shapes.
+
+## Related documentation
+
+- [Experiment Workspaces & Provenance](experiment_workspaces.md)
+- [Creatures](tab_creatures.md)
+- [The Digital Genome](genome_deep_dive.md)
+- [Brain & SVRules](brain_deep_dive.md)
+- [Biochemistry](biochemistry_deep_dive.md)
+- [CAOS: Genetics](caos_genetics.md)

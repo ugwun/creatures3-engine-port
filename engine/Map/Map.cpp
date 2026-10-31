@@ -4833,6 +4833,10 @@ bool Map::SetMetaRoomDefaultCameraLocation(const int metaRoomID,
 // ---------------------------------------------------------------------------
 DoorCollection &Map::GetDoorCollection(void) { return myDoorCollection; }
 
+const LinkCollection &Map::GetLinkCollectionForObservation(void) const {
+  return myLinkCollection;
+}
+
 // ---------------------------------------------------------------------------
 // Function:	SetIndexBases
 // Description:	Sets the base IDs for meta-rooms and rooms

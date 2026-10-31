@@ -243,6 +243,8 @@ public:
 public:
   bool mySaveNextTick;
   std::string myLoadThisWorldNextTick;
+  // Counts world loads, so tools can tell a reload of the same world apart.
+  unsigned int GetWorldLoadGeneration() const { return myWorldLoadGeneration; }
   bool myQuitNextTick;
   bool myToggleFullScreenNextTick;
   bool myCommandLineNoMusic;
@@ -271,6 +273,8 @@ public:
   Configurator &MachineSettings() { return myMachineSettings; }
 
 private:
+  unsigned int myWorldLoadGeneration;
+
   bool PrepareWorldForLoad(const std::string &worldName, std::string &error);
   bool Creatures3IsAvailable();
   void DoLoadWorld(std::string worldName);

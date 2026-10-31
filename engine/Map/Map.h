@@ -276,6 +276,8 @@ public:
 
   DoorCollection &GetDoorCollection(void);
 
+  const LinkCollection &GetLinkCollectionForObservation(void) const;
+
   int GetMetaRoomIDCollection(IntegerCollection &metaRoomIDCollection);
 
   int GetRoomIDCollection(IntegerCollection &roomIDCollection);

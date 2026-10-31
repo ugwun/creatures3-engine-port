@@ -25,10 +25,10 @@ The wiki is powered by a static JSON index (`tools/docs/index.json`) and Markdow
 
 ### Linking between pages
 
-You can link directly to other wiki pages using standard Markdown link syntax. For example, to link to a file named `engine_internals.md`, you would write:
+You can link directly to other wiki pages using standard Markdown link syntax. For example, to link to a file named `tools_overview.md`, you would write:
 
 ```markdown
-Check out the [Engine Internals](engine_internals.md) page for more info.
+Check out the [Developer Tools Overview](tools_overview.md) page for more info.
 ```
 
 Clicking these links will seamlessly load the new page without refreshing the browser.
