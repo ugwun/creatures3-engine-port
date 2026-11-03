@@ -519,3 +519,33 @@ TEST_F(IntegrationTier1, CaosErrorNamesCommandSignature) {
 	          std::string::npos)
 	    << "Error should name the command and its arguments: " << res->body;
 }
+
+// ---------------------------------------------------------------------------
+// Test: an unresolved label near the lexer's length limit reports an error
+// instead of overflowing the compiler's message buffer
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier1, LongUnresolvedLabelReportsError) {
+	enginePid = LaunchEngine();
+	ASSERT_GT(enginePid, 0) << "Failed to fork engine process";
+	ASSERT_TRUE(WaitForAPI(apiPort, 20))
+	    << "REST API did not become available within 20s";
+
+	httplib::Client cli("localhost", apiPort);
+	cli.set_connection_timeout(2, 0);
+	cli.set_read_timeout(10, 0);
+
+	// "Unresolved label \"<label>\"" no longer fits the 512-byte buffer.
+	const std::string label(505, 'a');
+	auto res = cli.Post("/api/execute",
+	                     "{\"caos\":\"goto " + label + "\"}",
+	                     "application/json");
+	ASSERT_NE(res, nullptr) << "POST /api/execute returned null";
+	EXPECT_NE(res->body.find("\"ok\":false"), std::string::npos) << res->body;
+	EXPECT_NE(res->body.find("Unresolved label"), std::string::npos) << res->body;
+	EXPECT_EQ(res->body.find(label + "\\\""), std::string::npos)
+	    << "The message should be cut at the buffer size, not written past it";
+
+	auto tick = cli.Get("/api/world/tick");
+	ASSERT_NE(tick, nullptr) << "Engine stopped answering after the error";
+	EXPECT_EQ(tick->status, 200);
+}

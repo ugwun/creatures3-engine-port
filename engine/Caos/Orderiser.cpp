@@ -1108,7 +1108,7 @@ void Orderiser::ReportError( int pos, int stringid, ... )
 	{
 		fmt = theCatalogue.Get("orderiser", stringid );
 		va_start( args, stringid );
-		vsprintf( buf, fmt, args );
+		vsnprintf( buf, sizeof( buf ), fmt, args );
 		va_end( args );
 
 		std::string wrapper = theCatalogue.Get( "orderiser", sidAtToken );
@@ -1137,7 +1137,7 @@ void Orderiser::ReportError( int pos, int stringid, ... )
 	}
 	catch( Catalogue::Err& e )
 	{
-		strcpy( myErrorBuffer, e.what() );
+		snprintf( myErrorBuffer, sizeof( myErrorBuffer ), "%s", e.what() );
 	}
 
 
