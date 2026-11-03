@@ -242,7 +242,7 @@ Every creature maintains an internal "bloodstream" represented by a **256-slot a
 
 The 256 chemical slots are organized into functional groups. While the engine processes them purely as interacting numerical concentrations (chemical IDs 0–255), the game data assigns biological meaning:
 
-#### Drive Chemicals (Slots 148–167)
+#### Drive Chemicals (Slots 148–162 and 199–203)
 
 These 20 chemicals represent the creature's physiological urgencies — the drives that motivate behaviour:
 
@@ -263,11 +263,11 @@ These 20 chemicals represent the creature's physiological urgencies — the driv
 | 12 | Anger | 160 |
 | 13 | Sex Drive | 161 |
 | 14 | Comfort | 162 |
-| 15 | Up | 163 |
-| 16 | Down | 164 |
-| 17 | Exit | 165 |
-| 18 | Enter | 166 |
-| 19 | Wait | 167 |
+| 15 | Up | 199 |
+| 16 | Down | 200 |
+| 17 | Exit | 201 |
+| 18 | Enter | 202 |
+| 19 | Wait | 203 |
 
 > The first 14 drives (Pain through Comfort) are the traditional biological drives. Drives 15–19 (Up, Down, Exit, Enter, Wait) are navigational drives that motivate spatial movement through the world.
 
@@ -279,7 +279,7 @@ These 20 chemicals represent the creature's physiological urgencies — the driv
 | Reproductive | Progesterone (48) | Regulates the reproductive cycle; spikes during pregnancy |
 | Injury | Injury chemical (127) | Tracks physical damage |
 | Immune System | Antigens (82–89), Antibodies | Pathogens trigger antigen production; the immune system produces targeted antibodies |
-| Drive Chemicals | 148–167 | The 20 physiological drives (see table above) |
+| Drive Chemicals | 148–162, 199–203 | The 15 need drives and 5 navigation drives (see table above) |
 | Smell Chemicals | 165+ | Volatile compounds emitted into the CA environment |
 
 > **Note on chemical numbering**: The stimulus system uses a different numbering offset (`STIMTOBIOCHEMOFFSET = 148`) to map stimulus chemicals to biochemistry chemicals. Stimulus chemical 0 maps to biochemistry chemical 148 (the first drive chemical). This offset ensures that stimuli directly target drive chemicals for reinforcement learning.
@@ -323,7 +323,7 @@ The 20 drives form the motivational core of the creature — the critical bridge
 
 > **CAOS Reference:** Use [`DRIV`](caos_creatures.md) to read or adjust drive levels directly. [`DRV!`](caos_creatures.md) returns the creature's highest current drive. The [`SWAY`](caos_messages.md) commands adjust multiple drives simultaneously.
 
-Drives exist initially as chemical concentrations in the bloodstream (chemicals 148–167). They have no behavioural meaning until **Chemical Receptors** bind them to the engine's 20 hardcoded **Drive Loci** (`LOC_DRIVE0` through `LOC_DRIVE19`).
+Drives exist initially as chemical concentrations in the bloodstream (chemicals 148–162 and 199–203). They have no behavioural meaning until **Chemical Receptors** bind them to the engine's 20 hardcoded **Drive Loci** (`LOC_DRIVE0` through `LOC_DRIVE19`).
 
 Once bound, the drive chemical levels are injected directly into the **Drive Lobe** (`driv`) of the neural network, where they become the electrical excitation levels of specific drive neurons. The brain "feels" each drive as neural activity proportional to its chemical concentration.
 

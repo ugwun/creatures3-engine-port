@@ -127,8 +127,6 @@
     160: 'Anger',
     161: 'Sex drive',
     162: 'Comfort',
-    163: 'UP',
-    164: 'DOWN',
     165: 'Ca smell 0 (sound)',
     166: 'CA smell 1 (light)',
     167: 'CA smell 2 (heat)',
@@ -716,7 +714,7 @@
       const pct = Math.round(Math.min(c.value, 1.0) * 100);
       // Different tints based on chemical type
       let hue = 200; // default blue
-      if (c.chemicalId >= 148 && c.chemicalId <= 164) hue = 280; // drives: purple
+      if ((c.chemicalId >= 148 && c.chemicalId <= 162) || (c.chemicalId >= 199 && c.chemicalId <= 203)) hue = 280; // drives: purple
       else if (c.chemicalId >= 82 && c.chemicalId <= 89) hue = 0; // antigens: red
       else if (c.chemicalId >= 24 && c.chemicalId <= 31) hue = 45; // respiratory/waste
       else if (c.chemicalId >= 165 && c.chemicalId <= 184) hue = 150; // smells: green

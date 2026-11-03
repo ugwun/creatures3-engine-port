@@ -312,7 +312,7 @@ Each of the 15 primary drives (indices 0–14) has a "backup" chemical that stor
 | 144 | Sex Drive |
 | 145 | Comfort |
 
-### Drive Chemicals (IDs 148–167)
+### Drive Chemicals (IDs 148–162 and 199–203)
 
 The 20 drive chemicals represent the creature's physiological urgencies — the drives that motivate behaviour. For the complete motivational pipeline — how these chemicals flow through receptor loci to the brain, how stimuli adjust them, and how adjustments trigger reinforcement learning — see [Drives & Reinforcement Learning](drives_and_learning.md). Defined in [CreatureConstants.h](../../engine/Creature/CreatureConstants.h#L56-L78):
 
@@ -333,13 +333,13 @@ The 20 drive chemicals represent the creature's physiological urgencies — the 
 | 12 | Anger | 160 | `ANGER` |
 | 13 | Sex Drive | 161 | `SEXDRIVE` |
 | 14 | Comfort | 162 | `COMFORT` |
-| 15 | Up | 163 | `UP` |
-| 16 | Down | 164 | `DOWN` |
-| 17 | Exit | 165 | `EXIT` |
-| 18 | Enter | 166 | `ENTER` |
-| 19 | Wait | 167 | `WAIT` |
+| 15 | Up | 199 | `UP` |
+| 16 | Down | 200 | `DOWN` |
+| 17 | Exit | 201 | `EXIT` |
+| 18 | Enter | 202 | `ENTER` |
+| 19 | Wait | 203 | `WAIT` |
 
-> The first 15 drives (Pain through Comfort, indices 0–14) are the traditional biological drives. Drives 15–19 (Up, Down, Exit, Enter, Wait) are navigational drives that motivate spatial movement through the world.
+> The first 15 drives (Pain through Comfort, indices 0–14) are the traditional biological drives. Drives 15–19 (Up, Down, Exit, Enter, Wait) are navigational drives that motivate spatial movement through the world. Their chemicals come from the `drive_chemical_numbers` array in Docking Station's `ChemicalNames.catalogue` (199–203), not from 148 + drive; 165 onward are smell chemicals.
 
 ### Smell Chemicals (IDs 165–184)
 
@@ -919,7 +919,7 @@ Each step involves a different component: stimulus genes, reaction genes, recept
 
 The [Creatures Tab](tab_creatures.md) Chemistry sub-tab displays all 256 chemical concentrations as colour-coded bars, sorted by value for quick identification. Chemicals are categorized by colour:
 
-- **Purple** — Drive chemicals (148–164)
+- **Purple** — Drive chemicals (148–162)
 - **Red** — Antigens (82–89), Injury (127)
 - **Orange** — Antibodies (24–31)
 - **Green** — Smell chemicals (165–184)

@@ -358,7 +358,7 @@ Every creature has a bloodstream containing 256 chemicals. When a creature eats 
 
 This chain — **chemical → reaction → drive → brain → behaviour** — is the core feedback loop that makes Creatures feel alive.
 
-> **Critical concept: Drive Chemical IDs.** In Creatures 3, each drive has a **dedicated drive chemical** that lives at a *specific* chemical ID — but they're NOT chemicals 0–19! The drive chemicals start at ID **148**: Pain=148, Hunger for Protein=**149**, Hunger for Carbohydrate=**150**, Hunger for Fat=151, and so on up to 164. You can verify this yourself: open the **Chemistry** sub-tab in the Creatures tab and filter for chemicals 148–164. These IDs are defined in the engine's `drive_chemical_numbers` catalogue. Meanwhile, chemicals 1–13 are metabolic substances like Lactate, Pyruvate, Glucose, and Protein — completely unrelated to drives! This distinction trips up many CAOS scripters.
+> **Critical concept: Drive Chemical IDs.** In Creatures 3, each drive has a **dedicated drive chemical** that lives at a *specific* chemical ID — but they're NOT chemicals 0–19! The drive chemicals start at ID **148**: Pain=148, Hunger for Protein=**149**, Hunger for Carbohydrate=**150**, Hunger for Fat=151, and so on up to Comfort=162; the navigation drives use 199–203. You can verify this yourself: open the **Chemistry** sub-tab in the Creatures tab and filter for chemicals 148–162. These IDs are defined in the engine's `drive_chemical_numbers` catalogue. Meanwhile, chemicals 1–13 are metabolic substances like Lactate, Pyruvate, Glucose, and Protein — completely unrelated to drives! This distinction trips up many CAOS scripters.
 
 Our feeder will take a shortcut and directly manipulate these drive chemicals, bypassing the slow digestion pipeline.
 
