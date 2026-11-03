@@ -33,6 +33,8 @@
 #include "Scriptorium.h"
 #include "MacroScript.h"
 
+#include <map>
+
 
 CREATURES_IMPLEMENT_SERIAL( Scriptorium )
 
@@ -197,6 +199,23 @@ Scriptorium::~Scriptorium()
 // Returns:		(None)
 // Description:	Deletes all the scripts and empties the scriptorium
 // ---------------------------------------------------------------------
+void Scriptorium::ReconcileReferenceCounts(
+	const std::vector< MacroScript* >& holders )
+{
+	std::map< MacroScript*, int32 > counts;
+	for( size_t i = 0; i < holders.size(); ++i )
+		if( holders[i] )
+			++counts[ holders[i] ];
+	for( ScriptIterator it = myScripts.begin(); it != myScripts.end(); ++it )
+	{
+		if( !*it )
+			continue;
+		std::map< MacroScript*, int32 >::const_iterator found =
+			counts.find( *it );
+		(*it)->SetReferenceCount( found == counts.end() ? 0 : found->second );
+	}
+}
+
 void Scriptorium::Clear()
 {
 	ScriptIterator it;

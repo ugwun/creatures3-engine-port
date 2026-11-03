@@ -366,6 +366,7 @@ world name, world tick, and system tick. No wildcard fallback is used.
 {
   "source": "setv va00 42\noutv va00",
   "checksum": "fnv1a64:…",
+  "referenceCount": 0,
   "classifier": { "family": 2, "genus": 18, "species": 16, "event": 9 },
   "worldName": "Experiment Branch",
   "worldTick": 12040,
@@ -373,7 +374,10 @@ world name, world tick, and system tick. No wildcard fallback is used.
 }
 ```
 
-A missing script returns `{ "error": "Script not found" }`. Timeout 5 seconds.
+`referenceCount` is the number of locks held on the script: one per VM
+running it and one per `CALL` caller waiting on it. A locked script cannot be
+replaced or removed. A missing script returns `{ "error": "Script not
+found" }`. Timeout 5 seconds.
 
 ### `POST /api/scriptorium/inject`
 Legacy compatibility endpoint that compiles source and installs or replaces it

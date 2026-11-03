@@ -1896,6 +1896,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				result["source"] = src;
 				result["checksum"] =
 					DebugServerLogic::Fnv1a64Checksum(src);
+				// Running VMs and pending CALL callers holding this script
+				result["referenceCount"] = script->GetReferenceCount();
 				result["classifier"] = {
 					{"family", f}, {"genus", g},
 					{"species", s}, {"event", e}

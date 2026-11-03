@@ -735,3 +735,66 @@ TEST_F(IntegrationTier2, SigtermSavesWorldAndExitsWithZero) {
 	EXPECT_EQ(stat(worldFile.c_str(), &info), 0)
 	    << "SIGTERM shutdown should save the loaded world";
 }
+
+// ---------------------------------------------------------------------------
+// Test 12: A completed CALL releases the caller's script lock
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier2, CompletedCallReleasesCallerScriptLock) {
+	ASSERT_TRUE(LaunchAndWaitForAPI())
+	    << "Engine failed to boot or API unavailable";
+
+	auto cli = MakeClient();
+	auto inject = [&](int event, const std::string& source) {
+		std::string body = "{\"family\":99,\"genus\":99,\"species\":97,"
+		                   "\"event\":" + std::to_string(event) +
+		                   ",\"source\":\"" + source + "\"}";
+		auto res = cli.Post("/api/scriptorium/inject", body,
+		                    "application/json");
+		return res ? res->body : std::string();
+	};
+
+	ASSERT_NE(inject(1000, "addv game \\\"callee_runs\\\" 1")
+	              .find("\"ok\":true"), std::string::npos);
+	ASSERT_NE(inject(1001, "call 1000 0 0 addv game \\\"caller_resumed\\\" 1")
+	              .find("\"ok\":true"), std::string::npos);
+
+	std::string created = ExecuteCAOS(cli,
+	    "inst new: simp 99 99 97 \\\"blnk\\\" 1 0 0 "
+	    "setv game \\\"call_agent\\\" unid");
+	ASSERT_NE(created.find("\"ok\":true"), std::string::npos) << created;
+
+	// Messages delivered in the same tick interrupt each other, so send one
+	// at a time and wait for the caller to resume after its CALL.
+	for (int call = 1; call <= 5; ++call) {
+		std::string sent = ExecuteCAOS(cli,
+		    "mesg writ agnt game \\\"call_agent\\\" 1001");
+		ASSERT_NE(sent.find("\"ok\":true"), std::string::npos) << sent;
+		auto deadline =
+		    std::chrono::steady_clock::now() + std::chrono::seconds(10);
+		std::string resumed;
+		while (std::chrono::steady_clock::now() < deadline) {
+			resumed = ExtractJsonString(ExecuteCAOS(cli,
+			    "outv game \\\"caller_resumed\\\""), "output");
+			if (resumed == std::to_string(call)) break;
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+		ASSERT_EQ(resumed, std::to_string(call))
+		    << "The caller should resume after CALL " << call;
+	}
+	EXPECT_EQ(ExtractJsonString(
+	              ExecuteCAOS(cli, "outv game \\\"callee_runs\\\""), "output"),
+	          "5");
+
+	for (int event : {1000, 1001}) {
+		auto res = cli.Get(("/api/scriptorium/99/99/97/" +
+		                    std::to_string(event)).c_str());
+		ASSERT_NE(res, nullptr);
+		EXPECT_NE(res->body.find("\"referenceCount\":0"), std::string::npos)
+		    << "Script " << event << " still locked: " << res->body;
+	}
+
+	// A leaked lock made reinstalling the caller fail.
+	EXPECT_NE(inject(1001, "addv game \\\"caller_resumed\\\" 1")
+	              .find("\"ok\":true"), std::string::npos)
+	    << "The caller script should be replaceable after its CALLs end";
+}

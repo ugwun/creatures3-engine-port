@@ -272,6 +272,8 @@ bool World::Read(CreaturesArchive &ar) {
       return false;
     }
 
+    ReconcileScriptLocks();
+
     if (!theMainView.Read(ar)) {
       theApp.EndProgressBar();
       myCurrentlyLoadingWorld = false;
@@ -301,6 +303,20 @@ bool World::Read(CreaturesArchive &ar) {
 
   myCurrentlyLoadingWorld = false;
   return true;
+}
+
+// Recount script locks from the loaded agents' VMs. Lock counts are saved
+// with each script, and older builds leaked one on every completed CALL.
+void World::ReconcileScriptLocks() {
+  std::vector<MacroScript *> holders;
+  AgentMap &agents = AgentManager::GetAgentIDMap();
+  for (AgentMapIterator it = agents.begin(); it != agents.end(); ++it) {
+    if (!it->second->IsValid())
+      continue;
+    it->second->GetAgentReference().GetVirtualMachine().CollectHeldScripts(
+        holders);
+  }
+  myScriptorium.ReconcileReferenceCounts(holders);
 }
 
 ///////////////////////// Task-switcher /////////////////////////
