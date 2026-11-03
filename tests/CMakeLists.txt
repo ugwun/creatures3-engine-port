@@ -435,6 +435,22 @@ target_link_libraries(test_FileFuncs PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_FileFuncs)
 
 # ---------------------------------------------------------------------------
+# test_File — POSIX File class: opening, sizing, naming
+# ---------------------------------------------------------------------------
+add_executable(test_File
+  test_File.cpp
+  ../engine/unix/File.cpp
+  ../engine/unix/FileFuncs.cpp
+)
+target_include_directories(test_File PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/common
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_File PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_File)
+
+# ---------------------------------------------------------------------------
 # test_InputManager — key state tracking for IsKeyDown() polling
 # ---------------------------------------------------------------------------
 add_executable(test_InputManager
