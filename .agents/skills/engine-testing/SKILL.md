@@ -123,7 +123,7 @@ CREATURES_GAME_DIR="/path/to/Docking Station" \
 | 1 | Engine lifecycle, REST API, CAOS execution | `machine.cfg`, `user.cfg`, `Catalogue/`, `Backgrounds/`, `Images/` |
 | 2 | Tick control, game variables, scriptorium, save/reload | as Tier 1 |
 | 3 | Docked world, agents, map, COS scripts | `Startup` template copied inside the original game dir; needs the sibling `Creatures 3` folder |
-| 4 | Creature lifecycle, biochemistry, neural networks | as Tier 3 |
+| 4 | Creature lifecycle, biochemistry, neural networks, export and import | as Tier 3; the round trip deletes its own export file afterwards |
 | 5 | Long-running stability and stress | as Tier 3 |
 
 Each test forks `lc2e`, waits for the API, asserts on JSON responses, sends
