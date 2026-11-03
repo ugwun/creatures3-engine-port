@@ -73,9 +73,15 @@ server.tool(
 // ── list_creatures ─────────────────────────────────────────────────────
 server.tool(
   "list_creatures",
-  "List all creatures (Norns, Grendels, Ettins) in the world with their species, name, " +
-  "life stage, life state, glycogen reserve (chemical 4), and drive levels. The legacy " +
-  "health field is retained by the API but is also glycogen, not an overall health score.",
+  "List all creatures (Norns, Grendels, Ettins) in the world with their species, name " +
+  "(the player-given HIST NAME; selfWord is the creature's own word for itself), " +
+  "life stage, life state, glycogen reserve (chemical 4), and drive levels. drives[] is " +
+  "ordered Pain, Hunger (Protein), Hunger (Carb), Hunger (Fat), Coldness, Hotness, " +
+  "Tiredness, Sleepiness, Loneliness, Crowdedness, Fear, Boredom, Anger, Sex Drive, " +
+  "Comfort, then the navigation drives Up, Down, Exit, Enter, Wait; highestNeedDrive " +
+  "ignores the navigation drives. lifeState 'zombie' means ZOMB 1 (riding a lift, " +
+  "holding hands), not death. The legacy health field is retained by the API but is " +
+  "also glycogen, not an overall health score.",
   {},
   async () => {
     try {
@@ -92,8 +98,8 @@ server.tool(
 server.tool(
   "get_creature_chemistry",
   "Get the full biochemistry of a specific creature — a 256-entry concentrations array " +
-  "indexed by raw chemical ID, plus organ life-force and execution state. The payload does " +
-  "not include chemical names.",
+  "indexed by raw chemical ID, plus organ life-force and execution state. chemicalNames " +
+  "maps chemical IDs to the game's catalogue names; unnamed IDs are omitted.",
   { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
   async ({ agentId }) => {
     try {
@@ -108,7 +114,8 @@ server.tool(
 server.tool(
   "get_creature_observation",
   "Get one coherent, same-tick observation of a creature: identity, life state, room, " +
-  "nearby agents and smell (CA) channels, vision/smell/noun winners, all 20 drives, " +
+  "nearby agents and smell (CA) channels, vision/smell/noun winners, all 20 drives with " +
+  "the highest need drive (0-14) and navigation drive (15-19) reported separately, " +
   "attention target, decision winner, and the CAOS state of its current action. " +
   "Use it to answer 'what is this creature doing and why' in one call.",
   { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
@@ -474,8 +481,9 @@ server.tool(
 // ── snapshot_all_creatures ─────────────────────────────────────────────
 server.tool(
   "snapshot_all_creatures",
-  "Bulk dump of all creature states at the current tick: drives, glycogen reserve, position, " +
-  "and top chemicals. The legacy health field is glycogen, not an overall health score. " +
+  "Bulk dump of all creature states at the current tick: drives (named in driveLabels), " +
+  "glycogen reserve, position, and the top five chemicals with catalogue names. The legacy " +
+  "health field is glycogen, not an overall health score. " +
   "More efficient than calling get_creature_chemistry for each creature individually.",
   {},
   async () => {

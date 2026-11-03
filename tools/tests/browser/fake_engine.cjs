@@ -100,7 +100,11 @@ function createEngine(options) {
   const creatures = [
     { agentId: 101, moniker: "001-fake-aaaaa", name: "Ada" },
     { agentId: 102, moniker: "002-fake-bbbbb", name: "Boris" },
-    { agentId: 103, moniker: "003-fake-ccccc", name: "Cleo" }
+    { agentId: 103, moniker: "003-fake-ccccc", name: "Cleo",
+      lifeState: "zombie",
+      lifeStateMeaning: "Under external control (ZOMB 1), for example riding " +
+        "a lift or holding hands with the hand: alive, but it runs no " +
+        "decision scripts of its own until released" }
   ];
 
   const sessionId = () => streamId + "." + state.generation;
@@ -112,7 +116,7 @@ function createEngine(options) {
     return Object.assign({}, item, {
       family: 4, genus: 1, species: 1, sex: 1 + index % 2,
       age: 4, ageInTicks: 40000 + index,
-      lifeState: "alert", dead: false,
+      lifeState: item.lifeState || "alert", dead: false,
       health: 0.8, healthMeaning: "life force",
       glycogenReserve: 0.4, glycogenChemicalId: 4,
       posX: 1000 + index * 50, posY: 2000, roomId: 7, metaRoomId: 3,

@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <vector>
 
 TEST(DebugServerLogicTest, ExtractsCarriageReturnDelimitedStatement) {
 	EXPECT_EQ(
@@ -693,4 +694,64 @@ TEST(WorkItemTest, TimeoutWaitsForWorkAlreadyRunning) {
 		std::future_status::ready);
 	EXPECT_EQ(future.get(), "late");
 	mainThread.join();
+}
+
+TEST(DebugServerLogicTest, LabelsDrivesInCreatureConstantsOrder) {
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(0), "Pain");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(6), "Tiredness");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(11), "Boredom");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(12), "Anger");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(14), "Comfort");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(19), "Wait");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(-1), "");
+	EXPECT_EQ(DebugServerLogic::CreatureDriveLabel(20), "");
+}
+
+TEST(DebugServerLogicTest, SeparatesNeedDrivesFromNavigationDrives) {
+	EXPECT_FALSE(DebugServerLogic::IsNavigationDrive(0));
+	EXPECT_FALSE(DebugServerLogic::IsNavigationDrive(14));
+	EXPECT_TRUE(DebugServerLogic::IsNavigationDrive(15));
+	EXPECT_TRUE(DebugServerLogic::IsNavigationDrive(19));
+	EXPECT_FALSE(DebugServerLogic::IsNavigationDrive(20));
+}
+
+TEST(DebugServerLogicTest, FindsHighestNeedDriveBesideHighNavigationDrive) {
+	// A Norn waiting at a lift: Wait dominates, but its need is Boredom.
+	std::vector<float> levels(DebugServerLogic::CREATURE_DRIVE_COUNT, 0.0f);
+	levels[11] = 0.82f;
+	levels[19] = 0.97f;
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 0,
+		DebugServerLogic::CREATURE_DRIVE_COUNT), 19);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 0,
+		DebugServerLogic::CREATURE_NEED_DRIVE_COUNT), 11);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels,
+		DebugServerLogic::CREATURE_NEED_DRIVE_COUNT,
+		DebugServerLogic::CREATURE_DRIVE_COUNT), 19);
+}
+
+TEST(DebugServerLogicTest, HighestDriveKeepsFirstOnTieAndRejectsEmptySpans) {
+	std::vector<float> levels(DebugServerLogic::CREATURE_DRIVE_COUNT, 0.0f);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 0, 15), 0);
+	levels[3] = 0.5f;
+	levels[7] = 0.5f;
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 0, 15), 3);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 5, 5), -1);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(levels, 18, 40), 18);
+	EXPECT_EQ(DebugServerLogic::HighestDriveInRange(std::vector<float>(), 0, 15),
+		-1);
+}
+
+TEST(DebugServerLogicTest, TreatsNumericCatalogueChemicalEntriesAsUnnamed) {
+	EXPECT_EQ(DebugServerLogic::ChemicalNameFromCatalogueEntry(4, "Glycogen"),
+		"Glycogen");
+	EXPECT_EQ(DebugServerLogic::ChemicalNameFromCatalogueEntry(163, "163"), "");
+	EXPECT_EQ(DebugServerLogic::ChemicalNameFromCatalogueEntry(163, ""), "");
+	EXPECT_EQ(DebugServerLogic::ChemicalNameFromCatalogueEntry(199, "Up"), "Up");
+}
+
+TEST(DebugServerLogicTest, ExplainsZombieLifeStateOnly) {
+	EXPECT_NE(DebugServerLogic::CreatureLifeStateMeaning("zombie")
+		.find("ZOMB 1"), std::string::npos);
+	EXPECT_EQ(DebugServerLogic::CreatureLifeStateMeaning("alert"), "");
+	EXPECT_EQ(DebugServerLogic::CreatureLifeStateMeaning("dead"), "");
 }

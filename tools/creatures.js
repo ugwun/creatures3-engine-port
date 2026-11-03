@@ -567,7 +567,9 @@
         '<div class="crt-item-info">' +
           '<div class="crt-item-name">' + escHtml(displayName) + '</div>' +
           '<div class="crt-item-meta"><span class="crt-item-subtitle">' + escHtml(subtitle) + '</span>' +
-            '<span class="crt-state-badge crt-state--' + escHtml(c.lifeState || 'unknown') + '">' + escHtml(c.lifeState || '?') + '</span>' +
+            '<span class="crt-state-badge crt-state--' + escHtml(c.lifeState || 'unknown') + '"' +
+              (c.lifeStateMeaning ? ' title="' + escHtml(c.lifeStateMeaning) + '"' : '') + '>' +
+              escHtml(c.lifeState || '?') + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="crt-item-glycogen" title="Glycogen reserve · chemical 4 · raw concentration ' + glycogen.toFixed(3) + '">' +
@@ -757,7 +759,8 @@
     html += '<tr><td class="crt-sum-key">Sex</td><td class="crt-sum-val">' + sexLabel + '</td></tr>';
     html += '<tr><td class="crt-sum-key">Life stage</td><td class="crt-sum-val">' + ageName + ' (stage ' + creature.age + ')</td></tr>';
     html += '<tr><td class="crt-sum-key">Age</td><td class="crt-sum-val">' + (creature.ageInTicks || 0) + ' engine ticks</td></tr>';
-    html += '<tr><td class="crt-sum-key">Life State</td><td class="crt-sum-val"><span class="crt-state-badge crt-state--' + (creature.lifeState || 'unknown') + '">' + (creature.lifeState || '?') + '</span></td></tr>';
+    html += '<tr><td class="crt-sum-key">Life State</td><td class="crt-sum-val"><span class="crt-state-badge crt-state--' + escHtml(creature.lifeState || 'unknown') + '">' + escHtml(creature.lifeState || '?') + '</span>' +
+      (creature.lifeStateMeaning ? '<div class="crt-sum-note">' + escHtml(creature.lifeStateMeaning) + '</div>' : '') + '</td></tr>';
     html += '<tr><td class="crt-sum-key">Position</td><td class="crt-sum-val">' + (creature.posX || 0) + ', ' + (creature.posY || 0) + '</td></tr>';
     html += '<tr><td class="crt-sum-key">Room</td><td class="crt-sum-val">' +
       (creature.roomId == null ? 'Unknown' : creature.roomId) +

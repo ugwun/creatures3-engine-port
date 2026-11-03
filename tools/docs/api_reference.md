@@ -426,6 +426,7 @@ than guessed.
     "agentId": 42,
     "moniker": "abc1-def2-...",
     "name": "Alice",
+    "selfWord": "alice",
     "genus": 1, "species": 1, "sex": 2,
     "age": 3, "ageInTicks": 12500,
     "lifeState": "alert",
@@ -436,13 +437,29 @@ than guessed.
     "posX": 3400, "posY": 2100,
     "roomId": 680, "metaRoomId": 0,
     "drives": [0.1, 0.3, 0.8, "..."],
-    "highestDrive": 2
+    "highestDrive": 2,
+    "highestDriveLabel": "Hunger (Carb)",
+    "highestNeedDrive": 2,
+    "highestNeedDriveLabel": "Hunger (Carb)",
+    "highestNeedDriveValue": 0.8
   }
 ]
 ```
 
-`name` is the creature's given name from its `LinguisticFaculty` (empty when
-unnamed). `drives` holds 20 floats in `driveoffsets` enum order.
+`name` is the name the player gave the creature, as `HIST NAME` returns it
+(empty when unnamed). `selfWord` is the creature's own vocabulary word for
+itself, empty until it has learnt one. Naming gives it the name in lower case
+to learn; unnamed babies use whatever word they picked up ("bub", "eem"). `drives` holds 20 floats in
+`driveoffsets` enum order: Pain, Hunger (Protein), Hunger (Carb), Hunger
+(Fat), Coldness, Hotness, Tiredness, Sleepiness, Loneliness, Crowdedness,
+Fear, Boredom, Anger, Sex Drive, Comfort, then the navigation drives Up,
+Down, Exit, Enter and Wait. `highestDrive` covers all 20, so a Norn at a lift
+can report Wait; `highestNeedDrive` covers drives 0–14 only.
+
+`lifeState` is `alert`, `asleep`, `dreaming`, `unconscious`, `zombie`,
+`dead` or `unknown`. `zombie` means `ZOMB 1`: a living creature under
+external control, for example riding a lift or holding hands with the hand.
+Rows in that state carry a `lifeStateMeaning` sentence.
 
 ### `GET /api/creatures/snapshot`
 
@@ -451,8 +468,14 @@ same-tick cohort comparison. Root provenance includes schema/source,
 world/system ticks, wall capture time, world name, pause state, game speed,
 and `requestedChemicalIds`.
 
-Each creature includes identity and classifier, sex, life state, life-stage
-index, tick age, glycogen reserve, all drives and highest-drive ID, compact
+The root also carries `driveLabels`, the 20 drive names in `drives` order.
+
+Each creature includes identity and classifier, `name` and `selfWord` as in
+`GET /api/creatures`, sex, life state (with `lifeStateMeaning` for
+`zombie`), life-stage index, tick age, glycogen reserve, all drives, the
+highest drive and highest need drive with labels, the five strongest
+chemicals as `topChemicals` (`id`, catalogue `name` or null, `concentration`),
+compact
 organ functioning/failed counts, position/room/metaroom, and compact current
 attention, target, decision, action, and blocking-command state.
 
@@ -541,13 +564,16 @@ one engine-main-thread sample. The root includes `worldName`, `worldTick`,
 
 The response groups:
 
-- creature identity, life state, age-stage index, tick age, position, room,
-  and metaroom;
+- creature identity (`name` and `selfWord` as in `GET /api/creatures`),
+  life state with `lifeStateMeaning` for `zombie`, age-stage index, tick
+  age, position, room, and metaroom;
 - a complete same-room count, the five nearest same-room agents, and all 20
   current room CA/smell-channel values;
 - available `visn`, `smel`, and `noun` winners and their two strongest
   sampled candidates;
-- all 20 drives and the highest drive;
+- all 20 drives (each with `id`, `label`, `value` and `navigation`), the
+  highest drive, and separately `highestNeedDrive` (drives 0–14) and
+  `highestNavigationDrive` (15–19), each `{id, label, value}`;
 - attention winner, motor attention ID, introspection flag, and current `IT`
   with target classifier, gallery, position, room, and metaroom;
 - decision winner, motor action offset, and involuntary action;
@@ -634,6 +660,9 @@ its tick can differ slightly from the separate atomic observation request.
 ```
 
 `chemicals` is a flat array of 256 floats indexed by chemical ID.
+`chemicalNames` maps chemical IDs (as strings) to names from the game's
+`chemical_names` catalogue, for example `"4": "Glycogen"`; unnamed slots are
+omitted.
 `functioning` combines the engine's latest organ energy flag with the failure
 state: for a non-failed organ, `false` means ATP was unavailable at its most
 recent activation, not a diagnosis of impairment. Timeout 5 seconds.

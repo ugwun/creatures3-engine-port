@@ -36,6 +36,7 @@
 #undef CPPHTTPLIB_OPENSSL_SUPPORT
 #endif
 #include "../engine/contrib/httplib.h"
+#include "../engine/contrib/json.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -523,4 +524,89 @@ TEST_F(IntegrationTier4, CreatureExportImportRoundTrip) {
 
 	// Its genome is now in My Creatures, so a second export is refused.
 	EXPECT_EQ(Output(cli, "enum 4 0 0 outv pray expo \"DSEX\" next"), "1");
+}
+
+// ---------------------------------------------------------------------------
+// Test 4.6: Creature endpoints report the player's name, need drives and
+// catalogue chemical names, and explain the scripted zombie state
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier4, CreatureEndpointsReportNamesDrivesAndChemicals) {
+	if (dockedWorldName.empty()) GTEST_SKIP();
+	ASSERT_TRUE(LaunchIntoWorld(dockedWorldName));
+	auto cli = MakeClient();
+
+	int agentId = ImportCreature(cli, "norn.astro.48");
+	ASSERT_GT(agentId, 0);
+	const std::string targ = "targ agnt " + std::to_string(agentId) + " ";
+	Output(cli, targ + "hist name gtos 0 \"Testy\"");
+
+	auto findCreature = [&](const nlohmann::json& list) {
+		for (const auto& creature : list)
+			if (creature.value("agentId", -1) == agentId) return creature;
+		return nlohmann::json();
+	};
+
+	auto listRes = cli.Get("/api/creatures");
+	ASSERT_TRUE(listRes && listRes->status == 200);
+	nlohmann::json listed = findCreature(nlohmann::json::parse(listRes->body));
+	ASSERT_FALSE(listed.is_null()) << listRes->body;
+	EXPECT_EQ(listed.value("name", ""), "Testy")
+	    << "name should be the HIST NAME the player sees";
+	// Naming gives the creature its lower-case name to learn; until it has
+	// learnt it, selfWord stays empty rather than showing an older word.
+	const std::string selfWord = listed.value("selfWord", "?");
+	EXPECT_TRUE(selfWord.empty() || selfWord == "testy") << selfWord;
+	ASSERT_EQ(listed["drives"].size(), 20u);
+	const int need = listed.value("highestNeedDrive", -1);
+	EXPECT_GE(need, 0);
+	EXPECT_LT(need, 15) << "Need drives exclude navigation drives 15-19";
+	EXPECT_FALSE(listed.value("highestNeedDriveLabel", "").empty());
+	EXPECT_FALSE(listed.value("highestDriveLabel", "").empty());
+
+	auto snapshotRes = cli.Get("/api/creatures/snapshot");
+	ASSERT_TRUE(snapshotRes && snapshotRes->status == 200);
+	nlohmann::json snapshot = nlohmann::json::parse(snapshotRes->body);
+	ASSERT_EQ(snapshot["driveLabels"].size(), 20u);
+	EXPECT_EQ(snapshot["driveLabels"][11], "Boredom");
+	EXPECT_EQ(snapshot["driveLabels"][19], "Wait");
+	nlohmann::json snapped = findCreature(snapshot["creatures"]);
+	ASSERT_FALSE(snapped.is_null());
+	EXPECT_EQ(snapped.value("name", ""), "Testy");
+	ASSERT_FALSE(snapped["topChemicals"].empty());
+	for (const auto& chemical : snapped["topChemicals"])
+		EXPECT_TRUE(chemical.contains("name")) << chemical.dump();
+
+	auto chemistryRes = cli.Get(
+	    ("/api/creature/" + std::to_string(agentId) + "/chemistry").c_str());
+	ASSERT_TRUE(chemistryRes && chemistryRes->status == 200);
+	nlohmann::json chemistry = nlohmann::json::parse(chemistryRes->body);
+	EXPECT_EQ(chemistry["chemicalNames"].value("4", ""), "Glycogen");
+	EXPECT_EQ(chemistry["chemicalNames"].value("148", ""), "Pain");
+	EXPECT_FALSE(chemistry["chemicalNames"].contains("163"))
+	    << "Unnamed catalogue slots should be omitted";
+
+	auto observationRes = cli.Get(
+	    ("/api/creature/" + std::to_string(agentId) + "/observation").c_str());
+	ASSERT_TRUE(observationRes && observationRes->status == 200);
+	nlohmann::json observation = nlohmann::json::parse(observationRes->body);
+	EXPECT_EQ(observation["creature"].value("name", ""), "Testy");
+	const nlohmann::json& pressure = observation["pressure"];
+	EXPECT_LT(pressure["highestNeedDrive"].value("id", 99), 15);
+	EXPECT_GE(pressure["highestNavigationDrive"].value("id", -1), 15);
+	EXPECT_TRUE(pressure["drives"][19].value("navigation", false));
+	EXPECT_FALSE(pressure["drives"][0].value("navigation", true));
+
+	// Lifts and holding hands set ZOMB 1 on a living creature.
+	Output(cli, targ + "zomb 1");
+	listRes = cli.Get("/api/creatures");
+	ASSERT_TRUE(listRes && listRes->status == 200);
+	listed = findCreature(nlohmann::json::parse(listRes->body));
+	EXPECT_EQ(listed.value("lifeState", ""), "zombie");
+	EXPECT_NE(listed.value("lifeStateMeaning", "").find("ZOMB 1"),
+	          std::string::npos) << listed.dump();
+	Output(cli, targ + "zomb 0");
+	listRes = cli.Get("/api/creatures");
+	ASSERT_TRUE(listRes && listRes->status == 200);
+	listed = findCreature(nlohmann::json::parse(listRes->body));
+	EXPECT_FALSE(listed.contains("lifeStateMeaning")) << listed.dump();
 }

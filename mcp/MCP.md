@@ -77,9 +77,9 @@ After the client refreshes, the `creatures3` server exposes 27 tools.
 
 | Tool | Description |
 |---|---|
-| `list_creatures` | List all creatures with species, name, life stage/state, glycogen reserve (chemical 4), position, and drive levels. Legacy `health` is also glycogen, not overall health |
-| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature, plus organ life-force/execution state |
-| `get_creature_observation` | One same-tick observation: identity, room, nearby agents, smell channels, sensory winners, drives, attention target, decision and current CAOS action |
+| `list_creatures` | List all creatures with species, player-given `name` and own `selfWord`, life stage/state, glycogen reserve (chemical 4), position, drive levels, and the highest need drive (0–14, without navigation drives). Legacy `health` is also glycogen, not overall health |
+| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature with catalogue `chemicalNames`, plus organ life-force/execution state |
+| `get_creature_observation` | One same-tick observation: identity, room, nearby agents, smell channels, sensory winners, drives with need and navigation winners, attention target, decision and current CAOS action |
 | `get_creature_brain` | Overview of a creature's brain — all lobes and tracts with neuron counts, exact genome geometry, semantic labels, winner indices, and dendrite counts |
 | `get_brain_lobe` | Detailed neuron states with semantic labels both in a top-level array and on each neuron record |
 | `get_brain_tract` | Dendrite connections for a specific tract — source/destination neuron pairs with synaptic weights (capped at 1000) |
@@ -132,7 +132,7 @@ After the client refreshes, the `creatures3` server exposes 27 tools.
 | `set_tick_rate` | Change simulation speed (multiplier or WOLF fastest mode) |
 | `advance_ticks` | Run exactly N ticks then pause — for controlled stepping |
 | `get_world_stats` | Aggregate stats: creature count by species, age/sex distribution, engine state |
-| `snapshot_all_creatures` | Bulk dump of all creature states (drives, glycogen reserve, position, top 5 chemicals) |
+| `snapshot_all_creatures` | Bulk dump of all creature states (drives named by `driveLabels`, glycogen reserve, position, top 5 chemicals with names) |
 
 When the engine reports a failure, whether as an HTTP error, `{"ok": false}`
 or a bare `{"error": "..."}`, the tool result carries `isError: true` and keeps
@@ -148,7 +148,7 @@ Once connected, an AI agent can interact with the game naturally:
 → Agent calls `list_creatures` → gets a JSON array of all creatures with glycogen reserve, drives, life stage, and life state.
 
 **"What is this Norn's highest drive?"**
-→ Agent calls `list_creatures`, reads the `highestDrive` field and `drives` array.
+→ Agent calls `list_creatures`, reads `highestNeedDriveLabel` (or `highestDrive` for all 20 drives, including navigation) and the `drives` array.
 
 **"Check this creature's brain activity"**
 → Agent calls `get_creature_brain` → gets lobes/tracts overview → calls `get_brain_lobe` for specific lobe details.
