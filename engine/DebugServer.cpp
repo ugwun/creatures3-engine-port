@@ -64,6 +64,7 @@
 
 #include <arpa/inet.h>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cctype>
 #include <cstring>
@@ -788,7 +789,7 @@ struct DebugServer::Impl {
 	// UDP listener for FlightRecorder rebroadcast
 	int udpSocket = -1;
 	std::thread udpThread;
-	bool udpRunning = false;
+	std::atomic<bool> udpRunning{false};
 
 	// Work queue for main-thread execution
 	std::mutex queueMutex;
@@ -7490,14 +7491,15 @@ void DebugServer::Poll() {
 void DebugServer::Stop() {
 	if (!myImpl) return;
 
-	// Stop UDP relay
+	// Stop UDP relay. The socket is non-blocking, so the relay notices the
+	// flag within one poll; close only after it has stopped reading.
 	myImpl->udpRunning = false;
+	if (myImpl->udpThread.joinable())
+		myImpl->udpThread.join();
 	if (myImpl->udpSocket >= 0) {
 		close(myImpl->udpSocket);
 		myImpl->udpSocket = -1;
 	}
-	if (myImpl->udpThread.joinable())
-		myImpl->udpThread.join();
 
 	myImpl->PushApiRecord(
 		"server_shutdown",
