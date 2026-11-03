@@ -494,3 +494,28 @@ TEST_F(IntegrationTier1, CaosSyntaxError) {
 	EXPECT_NE(body.find("\"ok\":false"), std::string::npos)
 	    << "Invalid CAOS should return ok:false: " << body;
 }
+
+// ---------------------------------------------------------------------------
+// Test: compile errors name the command whose argument is missing
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier1, CaosErrorNamesCommandSignature) {
+	enginePid = LaunchEngine();
+	ASSERT_GT(enginePid, 0) << "Failed to fork engine process";
+	ASSERT_TRUE(WaitForAPI(apiPort, 20))
+	    << "REST API did not become available within 20s";
+
+	httplib::Client cli("localhost", apiPort);
+	cli.set_connection_timeout(2, 0);
+	cli.set_read_timeout(10, 0);
+
+	// HIST MON1 needs a moniker and an event number; the event is missing.
+	auto res = cli.Post("/api/execute",
+	                     "{\"caos\":\"outs hist mon1 \\\"x\\\"\"}",
+	                     "application/json");
+	ASSERT_NE(res, nullptr) << "POST /api/execute returned null";
+	EXPECT_NE(res->body.find("\"ok\":false"), std::string::npos) << res->body;
+	EXPECT_NE(res->body.find(
+	              "parsing HIST MON1 moniker (string) event_no (integer)"),
+	          std::string::npos)
+	    << "Error should name the command and its arguments: " << res->body;
+}

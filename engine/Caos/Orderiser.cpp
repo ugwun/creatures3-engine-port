@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "Orderiser.h"
+#include "Orderiser_Logic.h"
 #include "MacroScript.h"
 #include "../C2eServices.h"
 #include "../Map/Map.h"
@@ -69,8 +70,8 @@ MacroScript* Orderiser::OrderFromCAOS( const char* srctext )
 	myLabels.erase( myLabels.begin(), myLabels.end() );
 	while( !myContextStack.empty() )
 		myContextStack.pop();
-	while( !myLabelRefs.empty() )
-		myContextStack.pop();
+	myLabelRefs.clear();
+	myOpStack.clear();
 	myIP = 0;
 	myUniqueLabelID = 0;
 	myCommandsUsed.clear();
@@ -170,6 +171,8 @@ bool Orderiser::EncodeOp( const OpSpec* op )
 	if( allok )
 		EncodeOpID( op->GetOpcode() );
 
+	myOpStack.push_back( op );
+
 	// encode params
 	for( arg=0; arg < op->GetParameterCount() && allok; ++arg )
 	{
@@ -220,6 +223,8 @@ bool Orderiser::EncodeOp( const OpSpec* op )
 			break;
 		}
 	}
+
+	myOpStack.pop_back();
 
 	if( allok )
 		allok = SpecialPostProcessing( op );
@@ -1107,7 +1112,28 @@ void Orderiser::ReportError( int pos, int stringid, ... )
 		va_end( args );
 
 		std::string wrapper = theCatalogue.Get( "orderiser", sidAtToken );
-		sprintf( myErrorBuffer, wrapper.c_str(), buf, myLexer.GetAsText());
+		char located[ 1024 ];
+		snprintf( located, sizeof( located ), wrapper.c_str(), buf,
+			myLexer.GetAsText() );
+
+		std::string signature;
+		if( !myOpStack.empty() )
+		{
+			const OpSpec* op = myOpStack.back();
+			// A subcommand sits directly above its parent ("HIST MON1").
+			std::string name = op->GetName() ? op->GetName() : "";
+			if( myOpStack.size() >= 2 &&
+				myOpStack[ myOpStack.size() - 2 ]->HasSubCommands() &&
+				myOpStack[ myOpStack.size() - 2 ]->GetName() )
+				name = std::string(
+					myOpStack[ myOpStack.size() - 2 ]->GetName() ) + " " + name;
+			signature = OrderiserLogic::DescribeSignature(
+				name, op->GetParameters(), op->GetHelpParameters() );
+		}
+		const std::string message =
+			OrderiserLogic::AddCommandContext( located, signature );
+		snprintf( myErrorBuffer, sizeof( myErrorBuffer ), "%s",
+			message.c_str() );
 	}
 	catch( Catalogue::Err& e )
 	{

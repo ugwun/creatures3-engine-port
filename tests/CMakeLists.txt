@@ -479,6 +479,19 @@ target_link_libraries(test_DebugServerLogic PRIVATE GTest::gtest_main)
 gtest_discover_tests(test_DebugServerLogic)
 
 # ---------------------------------------------------------------------------
+# test_OrderiserLogic — command context for CAOS compile errors
+# ---------------------------------------------------------------------------
+add_executable(test_OrderiserLogic
+  test_OrderiserLogic.cpp
+  ../engine/Caos/Orderiser_Logic.cpp
+)
+target_include_directories(test_OrderiserLogic PRIVATE
+  ${CMAKE_SOURCE_DIR}/engine
+)
+target_link_libraries(test_OrderiserLogic PRIVATE GTest::gtest_main)
+gtest_discover_tests(test_OrderiserLogic)
+
+# ---------------------------------------------------------------------------
 # Developer Tools — model tests, and real Firefox interaction tests at the
 # notebook viewport. Browser tests use a synthetic engine, so they need no game
 # data, and skip themselves when Firefox is not installed.
