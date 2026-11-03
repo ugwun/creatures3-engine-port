@@ -5,6 +5,9 @@ for Linux and macOS, including Apple Silicon, with a difference: the engine
 carries its own Developer Tools, served to your browser, and an MCP server so
 AI agents can observe and control the running world.
 
+It is made for AI and artificial-life enthusiasts: watch a Norn's brain and
+biochemistry change live, or let an AI agent run experiments on a world.
+
 > [!IMPORTANT]
 > **This repository contains only the engine. No game data is included.**
 > You need a legitimate copy of *Creatures Exodus* (Creatures 3 plus Docking
