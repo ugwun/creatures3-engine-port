@@ -1,6 +1,6 @@
 # Creatures 3 / Docking Station engine port (Linux and macOS)
 
-An open-source C++ port of the Creatures 3 / Docking Station engine (`lc2e`)
+A C++ port of the Creatures 3 / Docking Station engine (`lc2e`)
 for Linux and macOS, including Apple Silicon, with a difference: the engine
 carries its own Developer Tools, served to your browser, and an MCP server so
 AI agents can observe and control the running world.
