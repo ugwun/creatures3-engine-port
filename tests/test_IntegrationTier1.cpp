@@ -300,9 +300,8 @@ TEST_F(IntegrationTier1, EngineBootsAndExitsCleanly) {
 
 	enginePid = -1; // Already exited
 	ASSERT_TRUE(WIFEXITED(status)) << "Engine did not exit normally";
-	// The engine returns true (1) on success — see SDL_Main.cpp main()
-	EXPECT_EQ(WEXITSTATUS(status), 1)
-	    << "Engine exited with unexpected status code";
+	EXPECT_EQ(WEXITSTATUS(status), 0)
+	    << "Engine exited with unexpected status code (expected 0 = success)";
 }
 
 // ---------------------------------------------------------------------------

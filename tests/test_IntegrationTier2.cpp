@@ -689,3 +689,49 @@ TEST_F(IntegrationTier2, CreateWorldPersistsUndockedTypeAndBuild) {
 	               &info),
 	          0);
 }
+
+// ---------------------------------------------------------------------------
+// Test 11: SIGTERM saves the loaded world and exits with status 0
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier2, SigtermSavesWorldAndExitsWithZero) {
+	ASSERT_TRUE(LaunchAndWaitForAPI())
+	    << "Engine failed to boot or API unavailable";
+
+	auto cli = MakeClient();
+	cli.set_read_timeout(20, 0);
+	auto createRes = cli.Post("/api/world/create",
+	                          "{\"name\":\"Exit Status World\"}",
+	                          "application/json");
+	ASSERT_NE(createRes, nullptr);
+	ASSERT_NE(createRes->body.find("\"ok\":true"), std::string::npos)
+	    << createRes->body;
+	auto loadRes = cli.Post("/api/world/load",
+	                        "{\"name\":\"Exit Status World\"}",
+	                        "application/json");
+	ASSERT_NE(loadRes, nullptr);
+	ASSERT_NE(loadRes->body.find("\"ok\":true"), std::string::npos)
+	    << loadRes->body;
+
+	auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+	std::string worldName;
+	while (std::chrono::steady_clock::now() < deadline) {
+		auto tickRes = cli.Get("/api/world/tick");
+		if (tickRes && tickRes->status == 200)
+			worldName = ExtractJsonString(tickRes->body, "worldName");
+		if (worldName == "Exit Status World") break;
+		std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	}
+	ASSERT_EQ(worldName, "Exit Status World");
+
+	std::string worldFile =
+	    tempDir + "/My Worlds/Exit Status World/TheWorldAndEverythingInIt";
+	std::remove(worldFile.c_str());
+
+	int status = GracefulShutdown(enginePid, 20);
+	enginePid = -1;
+	EXPECT_EQ(status, 0) << "A clean SIGTERM shutdown must exit with 0";
+
+	struct stat info;
+	EXPECT_EQ(stat(worldFile.c_str(), &info), 0)
+	    << "SIGTERM shutdown should save the loaded world";
+}
