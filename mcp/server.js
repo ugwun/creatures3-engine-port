@@ -13,6 +13,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { errorResult, readJson, textResult } from "./results.js";
 
 // ── Configuration ──────────────────────────────────────────────────────
 // 127.0.0.1 rather than localhost: lc2e binds IPv4 loopback, and Node 18 tries
@@ -27,8 +28,7 @@ const AUTH_HEADERS = ENGINE_TOKEN
 // ── HTTP helpers ───────────────────────────────────────────────────────
 async function apiGet(path) {
   const res = await fetch(`${ENGINE_URL}${path}`, { headers: AUTH_HEADERS });
-  if (!res.ok) throw new Error(`GET ${path}: ${res.status} ${res.statusText}`);
-  return res.json();
+  return readJson(res, `GET ${path}`);
 }
 
 async function apiPost(path, body = {}) {
@@ -37,17 +37,7 @@ async function apiPost(path, body = {}) {
     headers: { ...AUTH_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`POST ${path}: ${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-function textResult(data) {
-  const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
-  return { content: [{ type: "text", text }] };
-}
-
-function errorResult(msg) {
-  return { content: [{ type: "text", text: `Error: ${msg}` }], isError: true };
+  return readJson(res, `POST ${path}`);
 }
 
 // ── MCP Server ─────────────────────────────────────────────────────────
@@ -108,6 +98,23 @@ server.tool(
   async ({ agentId }) => {
     try {
       return textResult(await apiGet(`/api/creature/${agentId}/chemistry`));
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+);
+
+// ── get_creature_observation ───────────────────────────────────────────
+server.tool(
+  "get_creature_observation",
+  "Get one coherent, same-tick observation of a creature: identity, life state, room, " +
+  "nearby agents and smell (CA) channels, vision/smell/noun winners, all 20 drives, " +
+  "attention target, decision winner, and the CAOS state of its current action. " +
+  "Use it to answer 'what is this creature doing and why' in one call.",
+  { agentId: z.number().describe("The creature's agent ID (from list_creatures)") },
+  async ({ agentId }) => {
+    try {
+      return textResult(await apiGet(`/api/creature/${agentId}/observation`));
     } catch (e) {
       return errorResult(e.message);
     }

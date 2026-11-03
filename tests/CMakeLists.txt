@@ -491,6 +491,12 @@ if(NODE_EXECUTABLE)
   )
   set_tests_properties(DeveloperToolsModels PROPERTIES LABELS "tools")
 
+  add_test(NAME McpAdapterResults
+    COMMAND sh -c "${NODE_EXECUTABLE} --test mcp/test/*.test.js"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+  set_tests_properties(McpAdapterResults PROPERTIES LABELS "tools")
+
   add_test(NAME DeveloperToolsBrowser
     COMMAND sh -c "${NODE_EXECUTABLE} --test --test-concurrency=1 tools/tests/browser/*.browser.cjs"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

@@ -61,11 +61,11 @@ Any other MCP client with stdio support needs the equivalent:
 - **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, the default)
   and `ENGINE_TOKEN` only for an engine started with `--allow-remote-tools`
 
-After the client refreshes, the `creatures3` server exposes 25 tools.
+After the client refreshes, the `creatures3` server exposes 27 tools.
 
 ---
 
-## Available Tools (25)
+## Available Tools (27)
 
 ### CAOS Execution
 
@@ -79,6 +79,7 @@ After the client refreshes, the `creatures3` server exposes 25 tools.
 |---|---|
 | `list_creatures` | List all creatures with species, name, life stage/state, glycogen reserve (chemical 4), position, and drive levels. Legacy `health` is also glycogen, not overall health |
 | `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature, plus organ life-force/execution state |
+| `get_creature_observation` | One same-tick observation: identity, room, nearby agents, smell channels, sensory winners, drives, attention target, decision and current CAOS action |
 | `get_creature_brain` | Overview of a creature's brain — all lobes and tracts with neuron counts, exact genome geometry, semantic labels, winner indices, and dendrite counts |
 | `get_brain_lobe` | Detailed neuron states with semantic labels both in a top-level array and on each neuron record |
 | `get_brain_tract` | Dendrite connections for a specific tract — source/destination neuron pairs with synaptic weights (capped at 1000) |
@@ -133,6 +134,10 @@ After the client refreshes, the `creatures3` server exposes 25 tools.
 | `get_world_stats` | Aggregate stats: creature count by species, age/sex distribution, engine state |
 | `snapshot_all_creatures` | Bulk dump of all creature states (drives, glycogen reserve, position, top 5 chemicals) |
 
+When the engine reports a failure, whether as an HTTP error, `{"ok": false}`
+or a bare `{"error": "..."}`, the tool result carries `isError: true` and keeps
+the engine's message, so agents can tell a failed action from a successful one.
+
 ---
 
 ## Example Usage (by an AI agent)
@@ -179,6 +184,12 @@ Expected response (newline-delimited JSON):
 {"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"creatures3-engine","version":"1.0.0"}},"jsonrpc":"2.0","id":1}
 ```
 
+### Unit tests
+
+```bash
+node --test mcp/test/*.test.js
+```
+
 ### Verify no unwanted files are tracked
 
 ```bash
@@ -192,7 +203,8 @@ cd mcp && git status
 
 | File | Purpose |
 |---|---|
-| `server.js` | MCP server — 25 tools wrapping the engine REST API, stdio transport |
+| `server.js` | MCP server — 27 tools wrapping the engine REST API, stdio transport |
+| `results.js` | HTTP and MCP result helpers; marks engine failures with `isError` |
 | `package.json` | Node.js package definition (depends on `@modelcontextprotocol/sdk`) |
 | `MCP.md` | This file |
 

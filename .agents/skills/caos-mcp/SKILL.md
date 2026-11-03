@@ -581,6 +581,7 @@ to use `execute_caos` instead:
 |---|---|---|
 | `list_creatures` | `GET /api/creatures` | When you need custom filtering or data not in the API response |
 | `get_creature_chemistry` | `GET /api/creature/:id/chemistry` | To inject chemicals: `chem id amount` |
+| `get_creature_observation` | `GET /api/creature/:id/observation` | For state the observation omits, such as chemicals or arbitrary OV/VA values |
 | `get_creature_brain` | `GET /api/creature/:id/brain` | To modify neuron states: `brn: setn` |
 | `list_scripts` | `GET /api/scripts` | To get script source: `sorc F G S E` |
 | `pause_engine` / `resume_engine` | `POST /api/pause` / `POST /api/resume` | `wpau 1` / `wpau 0` or `dbg: paws` / `dbg: play` |
