@@ -3162,10 +3162,6 @@ bool Skeleton::PrepareForAgeing(int age) {
         theApp.GetWorld().GetGameVar("engine_creature_template_size_in_mb");
     _ASSERT(sprite.GetType() == CAOSVar::typeInteger);
 
-    OutputFormattedDebugString(
-        "PrepareForAgeing: age=%d template_size_in_mb=%d\n", age,
-        sprite.GetInteger());
-
     char buf[5];
     sprintf(buf, "%d", age);
     std::string galleryName = GetMoniker() + buf;

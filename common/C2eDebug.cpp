@@ -32,7 +32,7 @@ void OutputFormattedDebugString(const char* fmt, ... )
 	va_list args;
 
 	va_start(args, fmt);
-	int len = vsprintf(buf, fmt, args);
+	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 	OutputDebugString(buf);
 #endif
