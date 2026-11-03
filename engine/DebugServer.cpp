@@ -59,6 +59,7 @@
 #include "Creature/LinguisticFaculty.h"
 #include "Creature/MotorFaculty.h"
 #include "Creature/SensoryFaculty.h"
+#include "Display/MainCamera.h"
 #include "World.h"
 #include "WorldMetadata.h"
 
@@ -2837,6 +2838,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 			     << ",\"paused\":" << (IsEnginePaused() ? "true" : "false")
 			     << ",\"gameSpeed\":" << GetGameSpeedMultiplier()
 			     << ",\"creatureCount\":" << creatureCount
+			     << ",\"displayBacklog\":"
+			     << theMainView.GetPendingDirtyAreaCount()
 			     << ",\"loadPending\":"
 			     << (requestedWorldName.empty() ? "false" : "true");
 			if (requestedWorldName.empty()) {

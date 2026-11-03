@@ -68,11 +68,16 @@ Returns one coherent session sample for the persistent observatory ribbon:
   "paused": false,
   "gameSpeed": 1,
   "creatureCount": 4,
+  "displayBacklog": 0,
   "loadPending": false,
   "requestedWorldName": null,
   "requestedWorldType": null
 }
 ```
+
+`displayBacklog` counts the dirty rectangles and background tiles queued for
+the main camera's next draw. It stays near zero; headless engines discard it
+every frame because they never draw.
 
 `worldType` is `"undocked"`, `"docked"`, `"startup"`, or `null` when it
 cannot be established. A deferred REST/MCP load sets `loadPending` and retains

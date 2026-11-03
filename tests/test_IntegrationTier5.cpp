@@ -532,3 +532,29 @@ TEST_F(IntegrationTier5, APILivenessUnderLoad) {
 		<< "API success rate dropped below 90%: "
 		<< successCount << "/" << totalCalls;
 }
+
+// ---------------------------------------------------------------------------
+// Test 5.6: Headless runs do not accumulate undrawn display work
+// Headless mode never draws, so dirty rectangles queued by moving and
+// animating agents must be discarded every frame instead of piling up.
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier5, HeadlessDisplayBacklogStaysEmpty) {
+	if (dockedWorldName.empty()) GTEST_SKIP();
+	ASSERT_TRUE(LaunchIntoWorld(dockedWorldName));
+	auto cli = MakeClient();
+
+	for (const char* genome : {"norn.astro.48", "norn.bondi.48"})
+		ASSERT_GT(CreateCreature(cli, genome), 0);
+
+	for (int batch = 0; batch < 4; ++batch) {
+		AdvanceTicks(cli, 50);
+		auto res = cli.Get("/api/session");
+		ASSERT_TRUE(res && res->status == 200);
+		const size_t key = res->body.find("\"displayBacklog\":");
+		ASSERT_NE(key, std::string::npos) << res->body;
+		const int backlog = std::atoi(res->body.c_str() + key + 17);
+		EXPECT_EQ(backlog, 0)
+			<< "Undrawn dirty areas accumulated in headless mode after batch "
+			<< batch << ": " << res->body;
+	}
+}

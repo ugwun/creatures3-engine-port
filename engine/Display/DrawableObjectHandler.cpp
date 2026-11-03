@@ -272,6 +272,21 @@ void DrawableObjectHandler::SetInterestLevel(bool interested)
 //				dirty rectangles and resets the view position
 //						
 // ----------------------------------------------------------------------
+void DrawableObjectHandler::DiscardPendingDirtyAreas()
+{
+	myNewRects.clear();
+	myOldRects.clear();
+	myFastRects.clear();
+	myNewDirtyTiles.clear();
+	myOldDirtyTiles.clear();
+}
+
+size_t DrawableObjectHandler::PendingDirtyAreaCount() const
+{
+	return myNewRects.size() + myOldRects.size() + myFastRects.size() +
+		myNewDirtyTiles.size() + myOldDirtyTiles.size();
+}
+
 void DrawableObjectHandler::Update(Position pos)
 {
 	if(myShutDownFlag)

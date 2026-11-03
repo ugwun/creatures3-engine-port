@@ -156,6 +156,12 @@ void DoChangeMetaRoom(std::string& backgroundName,
 	void Update(bool completeRedraw,
 				bool justBackBuffer = false);
 
+	// Dirty rectangles and tiles queued for the next draw. Headless mode
+	// discards them each frame instead of drawing.
+	size_t GetPendingDirtyAreaCount() const
+	{ return myEntityHandler.PendingDirtyAreaCount(); }
+	void DiscardPendingDirtyAreas() { myEntityHandler.DiscardPendingDirtyAreas(); }
+
 	void NormaliseWorldPosition();
 	void NormaliseWorldCoordinates(int32& x, int32& y);
 
