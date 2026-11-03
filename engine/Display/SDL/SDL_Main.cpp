@@ -924,20 +924,19 @@ case WM_MOVE: {
 
     // Save the world before destroying it.  The Startup world (main menu)
     // has no meaningful state, so skip it.
-    try {
+    if (theApp.HasWorld() && !theApp.GetWorld().IsStartUpWorld()) {
       World &w = theApp.GetWorld();
-      if (!w.IsStartUpWorld()) {
-        fprintf(stderr, "[lc2e] Saving world \"%s\"...\n",
-                w.GetWorldName().c_str());
-        if (w.Save()) {
-          fprintf(stderr, "[lc2e] World saved.\n");
-        } else {
-          fprintf(stderr, "[lc2e] WARNING: World save failed.\n");
-          saved = false;
-        }
+      fprintf(stderr, "[lc2e] Saving world \"%s\"...\n",
+              w.GetWorldName().c_str());
+      try {
+        saved = w.Save();
+      } catch (...) {
+        saved = false;
       }
-    } catch (...) {
-      // No world loaded — nothing to save.
+      if (saved)
+        fprintf(stderr, "[lc2e] World saved.\n");
+      else
+        fprintf(stderr, "[lc2e] WARNING: World save failed.\n");
     }
 
     if (enableTools || enableMCP) theDebugServer.Stop();
