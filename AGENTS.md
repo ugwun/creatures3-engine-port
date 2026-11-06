@@ -1,62 +1,87 @@
-# Repository Guidelines
+# Creatures 3 / Docking Station engine port — agent guide
 
-## Project Structure & Module Organization
+This is the C++11 port of the Creatures 3 / Docking Station engine (`lc2e`)
+for Linux and macOS, with embedded browser developer tools and an MCP adapter
+so AI agents can observe and control a running world. Game data is
+proprietary and never enters Git.
 
-`engine/` contains the C++11 engine (agents, CAOS, creatures, display, map, sound, and Unix code); shared utilities and PRAY support live in `common/`. Tests and link seams are under `tests/`. `tools/` is the browser developer UI embedded by `lc2e`; `mcp/` is the Node.js MCP-to-REST adapter. Research material lives in `free_energy_principle_experiment/`. Game data is proprietary and must remain outside Git.
+## Layout
 
-## Build, Test, and Run
+| Path | What it is |
+|---|---|
+| `engine/` | The engine: agents, CAOS VM, creatures (brain, biochemistry, genetics), display, map, sound, `unix/` platform code, `DebugServer*` (tools/MCP API) |
+| `common/` | Shared utilities, catalogue and configuration parsing, PRAY file support |
+| `tests/` | GoogleTest targets, `stub_*` link seams, `caos/` fixtures, headless integration tiers |
+| `tools/` | Browser developer tools served by `lc2e --tools`; `docs/` is the in-app wiki; `tests/` holds Node and Firefox suites |
+| `mcp/` | Node.js stdio adapter translating MCP tool calls to the engine REST API |
+| `.agents/skills/` | Skills: `caos-mcp`, `developer-tools`, `engine-testing`, `run-creatures-experiment` (`.claude/skills` links here) |
+| `.mcp.json` | MCP client configuration for the `creatures3` adapter |
 
-From the repository root:
+Branches: `main` is the Linux/macOS line. `free_energy_principle_research`
+carries the research material and is merged back from `main`. The tag
+`macos-legacy` marks the original macOS-only port.
+
+## Build, test, run
 
 ```bash
-cmake -S . -B build
-cmake --build build
+cmake -S . -B build && cmake --build build
 ctest --test-dir build --output-on-failure
-./build/lc2e -d "/path/to/Docking Station"
+./build/lc2e -d "/path/to/Docking Station"                      # graphical
+./build/lc2e -d "/path/to/Docking Station" --headless --world "Name"   # no display/audio, APIs on
 ```
 
-CMake requires SDL2, SDL2_mixer, Zlib, pthreads, and network access on first configure to fetch GoogleTest. Use `--world "Name"` to load a world directly, `--gamespeed N` to alter speed, and Ctrl+C for graceful headless shutdown.
+Needs CMake 3.10+, a C++11 compiler, SDL2, SDL2_mixer, zlib, pthreads, Node
+18+ for the tools tests, Firefox for the browser suites (they skip without
+it), and network access on first configure to fetch GoogleTest. Useful
+flags: `--world "Name"`, `--gamespeed N`, `--run-cos file`, `--max-ticks N`,
+`--tools`, `--mcp`, `--headless`; Ctrl+C shuts a headless engine down
+gracefully.
 
-## Developer Tools & MCP Runtime
+## Skills: read before you act
 
-Read the [`Eat elevator bug fix`](README.md#eat-elevator-bug-fix) section before changing targetless `APPR`, linked-room CA navigation, or smell recovery.
+- Writing or executing CAOS, or using `execute_caos`: `.agents/skills/caos-mcp/SKILL.md`.
+- Changing `engine/DebugServer*`, anything in `tools/`, or adding an endpoint, workspace or help entry: `.agents/skills/developer-tools/SKILL.md`.
+- Adding a test, fixing a link error in a test target, or running integration tiers: `.agents/skills/engine-testing/SKILL.md`.
+- Running a controlled creature experiment: `.agents/skills/run-creatures-experiment/SKILL.md`.
+- The in-app wiki under `tools/docs/` is the reference for CAOS, biochemistry, brain and genetics; `tools/TOOLS.md` is the short entry point to the tools and their REST endpoints, with the detail in `tools/docs/`; `mcp/MCP.md` documents the adapter.
 
-Use an isolated game-data copy or disposable world for experiments; developer tools can execute CAOS, save worlds, and modify or delete user genomes.
+## Live engine access
 
-```bash
-# Browser UI plus REST/SSE API
-./build/lc2e -d "/path/to/Docking Station" --tools
-# REST/SSE API only
-./build/lc2e -d "/path/to/Docking Station" --mcp
-# No display/audio; also enables tools and MCP APIs
-./build/lc2e -d "/path/to/Docking Station" --headless --world "Test World"
-```
+`--tools` serves the browser UI and REST/SSE API on `http://localhost:9980`;
+`--mcp` serves the API only; `--headless` enables both. The server binds
+loopback; `--allow-remote-tools` adds token-protected remote access. Run one
+instrumented engine at a time, because the port is shared.
 
-All modes expose the engine API on `http://localhost:9980`, bound to loopback; pass `--allow-remote-tools` for token-protected access from other machines. Run only one instrumented engine at a time. `--tools` also serves the seven-tab UI at that URL and needs no Node process. Its static files resolve from `<executable>/../tools`, then `./tools`; override with `--tools /absolute/path`.
+The MCP adapter needs a one-time `cd mcp && npm install`. `.mcp.json` points
+clients at it; the engine must already be running. Prefer the MCP tools over
+raw REST for inspection and control. Pause, inspect, resume deliberately and
+never leave a world paused. Use an isolated game-data copy or a disposable
+world for anything that mutates state: CAOS, world saves, chemical
+interventions and genome writes are real and cannot be undone.
 
-MCP requires Node.js 18+ and a one-time `cd mcp && npm install`. Configure the client for stdio with command `node`, argument `/absolute/path/to/repo/mcp/server.js`, and optional `ENGINE_URL` (default `http://127.0.0.1:9980`) and `ENGINE_TOKEN` (remote engines only). The client spawns this adapter; starting `lc2e --mcp` alone does not create the stdio process. Prefer MCP tools for live inspection/control rather than calling REST directly. Read `mcp/MCP.md`, `tools/TOOLS.md`, and `.agents/skills/caos-mcp/SKILL.md` before issuing CAOS. Pause, inspect, and resume deliberately; do not leave the world paused.
+Read the `Eat elevator bug fix` section of `README.md` before changing
+targetless `APPR`, linked-room CA navigation or smell recovery.
 
-## Coding Style & Naming Conventions
+## Code and documentation conventions
 
-Match the surrounding legacy style and avoid unrelated formatting. Engine files commonly use tabs; newer tests use two spaces. Classes and public methods use `PascalCase`; GoogleTests follow `TEST(ComponentTest, DescribesBehavior)`. Pair headers/implementations and register new engine `.cpp` files in root `CMakeLists.txt`. No repository-wide formatter is enforced.
+- Match the surrounding legacy style; engine files use tabs, newer tests two
+  spaces. Classes and public methods are `PascalCase`; GoogleTests follow
+  `TEST(ComponentTest, DescribesBehavior)`. No repository-wide formatter.
+- Pair headers with implementations and register new engine `.cpp` files in
+  the root `CMakeLists.txt`; register tests in `tests/CMakeLists.txt`.
+- Every behaviour change gets focused regression coverage. Isolate
+  singleton-heavy logic in `*_Logic.cpp` behind the existing fake interfaces.
+- Polled tools panels update through `DomPatch` with delegated listeners.
+- Tools values are labelled Observed, Derived, Inferred or Unknown; keep that
+  boundary. The legacy `health` field is glycogen reserve, not health.
+- Documentation lives next to what it describes: agent guidance here and in
+  skills, product documentation in `tools/docs/`, user setup in `README.md`.
+  Do not add roadmap, hand-off or status documents to the repository.
 
-## Testing Guidelines
+## Commits and pull requests
 
-Add focused GoogleTest regression coverage for behavior changes. Prefer pure unit tests; isolate singleton-heavy behavior in `*_Logic.cpp` and use existing fake interfaces or `tests/stub_*`. Register tests in `tests/CMakeLists.txt`.
-
-Developer Tools changes need more than model tests. `ctest` also runs `tools/tests/*.test.cjs` and the real Firefox suites in `tools/tests/browser/`, which click at the 1530×840 notebook viewport against a synthetic engine. Polled panels must update through `DomPatch` with delegated listeners, or a refresh undoes what the user is doing. To run the mutating workflows, point them at a live engine on a disposable data copy:
-
-```bash
-OBSERVATORY_URL=http://127.0.0.1:9980/ OBSERVATORY_ALLOW_CHANGES=1 \
-  node --test --test-concurrency=1 tools/tests/browser/workflows.browser.cjs
-```
- Integration tests require proprietary data, including the sibling `Creatures 3` folder for docked worlds, and must run serially because port 9980 is shared:
-
-```bash
-cmake -S . -B build -DENABLE_INTEGRATION_TESTS=ON
-CREATURES_GAME_DIR="/path/to/Docking Station" ctest --test-dir build -L integration --output-on-failure
-```
-
-## Commit & Pull Request Guidelines
-
-Use concise imperative subjects such as `Fix POSIX file copying`; `fix:` and `docs:` prefixes are also established. Keep commits focused. PRs should explain the problem, implementation, platforms, and exact test results; link issues and add screenshots for UI changes. Never attach assets, saves, worlds, or creature/genome data.
+Concise imperative subjects (`Fix POSIX file copying`); `fix:` and `docs:`
+prefixes are also in use. Keep commits focused. A PR explains the problem,
+the implementation, the platforms exercised and the exact test results, and
+links issues. Never attach game assets, saves, worlds, genomes or creature
+exports.

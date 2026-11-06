@@ -172,6 +172,11 @@ public:
 	void Update();
 	void ShutDown();
 
+	// Headless mode never draws, so Update(Position) never consumes the
+	// dirty rectangles and tiles that Add() and AddDirtyRect() queue.
+	void DiscardPendingDirtyAreas();
+	size_t PendingDirtyAreaCount() const;
+
 	void AddFastRect(FastEntityImage* fastObject);
 
 	void AddDirtyRect(RECT rect);

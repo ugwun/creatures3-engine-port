@@ -125,6 +125,9 @@ CAOSMachine::CAOSMachine() {
 }
 
 CAOSMachine::~CAOSMachine() {
+  // Drop pending CALL callers first; otherwise StopScriptExecuting would
+  // resume one of them and leave its script locked.
+  ClearCallStack();
   if (myState != stateFinished)
     StopScriptExecuting();
   DeleteOutputStreamIfResponsible();

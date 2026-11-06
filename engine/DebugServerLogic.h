@@ -149,6 +149,23 @@ std::string ValidateCaosScriptMutation(
 	const std::string& actualExistingChecksum,
 	bool confirmed);
 
+// Creature drive semantics, in CreatureConstants.h driveoffsets order.
+// Drives 0-14 are needs; 15-19 (Up, Down, Exit, Enter, Wait) steer
+// navigation between rooms and lifts.
+const int CREATURE_DRIVE_COUNT = 20;
+const int CREATURE_NEED_DRIVE_COUNT = 15;
+std::string CreatureDriveLabel(int drive);
+bool IsNavigationDrive(int drive);
+// Index of the largest level in [begin, end), the first one on a tie, as
+// Creature::GetHighestDrive() does. -1 for an empty or out-of-range span.
+int HighestDriveInRange(const std::vector<float>& levels, int begin, int end);
+// Docking Station's chemical_names catalogue stores the bare number for
+// unnamed slots; those, and empty entries, have no name.
+std::string ChemicalNameFromCatalogueEntry(int chemicalId,
+	const std::string& entry);
+// Plain-language meaning for life states that are easy to misread.
+std::string CreatureLifeStateMeaning(const std::string& lifeState);
+
 }
 
 #endif

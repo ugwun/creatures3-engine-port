@@ -55,6 +55,12 @@ Bookmarks (`★`) and annotations are retained with the in-memory record and
 included in JSON/JSONL exports. Browser Back restores Log filters, display
 options, and scroll position after a cross-link.
 
+Display options toggle the wall-time and world-tick columns independently,
+**Auto-scroll** to the newest record, and **Compact rows** for denser viewing.
+Subsystem colours are red for errors, orange for shutdown, blue for network,
+green for world, purple for CAOS, teal for sound, magenta for crash reports,
+and grey for everything else.
+
 ## Stream pause is not simulation pause
 
 **Pause stream** freezes Log rendering only. The bounded model continues to

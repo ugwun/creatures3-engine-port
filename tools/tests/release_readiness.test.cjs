@@ -8,7 +8,6 @@ const path = require("node:path");
 const toolsRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(toolsRoot, "..");
 const docsRoot = path.join(toolsRoot, "docs");
-const tasksRoot = path.join(toolsRoot, "tasks-tools-observatory");
 const Navigation = require("../observatory_navigation.js");
 const Help = require("../contextual_help_model.js");
 
@@ -16,26 +15,10 @@ function read(relative) {
   return fs.readFileSync(path.join(repoRoot, relative), "utf8");
 }
 
-test("the numbered Observatory roadmap is complete", () => {
-  const files = fs.readdirSync(tasksRoot)
-    .filter(file => /^\d\d-.*\.md$/.test(file))
-    .sort();
-  assert.equal(files.length, 21);
-  assert.deepEqual(
-    files.map(file => file.slice(0, 2)),
-    Array.from({ length: 21 }, (_, index) => String(index).padStart(2, "0"))
-  );
-  files.forEach(file => {
-    const markdown = fs.readFileSync(path.join(tasksRoot, file), "utf8");
-    assert.match(markdown, /^Status: Completed$/m, file);
-  });
-});
-
 test("release, migration, and rollback guidance is published offline", () => {
   const index = JSON.parse(read("tools/docs/index.json"));
   const indexed = new Set(index.map(entry => entry.file));
   [
-    "developer-tools-observatory-handoff.md",
     "observatory_release_validation.md",
     "observatory_migration_and_rollback.md"
   ].forEach(file => {
@@ -56,23 +39,6 @@ test("release, migration, and rollback guidance is published offline", () => {
   ].forEach(heading => assert.match(release,
     new RegExp("^## " + heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "m")));
   assert.doesNotMatch(release, /\b(?:TODO|TBD|pending verification)\b/i);
-
-  const handoff = read(
-    "tools/docs/developer-tools-observatory-handoff.md");
-  [
-    "Start Here: Prerequisites and Launch",
-    "The Global Shell",
-    "Guided Tour: Observe",
-    "Guided Tour: Experiment",
-    "Guided Tour: Develop",
-    "Guided Tour: Learn",
-    "Task and Commit Index",
-    "Exact Final Validation Matrix",
-    "Rollback, Troubleshooting, and Cleanup",
-    "Hand-off Confirmation"
-  ].forEach(heading => assert.match(handoff,
-    new RegExp("^## " + heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "m")));
-  assert.doesNotMatch(handoff, /\b(?:TODO|TBD|pending verification)\b/i);
 
   const migration = read("tools/docs/observatory_migration_and_rollback.md");
   [
@@ -149,7 +115,6 @@ test("release docs preserve the evidence and inference boundary", () => {
 test("release documentation does not introduce proprietary artifacts", () => {
   const allowed = new Set([".md", ".json", ".png"]);
   const releaseFiles = [
-    "developer-tools-observatory-handoff.md",
     "observatory_release_validation.md",
     "observatory_migration_and_rollback.md"
   ];

@@ -127,8 +127,6 @@
     160: 'Anger',
     161: 'Sex drive',
     162: 'Comfort',
-    163: 'UP',
-    164: 'DOWN',
     165: 'Ca smell 0 (sound)',
     166: 'CA smell 1 (light)',
     167: 'CA smell 2 (heat)',

@@ -591,4 +591,56 @@ std::string ValidateCaosScriptMutation(
 	return "";
 }
 
+std::string CreatureDriveLabel(int drive) {
+	static const char* const LABELS[CREATURE_DRIVE_COUNT] = {
+		"Pain", "Hunger (Protein)", "Hunger (Carb)", "Hunger (Fat)",
+		"Coldness", "Hotness", "Tiredness", "Sleepiness",
+		"Loneliness", "Crowdedness", "Fear", "Boredom",
+		"Anger", "Sex Drive", "Comfort",
+		"Up", "Down", "Exit", "Enter", "Wait"
+	};
+	if (drive < 0 || drive >= CREATURE_DRIVE_COUNT)
+		return "";
+	return LABELS[drive];
+}
+
+bool IsNavigationDrive(int drive) {
+	return drive >= CREATURE_NEED_DRIVE_COUNT &&
+		drive < CREATURE_DRIVE_COUNT;
+}
+
+int HighestDriveInRange(const std::vector<float>& levels, int begin, int end) {
+	if (begin < 0)
+		begin = 0;
+	if (end > static_cast<int>(levels.size()))
+		end = static_cast<int>(levels.size());
+	if (begin >= end)
+		return -1;
+	int highest = begin;
+	for (int drive = begin + 1; drive < end; ++drive) {
+		if (levels[drive] > levels[highest])
+			highest = drive;
+	}
+	return highest;
+}
+
+std::string ChemicalNameFromCatalogueEntry(int chemicalId,
+	const std::string& entry) {
+	if (entry.empty())
+		return "";
+	std::ostringstream number;
+	number << chemicalId;
+	if (entry == number.str())
+		return "";
+	return entry;
+}
+
+std::string CreatureLifeStateMeaning(const std::string& lifeState) {
+	if (lifeState == "zombie")
+		return "Under external control (ZOMB 1), for example riding a lift "
+			"or holding hands with the hand: alive, but it runs no decision "
+			"scripts of its own until released";
+	return "";
+}
+
 }

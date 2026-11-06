@@ -7,13 +7,13 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 ```
 ┌──────────────┐      stdio (JSON-RPC)      ┌───────────────┐      HTTP REST       ┌──────────────┐
 │   AI Agent   │ ◄─────────────────────────► │  MCP Server   │ ◄──────────────────► │  lc2e engine │
-│  (Antigrav)  │   Model Context Protocol    │  (server.js)  │   localhost:9980     │   (--mcp)    │
+│  (any MCP)   │   Model Context Protocol    │  (server.js)  │   localhost:9980     │   (--mcp)    │
 └──────────────┘                             └───────────────┘                      └──────────────┘
 ```
 
 The MCP server is a lightweight Node.js adapter that translates MCP tool calls into HTTP requests to the engine's `DebugServer` REST API. It runs as a subprocess spawned by the MCP client, communicating via stdin/stdout JSON-RPC. The engine must be running with `--mcp` or `--tools` to expose the API.
 
-All engine state access is thread-safe: API requests are queued by the `DebugServer` and executed on the main engine thread via a work queue + future pattern (see [`tools/ARCHITECTURE.md`](../tools/ARCHITECTURE.md) for details).
+All engine state access is thread-safe: API requests are queued by the `DebugServer` and executed on the main engine thread via a work queue + future pattern (see the `developer-tools` skill in `.agents/skills/` for details).
 
 ---
 
@@ -47,56 +47,25 @@ Both `--mcp` and `--tools` expose the same REST API on port 9980. The difference
 
 ### 3. Configure your MCP client
 
-The MCP server uses **stdio transport** — the MCP client spawns it as a subprocess and communicates via stdin/stdout.
+The adapter uses **stdio transport**: the client spawns it as a subprocess and
+talks JSON-RPC over stdin/stdout.
 
-#### Antigravity (Google)
+The repository root contains `.mcp.json`, which Claude Code (and other clients
+that read that file) picks up automatically when opened in this directory.
+It runs `node mcp/server.js` with `ENGINE_URL=http://127.0.0.1:9980`.
 
-Edit `.gemini/antigravity/mcp_config.json` (click "Open MCP Config" in the MCP Servers panel):
+Any other MCP client with stdio support needs the equivalent:
 
-```json
-{
-  "mcpServers": {
-    "creatures3": {
-      "command": "node",
-      "args": ["/absolute/path/to/creatures3/mcp/server.js"],
-      "env": {
-        "ENGINE_URL": "http://127.0.0.1:9980"
-      }
-    }
-  }
-}
-```
-
-Then click **Refresh** in the MCP Servers panel. The `creatures3` server should appear with 25 tools.
-
-#### Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "creatures3": {
-      "command": "node",
-      "args": ["/absolute/path/to/creatures3/mcp/server.js"],
-      "env": {
-        "ENGINE_URL": "http://127.0.0.1:9980"
-      }
-    }
-  }
-}
-```
-
-#### Other MCP Clients
-
-Any MCP client that supports stdio transport can connect. The server expects:
 - **Command:** `node`
-- **Args:** `["/path/to/creatures3/mcp/server.js"]`
-- **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, and the default)
+- **Args:** `["/absolute/path/to/repo/mcp/server.js"]`
+- **Environment:** `ENGINE_URL=http://127.0.0.1:9980` (optional, the default)
+  and `ENGINE_TOKEN` only for an engine started with `--allow-remote-tools`
+
+After the client refreshes, the `creatures3` server exposes 27 tools.
 
 ---
 
-## Available Tools (25)
+## Available Tools (27)
 
 ### CAOS Execution
 
@@ -108,8 +77,9 @@ Any MCP client that supports stdio transport can connect. The server expects:
 
 | Tool | Description |
 |---|---|
-| `list_creatures` | List all creatures with species, name, life stage/state, glycogen reserve (chemical 4), position, and drive levels. Legacy `health` is also glycogen, not overall health |
-| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature, plus organ life-force/execution state |
+| `list_creatures` | List all creatures with species, player-given `name` and own `selfWord`, life stage/state, glycogen reserve (chemical 4), position, drive levels, and the highest need drive (0–14, without navigation drives). Legacy `health` is also glycogen, not overall health |
+| `get_creature_chemistry` | Get all 256 biochemical concentrations for a creature with catalogue `chemicalNames`, plus organ life-force/execution state |
+| `get_creature_observation` | One same-tick observation: identity, room, nearby agents, smell channels, sensory winners, drives with need and navigation winners, attention target, decision and current CAOS action |
 | `get_creature_brain` | Overview of a creature's brain — all lobes and tracts with neuron counts, exact genome geometry, semantic labels, winner indices, and dendrite counts |
 | `get_brain_lobe` | Detailed neuron states with semantic labels both in a top-level array and on each neuron record |
 | `get_brain_tract` | Dendrite connections for a specific tract — source/destination neuron pairs with synaptic weights (capped at 1000) |
@@ -162,7 +132,11 @@ Any MCP client that supports stdio transport can connect. The server expects:
 | `set_tick_rate` | Change simulation speed (multiplier or WOLF fastest mode) |
 | `advance_ticks` | Run exactly N ticks then pause — for controlled stepping |
 | `get_world_stats` | Aggregate stats: creature count by species, age/sex distribution, engine state |
-| `snapshot_all_creatures` | Bulk dump of all creature states (drives, glycogen reserve, position, top 5 chemicals) |
+| `snapshot_all_creatures` | Bulk dump of all creature states (drives named by `driveLabels`, glycogen reserve, position, top 5 chemicals with names) |
+
+When the engine reports a failure, whether as an HTTP error, `{"ok": false}`
+or a bare `{"error": "..."}`, the tool result carries `isError: true` and keeps
+the engine's message, so agents can tell a failed action from a successful one.
 
 ---
 
@@ -174,7 +148,7 @@ Once connected, an AI agent can interact with the game naturally:
 → Agent calls `list_creatures` → gets a JSON array of all creatures with glycogen reserve, drives, life stage, and life state.
 
 **"What is this Norn's highest drive?"**
-→ Agent calls `list_creatures`, reads the `highestDrive` field and `drives` array.
+→ Agent calls `list_creatures`, reads `highestNeedDriveLabel` (or `highestDrive` for all 20 drives, including navigation) and the `drives` array.
 
 **"Check this creature's brain activity"**
 → Agent calls `get_creature_brain` → gets lobes/tracts overview → calls `get_brain_lobe` for specific lobe details.
@@ -210,6 +184,12 @@ Expected response (newline-delimited JSON):
 {"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"creatures3-engine","version":"1.0.0"}},"jsonrpc":"2.0","id":1}
 ```
 
+### Unit tests
+
+```bash
+node --test mcp/test/*.test.js
+```
+
 ### Verify no unwanted files are tracked
 
 ```bash
@@ -223,10 +203,10 @@ cd mcp && git status
 
 | File | Purpose |
 |---|---|
-| `server.js` | MCP server — 25 tools wrapping the engine REST API, stdio transport |
+| `server.js` | MCP server — 27 tools wrapping the engine REST API, stdio transport |
+| `results.js` | HTTP and MCP result helpers; marks engine failures with `isError` |
 | `package.json` | Node.js package definition (depends on `@modelcontextprotocol/sdk`) |
-| `README.md` | This file |
-| `.gitignore` | Excludes `node_modules/` |
+| `MCP.md` | This file |
 
 ---
 

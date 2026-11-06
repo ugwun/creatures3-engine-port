@@ -156,11 +156,6 @@ void CreatureGallery::CreateTemplateFile() {
 
     // we will want to write the offset here
     uint32 nextSlotOffset = done * myTemplateSize;
-    OutputFormattedDebugString(
-        "CreatureGallery::CreateTemplateFile: slot=%u nextOffset=%u "
-        "templateSize=%u gallerySize=%u mmapLen=%u\n",
-        done, nextSlotOffset, myTemplateSize, myCreatureGallerySize,
-        myMemoryMappedFile.GetLength());
     myMemoryMappedFile.WriteUINT32(nextSlotOffset);
 
     bytesWritten += 8;
@@ -425,12 +420,6 @@ void CreatureGallery::Part4CreatureBuilder(
 uint32 CreatureGallery::FindSlot(uint32 key) {
   myMemoryMappedFile.Reset();
   ASSERT(myMemoryMappedFile.Valid());
-
-  OutputFormattedDebugString(
-      "CreatureGallery::FindSlot key=%u name=%s templateSize=%u "
-      "gallerySize=%u mmapLength=%u\n",
-      key, myName.c_str(), myTemplateSize, myCreatureGallerySize,
-      myMemoryMappedFile.GetLength());
 
   // from the start of the file get the first moniker
   //	uint32* data = myFileData;

@@ -6706,6 +6706,12 @@ button.dashboard-list-row:focus-visible {
   padding: 1px 4px;
 }
 
+.crt-sum-note {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.6);
+  word-break: normal;
+}
+
 .crt-vitality {
   margin-top: 8px;
   padding-top: 10px;

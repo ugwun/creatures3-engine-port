@@ -136,6 +136,18 @@ public:
 	// ---------------------------------------------------------------------
 	void Clear();
 
+	// ---------------------------------------------------------------------
+	// Method:		ReconcileReferenceCounts
+	// Arguments:	holders - one entry per lock a VM holds (a script may
+	//				appear several times); non-scriptorium scripts are ignored
+	// Returns:		(None)
+	// Description:	Sets every installed script's lock count to the number
+	//				of holders. Saved worlds store lock counts, and builds
+	//				before this fix leaked one per completed CALL, which
+	//				left scripts impossible to replace or remove.
+	// ---------------------------------------------------------------------
+	void ReconcileReferenceCounts( const std::vector< MacroScript* >& holders );
+
 	// serialization
 	virtual bool Write(CreaturesArchive &ar) const;
 	virtual bool Read(CreaturesArchive &ar);

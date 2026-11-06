@@ -54,6 +54,7 @@ void File::Open( const std::string& name,
 	myDiskFileHandle = open( name.c_str(), oflags, S_IREAD|S_IWRITE );
 	if (myDiskFileHandle==INVALID_HANDLE_VALUE)
 		throw FileException( "File::Open", __LINE__);
+	myName = name;
 }
 
 
@@ -82,13 +83,18 @@ void File::Create( const std::string& name,
 
 	if( myDiskFileHandle==INVALID_HANDLE_VALUE)
 		throw FileException( "File::Open", __LINE__);
+	myName = name;
 }
 
 
 uint32 File::GetSize()
 {
+	// Prefer the open descriptor: the name may be stale or empty.
 	struct stat s;
-	if( stat( myName.c_str(), &s ) == -1 )
+	int result = (myDiskFileHandle != INVALID_HANDLE_VALUE)
+		? fstat( myDiskFileHandle, &s )
+		: stat( myName.c_str(), &s );
+	if( result == -1 )
 		throw FileException( "File::GetSize()", __LINE__ );
 	return (uint32)s.st_size;
 }

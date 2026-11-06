@@ -130,6 +130,7 @@ public:
 
   // return a reference to the world
   World &GetWorld() { return *myWorld; }
+  bool HasWorld() const { return myWorld != NULL; }
 
   int GetZLibCompressionLevel();
 

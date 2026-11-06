@@ -55,17 +55,17 @@ The drives are defined in [`CreatureConstants.h`](../../engine/Creature/Creature
 | 12 | `ANGER` | 160 | Emotional | Frustration or hostility |
 | 13 | `SEXDRIVE` | 161 | Reproductive | Mating urge |
 | 14 | `COMFORT` | 162 | Biological | General wellbeing |
-| 15 | `UP` | 163 | Navigational | Urge to move upward |
-| 16 | `DOWN` | 164 | Navigational | Urge to move downward |
-| 17 | `EXIT` | 165 | Navigational | Urge to leave current area |
-| 18 | `ENTER` | 166 | Navigational | Urge to enter an area |
-| 19 | `WAIT` | 167 | Navigational | Urge to remain stationary |
+| 15 | `UP` | 199 | Navigational | Urge to move upward |
+| 16 | `DOWN` | 200 | Navigational | Urge to move downward |
+| 17 | `EXIT` | 201 | Navigational | Urge to leave current area |
+| 18 | `ENTER` | 202 | Navigational | Urge to enter an area |
+| 19 | `WAIT` | 203 | Navigational | Urge to remain stationary |
 
 > **Note:** Drives 0–14 are the "classic" biological drives. Drives 15–19 are navigational drives added in C3/DS to enable spatial reasoning — they allow the stimulus system to motivate movement through the metaroom network (e.g., travelling through lifts, doors, and between metarooms). For the spatial hierarchy of metarooms, rooms, doors, and how creatures navigate via CA gradients, see [The World Ecosystem — Deep Dive](world_ecosystem.md).
 
-Each drive exists as a **chemical concentration** in the creature's bloodstream. The mapping from drive number to chemical ID is offset by `STIMTOBIOCHEMOFFSET = 148`, defined in [`BiochemistryConstants.h`](../../engine/Creature/Biochemistry/BiochemistryConstants.h). Drive 0 (Pain) maps to chemical 148, drive 1 (Hunger for Protein) to chemical 149, and so on.
+Each drive exists as a **chemical concentration** in the creature's bloodstream. In Docking Station's catalogue, drive 0 (Pain) maps to chemical 148, drive 1 (Hunger for Protein) to chemical 149, and so on up to drive 14 (Comfort) at 162. The navigation drives 15–19 map to chemicals 199–203. Chemicals 165 onward are smells, so 148 + drive is only right for the need drives.
 
-> **Important:** The drive-to-chemical mapping is *not* hardcoded at the engine level. It is loaded at runtime from the catalogue string `"drive_chemical_numbers"` in [`SensoryFaculty.cpp`](../../engine/Creature/SensoryFaculty.cpp). This means the game data files define which chemicals correspond to which drives. The standard mapping uses chemicals 148–167, but a modder could theoretically reassign them.
+> **Important:** The drive-to-chemical mapping is *not* hardcoded at the engine level. It is loaded at runtime from the catalogue string `"drive_chemical_numbers"` in [`SensoryFaculty.cpp`](../../engine/Creature/SensoryFaculty.cpp). This means the game data files define which chemicals correspond to which drives. The standard mapping uses chemicals 148–162 and 199–203, but a modder could theoretically reassign them.
 
 ---
 
@@ -75,7 +75,7 @@ Drives exist at three distinct layers in the engine, and understanding this laye
 
 ### Layer 1: Chemical Concentrations
 
-Each drive chemical (148–167) lives in the creature's 256-slot biochemistry array. These chemicals are subject to all normal biochemical processing: half-life decay, reactions, emitters, and receptors. They are set by stimulus events, environmental emitters, and chemical reactions.
+Each drive chemical (148–162 and 199–203) lives in the creature's 256-slot biochemistry array. These chemicals are subject to all normal biochemical processing: half-life decay, reactions, emitters, and receptors. They are set by stimulus events, environmental emitters, and chemical reactions.
 
 ### Layer 2: Drive Loci (The Float Array)
 
@@ -590,7 +590,7 @@ void SensoryFaculty::AdjustChemicalLevelWithTraining(
 }
 ```
 
-The key insight: **only drive chemicals can trigger learning**. If a stimulus injects a non-drive chemical (e.g., glycogen, a nutrient), no reinforcement signal is generated. But if it adjusts a drive chemical (148–167), the adjustment amount is sent to the brain's **response lobe** (`resp`).
+The key insight: **only drive chemicals can trigger learning**. If a stimulus injects a non-drive chemical (e.g., glycogen, a nutrient), no reinforcement signal is generated. But if it adjusts a drive chemical (148–162 or 199–203), the adjustment amount is sent to the brain's **response lobe** (`resp`).
 
 > **Note on `prox`:** The source code's else-branch sends the signal to a `prox` (proximal) lobe when the creature is asleep. However, the standard Norn/Grendel/Ettin genomes do **not** include a `prox` lobe, so `Brain::SetInput("prox", ...)` silently does nothing. This branch is effectively dead code for all standard creatures. A custom genome that defines a `prox` lobe could receive sleep-state reinforcement.
 

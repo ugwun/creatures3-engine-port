@@ -143,6 +143,8 @@ public:
 
 	void Lock();
 	void Unlock();
+	int32 GetReferenceCount() const { return myReferenceCount; }
+	void SetReferenceCount(int32 count) { myReferenceCount = count; }
 	bool IsLocked();
 
 

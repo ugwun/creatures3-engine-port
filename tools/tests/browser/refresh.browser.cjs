@@ -194,3 +194,17 @@ test("Creatures does not rebuild its rows every sample", { skip }, async () => {
     "return document.querySelector('.crt-list-item').__mark;"), "kept");
   assert.deepEqual(await pageErrors(browser), []);
 });
+
+test("a scripted zombie explains itself in the creature list", { skip },
+  async () => {
+    const { browser } = suite;
+    await goTo(browser, "creatures");
+    await browser.waitFor(
+      "return document.querySelector('.crt-state--zombie');");
+    const title = await browser.evaluate(
+      "return document.querySelector('.crt-state--zombie').title;");
+    assert.match(title, /ZOMB 1/);
+    assert.equal(await browser.evaluate(
+      "return document.querySelector('.crt-state--alert').title;"), "");
+  });
+

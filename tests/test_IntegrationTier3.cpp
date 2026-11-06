@@ -401,8 +401,8 @@ TEST_F(IntegrationTier3, DockedWorldExitsWithMaxTicks) {
 
 	enginePid = -1;
 	ASSERT_TRUE(WIFEXITED(status)) << "Engine did not exit normally";
-	EXPECT_EQ(WEXITSTATUS(status), 1)
-	    << "Engine exited with unexpected status (expected 1 = success)";
+	EXPECT_EQ(WEXITSTATUS(status), 0)
+	    << "Engine exited with unexpected status (expected 0 = success)";
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libsdl2-dev libsdl2-mixer-dev zlib1g-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake sdl2 sdl2_mixer
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        # A bare --parallel lets Make start every compile at once, which swaps
+        # the 3-core macOS runner for 40 minutes. Cap it at the core count.
+        run: cmake --build build --parallel "$(getconf _NPROCESSORS_ONLN)"
+
+      - name: Test
+        # Integration tiers need proprietary game data and are not built here.
+        # Browser suites skip themselves when Firefox is not installed.
+        run: ctest --test-dir build --output-on-failure -LE integration

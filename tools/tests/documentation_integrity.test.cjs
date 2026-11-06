@@ -127,7 +127,7 @@ test("standard Tab navigation is not documented or implemented as tooltip pinnin
   const sources = [
     path.join(toolsRoot, "tooltips.js"),
     path.join(toolsRoot, "TOOLS.md"),
-    path.join(toolsRoot, "ARCHITECTURE.md"),
+    path.join(toolsRoot, "..", ".agents", "skills", "developer-tools", "SKILL.md"),
     path.join(docsRoot, "tools_overview.md"),
     path.join(docsRoot, "contextual_help_authoring.md")
   ].map(file => fs.readFileSync(file, "utf8")).join("\n");

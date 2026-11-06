@@ -155,9 +155,12 @@ bool MainCamera::StartUp(
   }
 
   void MainCamera::Render() {
-    // Headless mode: skip all rendering and camera tracking.
-    if (IsHeadlessMode())
+    // Headless mode: skip all rendering and camera tracking, but drop the
+    // dirty areas a draw would have consumed so they cannot pile up.
+    if (IsHeadlessMode()) {
+      DiscardPendingDirtyAreas();
       return;
+    }
 
     // ensure that no rogue rendering gets done
     if (myShutDownFlag || DisplayEngine::theRenderer().DealingWithExceptions())

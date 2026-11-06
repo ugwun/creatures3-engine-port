@@ -4,7 +4,7 @@ The Developer Tools are powered by an embedded HTTP/SSE server running on port *
 
 If you wish to interact with the engine programmatically, you can query these endpoints directly. For a general introduction, see the [Developer Tools Overview](tools_overview.md).
 
-> **Note on Concurrency:** Endpoints that modify engine state are executed on the main thread via a thread-safe `WorkItem` queue to prevent data races. See `ARCHITECTURE.md` for details.
+> **Note on Concurrency:** Endpoints that modify engine state are executed on the main thread via a thread-safe `WorkItem` queue to prevent data races. See the repository's `developer-tools` skill for details.
 
 ## Compatibility and Evidence Contract
 
@@ -45,10 +45,11 @@ that has not started when its request times out is abandoned.
 ## Engine State & Flow Control
 
 ### `POST /api/pause`
-Pauses the global engine simulation. All game ticks freeze.
+Pauses the global engine simulation. All game ticks stop; the debug server and
+UI remain responsive. Response: `{ "ok": true, "paused": true }`.
 
 ### `POST /api/resume`
-Resumes the global engine simulation.
+Resumes the global engine simulation. Response: `{ "ok": true, "paused": false }`.
 
 ### `GET /api/engine-state`
 Returns the current pause state (`{"paused": true/false}`).
@@ -67,11 +68,16 @@ Returns one coherent session sample for the persistent observatory ribbon:
   "paused": false,
   "gameSpeed": 1,
   "creatureCount": 4,
+  "displayBacklog": 0,
   "loadPending": false,
   "requestedWorldName": null,
   "requestedWorldType": null
 }
 ```
+
+`displayBacklog` counts the dirty rectangles and background tiles queued for
+the main camera's next draw. It stays near zero; headless engines discard it
+every frame because they never draw.
 
 `worldType` is `"undocked"`, `"docked"`, `"startup"`, or `null` when it
 cannot be established. A deferred REST/MCP load sets `loadPending` and retains
@@ -197,6 +203,9 @@ context. New interactive clients should use `/api/caos/validate` followed by
   "error": ""
 }
 ```
+On a compilation or runtime error the response is
+`{ "ok": false, "output": "", "error": "Invalid command 'foo'" }`.
+
 *(Timeout: 10 seconds. Returns HTTP 504 if the main thread is blocked).*
 
 ### `POST /api/validate`
@@ -204,11 +213,48 @@ Legacy compilation-only endpoint. It returns syntax or compilation errors but
 does not bind the result to a source checksum. New clients should use
 `/api/caos/validate`.
 
+**Request:** `{ "caos": "setv va00 42\noutv va00" }`
+
+**Response:** `{ "ok": true }`, or on error
+`{ "ok": false, "error": "Invalid command", "position": 24 }`. `position` is
+the zero-based character offset in the source, or `-1` when unavailable.
+Timeout 5 seconds; the compiled script is discarded.
+
 ### `POST /api/compile-map`
-Compiles CAOS code and returns the address-to-source-position map. Used by the IDE to map source line character offsets to bytecode IPs for breakpoints.
+Compiles CAOS code and returns the bytecode address → source position map.
+The Workbench uses it to find which lines hold executable instructions and to
+map line numbers to bytecode IPs for breakpoints.
+
+**Request:** `{ "caos": "setv va00 42\noutv va00" }`
+
+**Response:**
+```json
+{ "ok": true, "map": { "0": 0, "6": 15, "12": 28 } }
+```
+
+Keys are bytecode IP addresses (as strings); values are the source character
+offset where that instruction begins. Blank lines, comments, and continuation
+lines of multi-token instructions produce no entry. Errors return
+`{ "ok": false, "error": "Syntax error at token 'xyz'" }`. Timeout 5 seconds;
+the map comes from the compiler's `DebugInfo` address map.
 
 ### `GET /api/caos-commands`
-Returns a structured JSON catalog of all supported CAOS commands, functions, and variables. Used for IDE autocompletion.
+Returns the CAOS command dictionary used for auto-completion, built from
+`CAOSDescription::MakeGrandTable()`, sorted alphabetically, and cached after
+the first call.
+
+```json
+[
+  { "name": "SETV", "type": "command", "params": "variable_name value",
+    "description": "Sets the given variable to the given value." },
+  { "name": "POSX", "type": "integer", "params": "",
+    "description": "Returns the X position of TARG." }
+]
+```
+
+`type` is `command`, `integer`, `float`, `string`, `agent`, or `variable`.
+Descriptions are HTML-stripped and truncated to about 150 characters;
+undocumented commands are omitted. Only the first call touches the main thread.
 
 ---
 
@@ -223,6 +269,24 @@ The response includes the owning agent's `family`, `genus`, `species`, and
 `gallery`; cross-navigation uses those values as an identity fingerprint
 before revisiting a historical numeric ID.
 
+```json
+{
+  "id": 42,
+  "family": 2, "genus": 13, "species": 100,
+  "gallery": "balloonbug",
+  "running": true, "blocking": false, "paused": true,
+  "ip": 156,
+  "posx": 5200, "posy": 1300,
+  "scriptFamily": 2, "scriptGenus": 13, "scriptSpecies": 100, "scriptEvent": 9,
+  "source": "inst\nsetv va00 42\nouts \"hello\"\n...",
+  "sourcePos": 24,
+  "breakpoints": [156, 200],
+  "targ": 67, "ownr": 42, "from": 0, "it": 0,
+  "variables": {},
+  "vmState": "..."
+}
+```
+
 ### `POST /api/breakpoint`
 Set, clear, or clear all breakpoints on a specific agent's CAOS virtual machine.
 **Request:**
@@ -230,11 +294,19 @@ Set, clear, or clear all breakpoints on a specific agent's CAOS virtual machine.
 { "agentId": 42, "action": "set", "ip": 156 }
 ```
 
+`action` is `"set"`, `"clear"`, or `"clearAll"` (which ignores `ip`).
+**Response:** `{ "ok": true, "breakpoints": [156, 200] }`.
+
 ### `POST /api/step/:agentId`
-Step a paused agent's CAOS VM by one instruction (`into` or `over`).
+Step a paused agent's CAOS VM by one instruction. The agent must be paused at
+a breakpoint. **Request:** `{ "mode": "into" }` or `{ "mode": "over" }`.
+
+```json
+{ "ok": true, "ip": 160, "paused": true, "running": true, "blocking": false, "sourcePos": 30 }
+```
 
 ### `POST /api/continue/:agentId`
-Resume a paused agent's execution from a breakpoint.
+Resume a paused agent's execution from a breakpoint. Response: `{ "ok": true }`.
 
 ---
 
@@ -268,17 +340,65 @@ compatibility. The UI derives **Waiting** only from
 `state: "blocking"` plus `blockingCommand: "WAIT"`, and derives recently
 **Finished** from disappearance between samples.
 
+```json
+[
+  {
+    "agentId": 42,
+    "family": 2, "genus": 13, "species": 100, "event": 9,
+    "state": "running",
+    "ip": 156,
+    "source": "doif targ <> null",
+    "sourceRevision": "50ca98130c5a42dc",
+    "blockingCommand": "", "blockReason": "",
+    "targ": 77, "it": 0,
+    "posX": 5200, "posY": 1300,
+    "worldTick": 8144,
+    "gallery": "balloonbug",
+    "agentFamily": 2, "agentGenus": 13, "agentSpecies": 100
+  }
+]
+```
+
 ### `GET /api/scriptorium`
-List all installed scripts in the engine's script registry.
+List all installed scripts in the engine's script registry:
+`[ { "family": 2, "genus": 13, "species": 100, "event": 9 }, ... ]`.
 
 ### `GET /api/scriptorium/:f/:g/:s/:e`
 Get an exact installed event's source, stable FNV-1a checksum, classifier,
 world name, world tick, and system tick. No wildcard fallback is used.
 
+```json
+{
+  "source": "setv va00 42\noutv va00",
+  "checksum": "fnv1a64:…",
+  "referenceCount": 0,
+  "classifier": { "family": 2, "genus": 18, "species": 16, "event": 9 },
+  "worldName": "Experiment Branch",
+  "worldTick": 12040,
+  "systemTick": 318
+}
+```
+
+`referenceCount` is the number of locks held on the script: one per VM
+running it and one per `CALL` caller waiting on it. A locked script cannot be
+replaced or removed. A missing script returns `{ "error": "Script not
+found" }`. Timeout 5 seconds.
+
 ### `POST /api/scriptorium/inject`
 Legacy compatibility endpoint that compiles source and installs or replaces it
 without a reviewed precondition. The Workbench uses `/api/caos/script` so
 Install cannot silently replace and Replace/Remove are checksum-bound.
+
+**Request:**
+```json
+{ "family": 2, "genus": 18, "species": 16, "event": 9, "source": "setv va00 42\noutv va00" }
+```
+
+**Response:** `{ "ok": true }`, or
+`{ "ok": false, "error": "Failed to install — script may be locked" }`.
+Timeout 10 seconds. The engine compiles with `Orderiser::OrderFromCAOS()`,
+assigns the classifier with `MacroScript::SetClassifier()`, and registers the
+script with `Scriptorium::InstallScript()`.
 
 ---
 
@@ -300,6 +420,47 @@ Each creature row also includes `roomId` and `metaRoomId` when its current
 position resolves to engine map geometry. Missing geometry is omitted rather
 than guessed.
 
+```json
+[
+  {
+    "agentId": 42,
+    "moniker": "abc1-def2-...",
+    "name": "Alice",
+    "selfWord": "alice",
+    "genus": 1, "species": 1, "sex": 2,
+    "age": 3, "ageInTicks": 12500,
+    "lifeState": "alert",
+    "health": 0.85,
+    "healthMeaning": "glycogen concentration (legacy compatibility)",
+    "glycogenReserve": 0.85,
+    "glycogenChemicalId": 4,
+    "posX": 3400, "posY": 2100,
+    "roomId": 680, "metaRoomId": 0,
+    "drives": [0.1, 0.3, 0.8, "..."],
+    "highestDrive": 2,
+    "highestDriveLabel": "Hunger (Carb)",
+    "highestNeedDrive": 2,
+    "highestNeedDriveLabel": "Hunger (Carb)",
+    "highestNeedDriveValue": 0.8
+  }
+]
+```
+
+`name` is the name the player gave the creature, as `HIST NAME` returns it
+(empty when unnamed). `selfWord` is the creature's own vocabulary word for
+itself, empty until it has learnt one. Naming gives it the name in lower case
+to learn; unnamed babies use whatever word they picked up ("bub", "eem"). `drives` holds 20 floats in
+`driveoffsets` enum order: Pain, Hunger (Protein), Hunger (Carb), Hunger
+(Fat), Coldness, Hotness, Tiredness, Sleepiness, Loneliness, Crowdedness,
+Fear, Boredom, Anger, Sex Drive, Comfort, then the navigation drives Up,
+Down, Exit, Enter and Wait. `highestDrive` covers all 20, so a Norn at a lift
+can report Wait; `highestNeedDrive` covers drives 0–14 only.
+
+`lifeState` is `alert`, `asleep`, `dreaming`, `unconscious`, `zombie`,
+`dead` or `unknown`. `zombie` means `ZOMB 1`: a living creature under
+external control, for example riding a lift or holding hands with the hand.
+Rows in that state carry a `lifeStateMeaning` sentence.
+
 ### `GET /api/creatures/snapshot`
 
 Returns all active creatures in one engine-main-thread work item for coherent
@@ -307,8 +468,14 @@ same-tick cohort comparison. Root provenance includes schema/source,
 world/system ticks, wall capture time, world name, pause state, game speed,
 and `requestedChemicalIds`.
 
-Each creature includes identity and classifier, sex, life state, life-stage
-index, tick age, glycogen reserve, all drives and highest-drive ID, compact
+The root also carries `driveLabels`, the 20 drive names in `drives` order.
+
+Each creature includes identity and classifier, `name` and `selfWord` as in
+`GET /api/creatures`, sex, life state (with `lifeStateMeaning` for
+`zombie`), life-stage index, tick age, glycogen reserve, all drives, the
+highest drive and highest need drive with labels, the five strongest
+chemicals as `topChemicals` (`id`, catalogue `name` or null, `concentration`),
+compact
 organ functioning/failed counts, position/room/metaroom, and compact current
 attention, target, decision, action, and blocking-command state.
 
@@ -397,13 +564,16 @@ one engine-main-thread sample. The root includes `worldName`, `worldTick`,
 
 The response groups:
 
-- creature identity, life state, age-stage index, tick age, position, room,
-  and metaroom;
+- creature identity (`name` and `selfWord` as in `GET /api/creatures`),
+  life state with `lifeStateMeaning` for `zombie`, age-stage index, tick
+  age, position, room, and metaroom;
 - a complete same-room count, the five nearest same-room agents, and all 20
   current room CA/smell-channel values;
 - available `visn`, `smel`, and `noun` winners and their two strongest
   sampled candidates;
-- all 20 drives and the highest drive;
+- all 20 drives (each with `id`, `label`, `value` and `navigation`), the
+  highest drive, and separately `highestNeedDrive` (drives 0–14) and
+  `highestNavigationDrive` (15–19), each `{id, label, value}`;
 - attention winner, motor attention ID, introspection flag, and current `IT`
   with target classifier, gallery, position, room, and metaroom;
 - decision winner, motor action offset, and involuntary action;
@@ -471,6 +641,31 @@ sampled in one engine-main-thread work item and includes schema/source,
 world/system ticks, world name, and wall capture time. Timeline uses this
 provenance for pinned-chemical, reward/punishment, and organ-status events;
 its tick can differ slightly from the separate atomic observation request.
+
+```json
+{
+  "chemicals": [0.0, 0.1, "...", 0.72, "..."],
+  "organCount": 5,
+  "organs": [
+    {
+      "index": 0,
+      "clockRate": 0.5,
+      "lifeForce": 0.98, "shortTermLifeForce": 0.95, "longTermLifeForce": 0.98,
+      "energyCost": 0.01,
+      "functioning": true, "failed": false,
+      "receptorCount": 4, "emitterCount": 2, "reactionCount": 3
+    }
+  ]
+}
+```
+
+`chemicals` is a flat array of 256 floats indexed by chemical ID.
+`chemicalNames` maps chemical IDs (as strings) to names from the game's
+`chemical_names` catalogue, for example `"4": "Glycogen"`; unnamed slots are
+omitted.
+`functioning` combines the engine's latest organ energy flag with the failure
+state: for a non-failed organ, `false` means ATP was unavailable at its most
+recent activation, not a diagnosis of impairment. Timeout 5 seconds.
 
 ### `GET /api/creature/:id/organs`
 Get the current state and parameters of all genome-defined biochemical
@@ -540,13 +735,73 @@ without applying a mutation. HTTP 504 indicates a main-thread timeout. See
 Get the brain overview of a creature — all neural lobes and tracts with neuron
 counts, semantic `labels`, and exact genome/engine `x` and `y` geometry.
 
+```json
+{
+  "lobes": [
+    { "index": 0, "name": "verb", "neuronCount": 40, "winner": 4,
+      "x": 0, "y": 0, "width": 8, "height": 5, "colour": [255, 0, 0],
+      "labels": ["Quiescent", "Push", "Pull", "Stop", "Approach", "..."] }
+  ],
+  "tracts": [
+    { "index": 0, "name": "vis to attn", "dendriteCount": 160, "srcLobe": "visn", "dstLobe": "attn" }
+  ]
+}
+```
+
 ### `GET /api/creature/:id/brain/lobe/:lobe`
 Get detailed neuron states for a specific brain lobe. Semantic labels are
 available on this same response as both a top-level `labels` array and each
 neuron's `label`, as well as on the overview response.
 
+```json
+{
+  "name": "verb", "neuronCount": 40, "winner": 4,
+  "labels": ["Quiescent", "Push", "..."],
+  "neurons": [
+    { "id": 0, "label": "Quiescent", "states": [0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] },
+    { "id": 1, "label": "Push", "states": [0.9, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] }
+  ]
+}
+```
+
 ### `GET /api/creature/:id/brain/tract/:tract`
-Get dendrite connections for a specific brain tract. Returns source/destination neuron pairs with synaptic weights.
+Get dendrite connections for a specific brain tract. Returns source/destination
+neuron pairs with synaptic weights, capped at 1000 dendrites.
+
+```json
+{
+  "name": "vis to attn", "srcLobe": "visn", "dstLobe": "attn",
+  "dendriteCount": 160, "dendritesReturned": 160,
+  "dendrites": [
+    { "id": 0, "src": 3, "dst": 7, "weights": [0.8, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] }
+  ]
+}
+```
+
+### `GET /api/creature/:id/brain/lobe/:lobe/neuron/:neuron`
+Deep inspection of one neuron: its state variables, the decompiled lobe and
+tract SVRules that apply to it, and every dendrite connection pointing to or
+from it. The Brain sub-tab's Deep Neuron Detail panel uses this endpoint.
+
+```json
+{
+  "lobeIndex": 1, "lobeName": "decn",
+  "neuronId": 11, "neuronCount": 13, "isWinner": false,
+  "states": [ { "name": "state", "value": 0.0016 }, { "name": "input", "value": 0.0 } ],
+  "initRule": [],
+  "updateRule": [ { "op": "load", "operand": "neuron", "idx": 1, "val": 0.004 } ],
+  "tractRules": [
+    { "tractIndex": 4, "tractName": "comb->decn", "initRule": [],
+      "updateRule": [ { "op": "load", "operand": "input", "idx": 2, "val": 0.008 } ] }
+  ],
+  "connections": [
+    { "tractIndex": 10, "tractName": "verb->decn", "direction": "incoming",
+      "srcLobeIdx": 8, "srcLobe": "verb", "dstLobeIdx": 1, "dstLobe": "decn",
+      "srcNeuron": 11, "dstNeuron": 11,
+      "weights": [ { "name": "stw", "value": 0 }, { "name": "ltw", "value": 0 } ] }
+  ]
+}
+```
 
 ---
 
@@ -593,6 +848,83 @@ successful injection is confirmed by the new live entry in the engine agent
 map. Experiment provenance sanitization retains the identities, checksums,
 world, agent result, and tick while omitting gene arrays and binary content.
 
+Example shapes:
+
+```json
+// GET /api/genetics/files
+[
+  { "name": "norn.astro.48", "isCore": true, "isExperimental": false,
+    "metadataStatus": "absent", "origin": "protected_original", "sourceName": null },
+  { "name": "norn_astro_48_experiment_01", "isCore": false, "isExperimental": true,
+    "metadataStatus": "verified", "origin": "copy", "sourceName": "norn.astro.48" }
+]
+```
+
+```json
+// GET /api/genetics/file/:name (abridged)
+{
+  "moniker": "985-haze-kszy7-...",
+  "geneCount": 287,
+  "identity": {
+    "currentName": "985-haze-kszy7-...", "format": "dna3",
+    "checksum": "fnv1a64:115c0bfe4ed1b1ae", "checksumAlgorithm": "FNV-1a-64",
+    "isProtected": false, "isExperimental": false, "metadataStatus": "absent",
+    "origin": "original", "sourceName": null, "sourceChecksum": null
+  },
+  "genes": [
+    { "type": 2, "subtype": 1, "typeName": "Creature", "subtypeName": "Genus",
+      "id": 0, "generation": 0, "switchOnTime": 0, "switchOnLabel": "Embryo",
+      "flags": { "mutable": true, "dupable": false, "cutable": false,
+                 "maleOnly": false, "femaleOnly": false, "dormant": false },
+      "flagsRaw": 1, "mutability": 156, "variant": 0,
+      "data": { "genus": 1, "motherMoniker": "...", "fatherMoniker": "..." } }
+  ]
+}
+```
+
+Each gene carries the parsed 8-byte header and a `data` object whose shape
+depends on type/subtype (see [The Digital Genome](genome_deep_dive.md)). Lobe
+and Tract genes include decompiled SVRule arrays. An unreadable file returns
+`{ "error": "Could not open genome file" }`.
+
+```json
+// POST /api/genetics/copy
+{ "sourceName": "norn.astro.48", "derivedName": "norn_astro_48_experiment_01" }
+// → { "ok": true, "sourceChecksum": "...", "derivedChecksum": "...", "worldName": "...", "worldTick": 1234, "correlationId": "..." }
+```
+
+```json
+// POST /api/genetics/crossover
+{ "parentA": "985-haze-kszy7-...", "parentB": "000-chld-4a3b2c1d-...", "child": "comparison_cross_01" }
+// → { "ok": true, "status": "success", "child": "comparison_cross_01", "childChecksum": "fnv1a64:...",
+//     "parentA": "...", "parentAChecksum": "...", "parentB": "...", "parentBChecksum": "...",
+//     "worldTick": 1234, "correlationId": "genome-crossover-..." }
+```
+
+Crossover runs `Genome::Cross()` with mutation parameters `(200, 200, 200,
+200)`, deliberately high so the developer tool produces diverse offspring; the
+game's own breeding uses creature-specific rates from biochemistry.
+
+A successful injection returns the engine-confirmed result:
+
+```json
+{
+  "ok": true, "status": "success",
+  "derivedChecksum": "fnv1a64:ca76b5cff985e8af",
+  "sourceName": "norn.astro.48",
+  "worldName": "Disposable Genetics", "worldTick": 463, "enginePaused": false,
+  "result": { "agentId": 429, "isCreature": true,
+              "engineeredFrom": "norn_astro_48_experiment_01",
+              "genomeMoniker": "001-rune-mezz8-73syc-zh7f6-vaalw",
+              "moniker": "001-rune-mezz8-73syc-zh7f6-vaalw" }
+}
+```
+
+A stale checksum returns
+`{ "ok": false, "error": "The saved genome checksum changed; reload and review again" }`.
+`genomeMoniker` is the engine-generated live identity, not the private
+template name. All genetics endpoints time out after 5 seconds.
+
 ---
 
 ## Log Streaming
@@ -615,9 +947,28 @@ restart and bounded-history overflow. Server retention is 5,000 records and
 approximately 4 MiB. See [Log — Contextual Engine Evidence](tab_log.md) for
 the complete schema and provenance rules.
 
+**Event format:**
+```
+id: 1785152071258-85556:68
+data: {"schemaVersion":2,"kind":"record","severity":"info","subsystem":"world","worldName":"test3","worldTick":110035,"wallTimeMs":1785152152138,"message":"World loaded successfully","cat":4,"t":1234567,"msg":"World loaded successfully"}
+
+data: {"schemaVersion":2,"kind":"gap","reason":"server_restart","droppedCount":0,"message":"Log stream restarted; records between sessions are unavailable"}
+```
+
+The compatibility aliases are `cat` (category bitmask: 1=error, 2=network,
+4=world, 8=caos, 16=shutdown, 32=sound, 64=crash), `t` (monotonic
+milliseconds), and `msg` (message text).
+
 ---
 
 ## Metadata
 
 ### `GET /api/agent-names`
 Returns human-readable agent names for classifiers in the scriptorium, resolved from `"Agent Help F G S"` catalogue tags.
+
+```json
+{ "2 3 16": "Tuba seed", "1 1 152": "Teleporter", "2 21 18": "Commedia" }
+```
+
+Keys are `"family genus species"` strings; classifiers without a catalogue
+entry are omitted. Timeout 5 seconds.

@@ -267,7 +267,7 @@ uint32 GetAdvanceTicksRemaining() { return sAdvanceTicks.load(); }
 
 static bool InitInstance();
 static bool DoStartup();
-static void DoShutdown();
+static bool DoShutdown();
 static void HandleEvent(const SDL_Event &event);
 
 // -------------------------------------------------------------------------
@@ -277,6 +277,7 @@ static void HandleEvent(const SDL_Event &event);
 // main event loop to handle OS signals (like SDL_Quit) and mouse/key input.
 // -------------------------------------------------------------------------
 int main(int argc, char *argv[]) {
+  int exitCode = 0;
   try {
     ourRunning = true;
     CaptureSanitizedLaunchOptions(argc, argv);
@@ -531,8 +532,10 @@ int main(int argc, char *argv[]) {
   // In debug mode it is more useful to see what line of code
   // the error was caused by.
   catch (BasicException &e) {
+    exitCode = 1;
     ErrorMessageHandler::Show(e, std::string("WinMain"));
   } catch (...) {
+    exitCode = 1;
     // We don't want to localise this message, to avoid getting into
     // infinite exception traps when the catalogues are bad.
     ErrorMessageHandler::NonLocalisable(
@@ -542,9 +545,11 @@ int main(int argc, char *argv[]) {
 
   //	timeEndPeriod(1);
 
-  DoShutdown();
+  if (!DoShutdown())
+    exitCode = 1;
   SDL_Quit();
-  return true;
+  // 0 on a clean exit, 1 after a fatal exception or a failed world save.
+  return exitCode;
 }
 
 // -------------------------------------------------------------------------
@@ -911,30 +916,33 @@ case WM_MOVE: {
   // Saves the current world (if one is loaded), stops the debug server,
   // and tears down the App subsystems.  Called on clean exit — including
   // SIGINT (Ctrl+C) and SIGTERM — so world state is always preserved.
+  // Returns false when the world could not be saved.
   // -------------------------------------------------------------------------
-  static void DoShutdown() {
+  static bool DoShutdown() {
     ourRunning = false;
+    bool saved = true;
 
     // Save the world before destroying it.  The Startup world (main menu)
     // has no meaningful state, so skip it.
-    try {
+    if (theApp.HasWorld() && !theApp.GetWorld().IsStartUpWorld()) {
       World &w = theApp.GetWorld();
-      if (!w.IsStartUpWorld()) {
-        fprintf(stderr, "[lc2e] Saving world \"%s\"...\n",
-                w.GetWorldName().c_str());
-        if (w.Save()) {
-          fprintf(stderr, "[lc2e] World saved.\n");
-        } else {
-          fprintf(stderr, "[lc2e] WARNING: World save failed.\n");
-        }
+      fprintf(stderr, "[lc2e] Saving world \"%s\"...\n",
+              w.GetWorldName().c_str());
+      try {
+        saved = w.Save();
+      } catch (...) {
+        saved = false;
       }
-    } catch (...) {
-      // No world loaded — nothing to save.
+      if (saved)
+        fprintf(stderr, "[lc2e] World saved.\n");
+      else
+        fprintf(stderr, "[lc2e] WARNING: World save failed.\n");
     }
 
     if (enableTools || enableMCP) theDebugServer.Stop();
 
     theApp.ShutDown();
+    return saved;
   }
 
   void SignalTerminateApplication() {

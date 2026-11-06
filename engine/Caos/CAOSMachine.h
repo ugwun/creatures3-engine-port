@@ -445,10 +445,11 @@ public:
   }
 
   // Restore a previously saved CallState, resuming the caller script.
+  // The call-stack entry already holds the caller's lock (ClearCallStack
+  // releases it for entries that are never restored), so restoring hands
+  // that lock back to the VM instead of taking a second one.
   void RestoreCallState(const CallState &state) {
     myMacro = state.macro;
-    if (myMacro)
-      myMacro->Lock(); // re-lock the caller's macro
     myIP = state.ip;
     myP1 = state.p1;
     myP2 = state.p2;
@@ -497,6 +498,16 @@ public:
 
   // Clear the entire call stack, unlocking any saved macros.
   void ClearCallStack();
+
+  // Appends one entry per script lock this VM holds: the running script
+  // and every CALL caller waiting on the stack.
+  void CollectHeldScripts(std::vector<MacroScript *> &scripts) const {
+    if (myMacro)
+      scripts.push_back(myMacro);
+    for (size_t i = 0; i < myCallStack.size(); ++i)
+      if (myCallStack[i].macro)
+        scripts.push_back(myCallStack[i].macro);
+  }
 
   void SetCamera(Camera *newCamera) { // if this is null then it's OK it means
                                       // use the main camera

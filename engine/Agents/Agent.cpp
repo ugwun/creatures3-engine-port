@@ -1690,7 +1690,8 @@ void Agent::Trash() {
 
   myRunning = false;
 
-  // stop any running script
+  // stop any running script, including CALL callers waiting beneath it
+  myVirtualMachine.ClearCallStack();
   myVirtualMachine.StopScriptExecuting();
 
   myPorts.Trash();

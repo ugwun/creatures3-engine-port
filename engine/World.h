@@ -188,6 +188,8 @@ public:
   // archive
   // ----------------------------------------------------------------------
   virtual bool Read(CreaturesArchive &archive);
+  // Recounts script locks from the loaded agents (see World.cpp).
+  void ReconcileScriptLocks();
 
   // ---------------------------------------------------------------------
   // Method:		Load

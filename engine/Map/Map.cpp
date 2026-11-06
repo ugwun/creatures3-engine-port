@@ -155,7 +155,7 @@ bool Map::DoesPathIntersectLine(
     const Vector2D &deltaPath, const Vector2D &startLine,
     const Vector2D &endLine, const Vector2D &deltaLine,
     Vector2D &intersectionPath, Vector2D &intersectionLine) {
-  register float denominator =
+  float denominator =
       deltaPath.x * deltaLine.y - deltaPath.y * deltaLine.x;
 
   if (denominator == 0.0f)
@@ -164,13 +164,13 @@ bool Map::DoesPathIntersectLine(
 
   Vector2D diff = startPath - startLine;
 
-  register float parameterLine =
+  float parameterLine =
       (deltaPath.x * diff.y - deltaPath.y * diff.x) / denominator;
   if ((parameterLine < 0.0f) || (parameterLine > 1.0f))
     // The path never crosses the line, no intersection
     return false;
 
-  register float parameterPath =
+  float parameterPath =
       (deltaLine.x * diff.y - deltaLine.y * diff.x) / denominator;
   if (parameterPath < 0.0f)
     // Line is behind the path, no intersection
@@ -232,7 +232,7 @@ bool Map::DoesPathCrossOrTouchLine(const Vector2D &startPath,
                                    const Vector2D &endLine,
                                    const Vector2D &deltaLine,
                                    Vector2D &intersection) {
-  register float denominator =
+  float denominator =
       deltaPath.x * deltaLine.y - deltaPath.y * deltaLine.x;
 
   if (denominator == 0.0f)
@@ -241,13 +241,13 @@ bool Map::DoesPathCrossOrTouchLine(const Vector2D &startPath,
 
   Vector2D diff = startPath - startLine;
 
-  register float parameterLine =
+  float parameterLine =
       (deltaPath.x * diff.y - deltaPath.y * diff.x) / denominator;
   if ((parameterLine < 0.0f) || (parameterLine > 1.0f))
     // No intersection
     return false;
 
-  register float parameterPath =
+  float parameterPath =
       (deltaLine.x * diff.y - deltaLine.y * diff.x) / denominator;
   if ((parameterPath < 0.0f) || (parameterPath > 1.0f))
     // No intersection

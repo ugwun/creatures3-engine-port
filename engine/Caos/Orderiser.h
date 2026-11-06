@@ -30,6 +30,7 @@
 #include <map>
 #include <list>
 #include <set>
+#include <vector>
 
 
 // GLOBAL
@@ -189,6 +190,10 @@ private:
 	// should sort out a better error system...
 	char myErrorBuffer[1024];
 	int myErrorPos;
+
+	// Ops whose arguments are being compiled, innermost last, so errors can
+	// name the command that expected the missing argument.
+	std::vector<const OpSpec*> myOpStack;
 };
 
 

@@ -6,6 +6,7 @@
 #include "engine/Caos/Scriptorium.h"
 #include "engine/Classifier.h"
 #include <gtest/gtest.h>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // Helper: create a tiny valid MacroScript with a given classifier.
@@ -173,4 +174,62 @@ TEST(ScriptoriumTest, ClearEmptiesScriptorium) {
   s.DumpFamilyIDs(families);
   EXPECT_TRUE(families.empty());
   EXPECT_EQ(s.FindScriptExact(Classifier(1, 2, 3, 4)), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// Lock reconciliation after loading a world
+// ---------------------------------------------------------------------------
+
+TEST(ScriptoriumTest, LeakedLocksBlockReplacementUntilReconciled) {
+  Scriptorium s;
+  MacroScript *script = MakeScript(1, 2, 3, 4);
+  s.InstallScript(script);
+  // A saved world from a build that leaked a lock on every completed CALL.
+  script->SetReferenceCount(480);
+
+  EXPECT_FALSE(s.InstallScript(MakeScript(1, 2, 3, 4)));
+  EXPECT_FALSE(s.ZapScript(Classifier(1, 2, 3, 4)));
+
+  s.ReconcileReferenceCounts(std::vector<MacroScript *>());
+  EXPECT_EQ(script->GetReferenceCount(), 0);
+  EXPECT_TRUE(s.ZapScript(Classifier(1, 2, 3, 4)));
+}
+
+TEST(ScriptoriumTest, ReconcileCountsEachHolderAndKeepsHeldScriptsLocked) {
+  Scriptorium s;
+  MacroScript *running = MakeScript(1, 2, 3, 4);
+  MacroScript *idle = MakeScript(1, 2, 3, 5);
+  s.InstallScript(running);
+  s.InstallScript(idle);
+  running->SetReferenceCount(7);
+  idle->SetReferenceCount(3);
+
+  // Two VMs run the script; one more waits on it as a CALL caller.
+  std::vector<MacroScript *> holders;
+  holders.push_back(running);
+  holders.push_back(running);
+  holders.push_back(running);
+  s.ReconcileReferenceCounts(holders);
+
+  EXPECT_EQ(running->GetReferenceCount(), 3);
+  EXPECT_EQ(idle->GetReferenceCount(), 0);
+  EXPECT_FALSE(s.ZapScript(Classifier(1, 2, 3, 4)));
+}
+
+TEST(ScriptoriumTest, ReconcileIgnoresScriptsOutsideTheScriptorium) {
+  Scriptorium s;
+  MacroScript *installed = MakeScript(1, 2, 3, 4);
+  s.InstallScript(installed);
+  MacroScript *console = MakeScript(0, 0, 0, 0); // a one-off console script
+  console->SetReferenceCount(1);
+
+  std::vector<MacroScript *> holders;
+  holders.push_back(console);
+  holders.push_back(NULL);
+  s.ReconcileReferenceCounts(holders);
+
+  EXPECT_EQ(installed->GetReferenceCount(), 0);
+  EXPECT_EQ(console->GetReferenceCount(), 1);
+  console->SetReferenceCount(0);
+  delete console;
 }

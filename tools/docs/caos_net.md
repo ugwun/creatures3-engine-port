@@ -1,6 +1,6 @@
 # CAOS Reference: Networking (DS)
 
-Docking Station online networking commands. All commands in this section are **offline stubs** in the macOS port — they compile and execute but perform no actual network operations.
+Docking Station online networking commands. All commands in this section are **offline stubs** in this Linux/macOS port — they compile and execute but perform no actual network operations.
 
 ---
 

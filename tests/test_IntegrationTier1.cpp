@@ -300,9 +300,8 @@ TEST_F(IntegrationTier1, EngineBootsAndExitsCleanly) {
 
 	enginePid = -1; // Already exited
 	ASSERT_TRUE(WIFEXITED(status)) << "Engine did not exit normally";
-	// The engine returns true (1) on success — see SDL_Main.cpp main()
-	EXPECT_EQ(WEXITSTATUS(status), 1)
-	    << "Engine exited with unexpected status code";
+	EXPECT_EQ(WEXITSTATUS(status), 0)
+	    << "Engine exited with unexpected status code (expected 0 = success)";
 }
 
 // ---------------------------------------------------------------------------
@@ -494,4 +493,59 @@ TEST_F(IntegrationTier1, CaosSyntaxError) {
 	std::string body = res->body;
 	EXPECT_NE(body.find("\"ok\":false"), std::string::npos)
 	    << "Invalid CAOS should return ok:false: " << body;
+}
+
+// ---------------------------------------------------------------------------
+// Test: compile errors name the command whose argument is missing
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier1, CaosErrorNamesCommandSignature) {
+	enginePid = LaunchEngine();
+	ASSERT_GT(enginePid, 0) << "Failed to fork engine process";
+	ASSERT_TRUE(WaitForAPI(apiPort, 20))
+	    << "REST API did not become available within 20s";
+
+	httplib::Client cli("localhost", apiPort);
+	cli.set_connection_timeout(2, 0);
+	cli.set_read_timeout(10, 0);
+
+	// HIST MON1 needs a moniker and an event number; the event is missing.
+	auto res = cli.Post("/api/execute",
+	                     "{\"caos\":\"outs hist mon1 \\\"x\\\"\"}",
+	                     "application/json");
+	ASSERT_NE(res, nullptr) << "POST /api/execute returned null";
+	EXPECT_NE(res->body.find("\"ok\":false"), std::string::npos) << res->body;
+	EXPECT_NE(res->body.find(
+	              "parsing HIST MON1 moniker (string) event_no (integer)"),
+	          std::string::npos)
+	    << "Error should name the command and its arguments: " << res->body;
+}
+
+// ---------------------------------------------------------------------------
+// Test: an unresolved label near the lexer's length limit reports an error
+// instead of overflowing the compiler's message buffer
+// ---------------------------------------------------------------------------
+TEST_F(IntegrationTier1, LongUnresolvedLabelReportsError) {
+	enginePid = LaunchEngine();
+	ASSERT_GT(enginePid, 0) << "Failed to fork engine process";
+	ASSERT_TRUE(WaitForAPI(apiPort, 20))
+	    << "REST API did not become available within 20s";
+
+	httplib::Client cli("localhost", apiPort);
+	cli.set_connection_timeout(2, 0);
+	cli.set_read_timeout(10, 0);
+
+	// "Unresolved label \"<label>\"" no longer fits the 512-byte buffer.
+	const std::string label(505, 'a');
+	auto res = cli.Post("/api/execute",
+	                     "{\"caos\":\"goto " + label + "\"}",
+	                     "application/json");
+	ASSERT_NE(res, nullptr) << "POST /api/execute returned null";
+	EXPECT_NE(res->body.find("\"ok\":false"), std::string::npos) << res->body;
+	EXPECT_NE(res->body.find("Unresolved label"), std::string::npos) << res->body;
+	EXPECT_EQ(res->body.find(label + "\\\""), std::string::npos)
+	    << "The message should be cut at the buffer size, not written past it";
+
+	auto tick = cli.Get("/api/world/tick");
+	ASSERT_NE(tick, nullptr) << "Engine stopped answering after the error";
+	EXPECT_EQ(tick->status, 200);
 }

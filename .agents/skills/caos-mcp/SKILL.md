@@ -290,16 +290,20 @@ Creatures are agents with **family = 4**. Genus: 1=Norn, 2=Grendel, 3=Ettin, 4=S
 ### Drives (20 drives, IDs 0–19)
 | ID | Drive | ID | Drive |
 |---|---|---|---|
-| 0 | Pain | 10 | Boredom |
-| 1 | Hunger for protein | 11 | Anger |
-| 2 | Hunger for carbs | 12 | Sex drive |
-| 3 | Hunger for fat | 13 | Fear |
-| 4 | Coldness | 14 | Tiredness |
-| 5 | Hotness | 15 | Sleepiness |
-| 6 | Drowning | 16 | Loneliness |
-| 7 | Poison | 17 | Crowding |
-| 8 | Suffocation | 18 | Stress (travel) |
-| 9 | Thirst | 19 | Stress (danger) |
+| 0 | Pain | 10 | Fear |
+| 1 | Hunger for protein | 11 | Boredom |
+| 2 | Hunger for carbohydrate | 12 | Anger |
+| 3 | Hunger for fat | 13 | Sex drive |
+| 4 | Coldness | 14 | Comfort |
+| 5 | Hotness | 15 | Up (navigation) |
+| 6 | Tiredness | 16 | Down (navigation) |
+| 7 | Sleepiness | 17 | Exit (navigation) |
+| 8 | Loneliness | 18 | Enter (navigation) |
+| 9 | Crowdedness | 19 | Wait (navigation) |
+
+Drives 0–14 are needs; 15–19 steer travel between rooms and lifts, so a high
+`Wait` beside a lift is navigation, not distress. This matches
+`CreatureConstants.h` and the API's drive labels.
 
 ```caos
 * Read a specific drive (float 0.0–1.0)
@@ -310,8 +314,10 @@ outv driv 1       * Hunger for protein
 outv drv!
 ```
 
-> ⚠️ **Drive chemicals are at IDs 148–164, NOT 0–19.** The `driv` command
-> reads drive levels; `chem` reads/writes biochemical concentrations.
+> ⚠️ **Drive chemicals are not at IDs 0–19.** In Docking Station's
+> `ChemicalNames.catalogue`, drives 0–14 use chemicals 148–162 (148 + drive)
+> and navigation drives 15–19 use chemicals 199–203. The `driv` command reads
+> drive levels; `chem` reads/writes biochemical concentrations.
 
 ### Biochemistry
 ```caos
@@ -581,6 +587,7 @@ to use `execute_caos` instead:
 |---|---|---|
 | `list_creatures` | `GET /api/creatures` | When you need custom filtering or data not in the API response |
 | `get_creature_chemistry` | `GET /api/creature/:id/chemistry` | To inject chemicals: `chem id amount` |
+| `get_creature_observation` | `GET /api/creature/:id/observation` | For state the observation omits, such as chemicals or arbitrary OV/VA values |
 | `get_creature_brain` | `GET /api/creature/:id/brain` | To modify neuron states: `brn: setn` |
 | `list_scripts` | `GET /api/scripts` | To get script source: `sorc F G S E` |
 | `pause_engine` / `resume_engine` | `POST /api/pause` / `POST /api/resume` | `wpau 1` / `wpau 0` or `dbg: paws` / `dbg: play` |

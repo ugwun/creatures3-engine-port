@@ -178,6 +178,7 @@ public:
 	// Description: Simple accessor function
 	// ---------------------------------------------------------------------
 	inline char GetParameter( int i ) const { return myParameters[i]; }
+	inline const std::string& GetParameters() const { return myParameters; }
 
 	// ---------------------------------------------------------------------
 	// Method:      GetOpcode

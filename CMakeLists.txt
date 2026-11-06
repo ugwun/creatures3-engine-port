@@ -79,6 +79,7 @@ set(SRC_FILES
   engine/Caos/MapHandlers_Logic.cpp
   engine/Caos/OpSpec.cpp
   engine/Caos/Orderiser.cpp
+  engine/Caos/Orderiser_Logic.cpp
   engine/Caos/PortHandlers.cpp
   engine/Caos/RequestManager.cpp
   engine/Caos/RuntimeErrorDialog.cpp

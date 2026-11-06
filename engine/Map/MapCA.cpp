@@ -448,8 +448,8 @@ void Map::UpdateCurrentCAProperty()
 		int linkCount = myLinkCollection.size();
 		IntegerIterator integerIterator = myRoomIDCollection.begin();
 		LinkIterator linkIterator = myLinkCollection.begin();
-		register Door* door;
-		register Room* room;
+		Door* door;
+		Room* room;
 
 		//
 		// Inputs should have been set for this myNextCAProperty in the Agent update loop

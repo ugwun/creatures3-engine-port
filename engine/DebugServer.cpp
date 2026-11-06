@@ -59,11 +59,13 @@
 #include "Creature/LinguisticFaculty.h"
 #include "Creature/MotorFaculty.h"
 #include "Creature/SensoryFaculty.h"
+#include "Display/MainCamera.h"
 #include "World.h"
 #include "WorldMetadata.h"
 
 #include <arpa/inet.h>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cctype>
 #include <cstring>
@@ -720,13 +722,6 @@ static std::string ValidateGenomeWritePayload(
 }
 
 static std::string BrainNeuronSemanticLabel(const std::string& lobeName, int neuronIndex) {
-	static const char* DRIVE_LABELS[] = {
-		"Pain", "Hunger (Protein)", "Hunger (Carb)", "Hunger (Fat)",
-		"Coldness", "Hotness", "Tiredness", "Sleepiness",
-		"Loneliness", "Crowdedness", "Fear", "Boredom",
-		"Anger", "Sex Drive", "Comfort",
-		"Up", "Down", "Exit", "Enter", "Wait"
-	};
 	static const char* ACTION_LABELS[] = {
 		"Quiescent", "Push", "Pull", "Stop",
 		"Approach", "Retreat", "Get", "Drop",
@@ -743,8 +738,98 @@ static std::string BrainNeuronSemanticLabel(const std::string& lobeName, int neu
 	if ((lobeName == "verb" || lobeName == "decn") && neuronIndex < NUMACTIONS)
 		return ACTION_LABELS[neuronIndex];
 	if (lobeName == "driv" && neuronIndex < NUMDRIVES)
-		return DRIVE_LABELS[neuronIndex];
+		return DebugServerLogic::CreatureDriveLabel(neuronIndex);
 	return "";
+}
+
+// The name the player gave the creature (HIST NAME), or "" when unnamed.
+static std::string CreatureHistoryName(const std::string& moniker) {
+	if (moniker.empty())
+		return "";
+	try {
+		HistoryStore& store = theApp.GetWorld().GetHistoryStore();
+		if (!store.IsThereCreatureHistory(moniker))
+			return "";
+		return store.GetCreatureHistory(moniker).myName;
+	} catch (...) {
+		return "";
+	}
+}
+
+// The creature's own vocabulary word for itself, once learnt. Naming gives it
+// the name in lower case to learn; unnamed babies use whatever word they know.
+static std::string CreatureSelfWord(Creature& creature) {
+	try {
+		LinguisticFaculty* linguistic = creature.Linguistic();
+		if (linguistic && linguistic->KnownWord(LinguisticFaculty::PERSONAL,
+				LinguisticFaculty::ME))
+			return linguistic->GetPlatonicWord(LinguisticFaculty::PERSONAL,
+				LinguisticFaculty::ME);
+	} catch (...) {}
+	return "";
+}
+
+static std::vector<float> CreatureDriveLevels(Creature& creature) {
+	std::vector<float> levels;
+	for (int drive = 0; drive < NUMDRIVES; ++drive)
+		levels.push_back(creature.GetDriveLevel(drive));
+	return levels;
+}
+
+static int HighestNeedDrive(const std::vector<float>& levels) {
+	return DebugServerLogic::HighestDriveInRange(levels, 0,
+		DebugServerLogic::CREATURE_NEED_DRIVE_COUNT);
+}
+
+// Name from the game's chemical_names catalogue, or "" for unnamed slots.
+static std::string CatalogueChemicalName(int chemicalId) {
+	static const std::string tag("chemical_names");
+	try {
+		if (chemicalId < 0 || !theCatalogue.TagPresent(tag) ||
+			chemicalId >= theCatalogue.GetArrayCountForTag(tag))
+			return "";
+		const char* entry = theCatalogue.Get(tag, chemicalId);
+		return DebugServerLogic::ChemicalNameFromCatalogueEntry(chemicalId,
+			entry ? entry : "");
+	} catch (...) {
+		return "";
+	}
+}
+
+// Shared drive fields for the creature list and snapshot rows.
+static void WriteDriveSummaryJson(std::ostringstream& json,
+	const std::vector<float>& levels, int highestDrive) {
+	const int highestNeed = HighestNeedDrive(levels);
+	json << ",\"highestDriveLabel\":\""
+		<< JsonEscape(DebugServerLogic::CreatureDriveLabel(highestDrive))
+		<< "\""
+		<< ",\"highestNeedDrive\":" << highestNeed
+		<< ",\"highestNeedDriveLabel\":\""
+		<< JsonEscape(DebugServerLogic::CreatureDriveLabel(highestNeed))
+		<< "\",\"highestNeedDriveValue\":";
+	if (highestNeed >= 0)
+		json << levels[highestNeed];
+	else
+		json << "null";
+}
+
+static std::string CreatureLifeState(const LifeFaculty* life) {
+	if (!life) return "unknown";
+	if (life->GetWhetherDead()) return "dead";
+	if (life->GetWhetherUnconscious()) return "unconscious";
+	if (life->GetWhetherDreaming()) return "dreaming";
+	if (life->GetWhetherAsleep()) return "asleep";
+	if (life->GetWhetherZombie()) return "zombie";
+	if (life->GetWhetherAlert()) return "alert";
+	return "unknown";
+}
+
+static void WriteLifeStateMeaningJson(std::ostringstream& json,
+	const std::string& lifeState) {
+	const std::string meaning =
+		DebugServerLogic::CreatureLifeStateMeaning(lifeState);
+	if (!meaning.empty())
+		json << ",\"lifeStateMeaning\":\"" << JsonEscape(meaning) << "\"";
 }
 
 // ── DebugServer::Impl ──────────────────────────────────────────────────────
@@ -788,7 +873,7 @@ struct DebugServer::Impl {
 	// UDP listener for FlightRecorder rebroadcast
 	int udpSocket = -1;
 	std::thread udpThread;
-	bool udpRunning = false;
+	std::atomic<bool> udpRunning{false};
 
 	// Work queue for main-thread execution
 	std::mutex queueMutex;
@@ -1895,6 +1980,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				result["source"] = src;
 				result["checksum"] =
 					DebugServerLogic::Fnv1a64Checksum(src);
+				// Running VMs and pending CALL callers holding this script
+				result["referenceCount"] = script->GetReferenceCount();
 				result["classifier"] = {
 					{"family", f}, {"genus", g},
 					{"species", s}, {"event", e}
@@ -2834,6 +2921,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 			     << ",\"paused\":" << (IsEnginePaused() ? "true" : "false")
 			     << ",\"gameSpeed\":" << GetGameSpeedMultiplier()
 			     << ",\"creatureCount\":" << creatureCount
+			     << ",\"displayBacklog\":"
+			     << theMainView.GetPendingDirtyAreaCount()
 			     << ",\"loadPending\":"
 			     << (requestedWorldName.empty() ? "false" : "true");
 			if (requestedWorldName.empty()) {
@@ -2887,29 +2976,14 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 						Classifier c = agent.GetClassifier();
 						LifeFaculty* life = creature.Life();
 
-						// Life state string
-						std::string lifeState = "unknown";
-						if (life) {
-							if (life->GetWhetherDead()) lifeState = "dead";
-							else if (life->GetWhetherUnconscious()) lifeState = "unconscious";
-							else if (life->GetWhetherDreaming()) lifeState = "dreaming";
-							else if (life->GetWhetherAsleep()) lifeState = "asleep";
-							else if (life->GetWhetherZombie()) lifeState = "zombie";
-							else if (life->GetWhetherAlert()) lifeState = "alert";
-						}
+						const std::string lifeState = CreatureLifeState(life);
 
 						// Moniker
 						std::string moniker;
 						try { moniker = creature.GetMoniker(); } catch (...) {}
 
-						// Name (from LinguisticFaculty)
-						std::string name;
-						try {
-							LinguisticFaculty* ling = creature.Linguistic();
-							if (ling && ling->KnownWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME)) {
-								name = ling->GetPlatonicWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME);
-							}
-						} catch (...) {}
+						const std::string name = CreatureHistoryName(moniker);
+						const std::string selfWord = CreatureSelfWord(creature);
 
 						if (!first) json << ",";
 						first = false;
@@ -2917,6 +2991,7 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 						json << "{\"agentId\":" << agent.GetUniqueID()
 							<< ",\"moniker\":\"" << JsonEscape(moniker) << "\""
 							<< ",\"name\":\"" << JsonEscape(name) << "\""
+							<< ",\"selfWord\":\"" << JsonEscape(selfWord) << "\""
 							<< ",\"genus\":" << (int)c.Genus()
 							<< ",\"species\":" << (int)c.Species();
 
@@ -2925,6 +3000,7 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 								<< ",\"age\":" << life->GetAge()
 								<< ",\"ageInTicks\":" << life->GetTickAge()
 								<< ",\"lifeState\":\"" << lifeState << "\"";
+							WriteLifeStateMeaningJson(json, lifeState);
 						}
 
 						// Legacy `health` is exactly glycogen (chemical 4).
@@ -2949,16 +3025,21 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 							json << ",\"metaRoomId\":" << metaRoomId;
 						}
 
-						// Drives (20 values)
+						// Drives (20 values, CreatureConstants.h order)
+						const std::vector<float> driveLevels =
+							CreatureDriveLevels(creature);
 						json << ",\"drives\":[";
 						for (int d = 0; d < NUMDRIVES; ++d) {
 							if (d > 0) json << ",";
-							json << creature.GetDriveLevel(d);
+							json << driveLevels[d];
 						}
 						json << "]";
 
-						// Highest drive
-						json << ",\"highestDrive\":" << creature.GetHighestDrive();
+						// Highest drive, and highest need without the
+						// navigation drives 15-19
+						const int highestDrive = creature.GetHighestDrive();
+						json << ",\"highestDrive\":" << highestDrive;
+						WriteDriveSummaryJson(json, driveLevels, highestDrive);
 
 						json << "}";
 					} catch (...) {
@@ -3021,18 +3102,8 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 
 				std::string moniker;
 				try { moniker = creature.GetMoniker(); } catch (...) {}
-				std::string name;
-				try {
-					LinguisticFaculty* linguistic = creature.Linguistic();
-					if (linguistic &&
-						linguistic->KnownWord(
-							LinguisticFaculty::PERSONAL,
-							LinguisticFaculty::ME)) {
-						name = linguistic->GetPlatonicWord(
-							LinguisticFaculty::PERSONAL,
-							LinguisticFaculty::ME);
-					}
-				} catch (...) {}
+				const std::string name = CreatureHistoryName(moniker);
+				const std::string selfWord = CreatureSelfWord(creature);
 
 				const Vector2D position = agent.GetPosition();
 				int roomId = -1;
@@ -3041,23 +3112,18 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 				theApp.GetWorld().GetMap().GetMetaRoomIDForPoint(
 					position, metaRoomId);
 
-				std::string lifeState = "unknown";
-				if (life) {
-					if (life->GetWhetherDead()) lifeState = "dead";
-					else if (life->GetWhetherUnconscious())
-						lifeState = "unconscious";
-					else if (life->GetWhetherDreaming())
-						lifeState = "dreaming";
-					else if (life->GetWhetherAsleep()) lifeState = "asleep";
-					else if (life->GetWhetherZombie()) lifeState = "zombie";
-					else if (life->GetWhetherAlert()) lifeState = "alert";
-				}
+				const std::string lifeState = CreatureLifeState(life);
 
 				nlohmann::json creatureJson;
 				creatureJson["agentId"] = agent.GetUniqueID();
 				creatureJson["moniker"] = moniker;
 				creatureJson["name"] = name;
+				creatureJson["selfWord"] = selfWord;
 				creatureJson["lifeState"] = lifeState;
+				const std::string lifeStateMeaning =
+					DebugServerLogic::CreatureLifeStateMeaning(lifeState);
+				if (!lifeStateMeaning.empty())
+					creatureJson["lifeStateMeaning"] = lifeStateMeaning;
 				creatureJson["ageStage"] =
 					life ? nlohmann::json(life->GetAge()) :
 						nlohmann::json(nullptr);
@@ -3299,6 +3365,34 @@ void DebugServer::Start(int port, const std::string& staticDir) {
 						? nlohmann::json(
 							creature.GetDriveLevel(highestDrive))
 						: nlohmann::json(nullptr);
+				// Drives 15-19 steer navigation, so a Norn at a lift can
+				// show Wait as its highest drive. Report needs separately.
+				const std::vector<float> driveLevels =
+					CreatureDriveLevels(creature);
+				auto driveSummary = [&driveLevels](int drive) {
+					nlohmann::json summary;
+					summary["id"] = drive >= 0
+						? nlohmann::json(drive) : nlohmann::json(nullptr);
+					summary["label"] = drive >= 0
+						? nlohmann::json(
+							DebugServerLogic::CreatureDriveLabel(drive))
+						: nlohmann::json(nullptr);
+					summary["value"] = drive >= 0
+						? nlohmann::json(driveLevels[drive])
+						: nlohmann::json(nullptr);
+					return summary;
+				};
+				pressure["highestNeedDrive"] =
+					driveSummary(HighestNeedDrive(driveLevels));
+				pressure["highestNavigationDrive"] = driveSummary(
+					DebugServerLogic::HighestDriveInRange(driveLevels,
+						DebugServerLogic::CREATURE_NEED_DRIVE_COUNT,
+						DebugServerLogic::CREATURE_DRIVE_COUNT));
+				for (size_t index = 0; index < pressure["drives"].size();
+					++index)
+					pressure["drives"][index]["navigation"] =
+						DebugServerLogic::IsNavigationDrive(
+							static_cast<int>(index));
 				observation["pressure"] = pressure;
 
 				nlohmann::json attention =
@@ -5120,6 +5214,18 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 					json << biochem->GetChemical(i);
 				}
 				json << "]";
+
+				// Catalogue names keyed by chemical ID; unnamed IDs omitted
+				json << ",\"chemicalNames\":{";
+				bool firstName = true;
+				for (int i = 0; i < NUMCHEM; ++i) {
+					const std::string chemicalName = CatalogueChemicalName(i);
+					if (chemicalName.empty()) continue;
+					if (!firstName) json << ",";
+					firstName = false;
+					json << "\"" << i << "\":\"" << JsonEscape(chemicalName) << "\"";
+				}
+				json << "}";
 
 				// Organ status
 				int organCount = biochem->GetOrganCount();
@@ -6992,7 +7098,13 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 				<< ",\"enginePaused\":"
 				<< (IsEnginePaused() ? "true" : "false")
 				<< ",\"gameSpeed\":" << GetGameSpeedMultiplier()
-				<< ",\"requestedChemicalIds\":[";
+				<< ",\"driveLabels\":[";
+			for (int drive = 0; drive < NUMDRIVES; ++drive) {
+				if (drive > 0) json << ",";
+				json << "\"" << JsonEscape(
+					DebugServerLogic::CreatureDriveLabel(drive)) << "\"";
+			}
+			json << "],\"requestedChemicalIds\":[";
 			for (size_t chemicalIndex = 0;
 				chemicalIndex < selectedChemicalIds.size();
 				++chemicalIndex) {
@@ -7021,35 +7133,20 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 						std::string moniker;
 						try { moniker = creature.GetMoniker(); } catch (...) {}
 
-						// Name
-						std::string name;
-						try {
-							LinguisticFaculty* ling = creature.Linguistic();
-							if (ling && ling->KnownWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME))
-								name = ling->GetPlatonicWord(LinguisticFaculty::PERSONAL, LinguisticFaculty::ME);
-						} catch (...) {}
+						const std::string name = CreatureHistoryName(moniker);
+						const std::string selfWord = CreatureSelfWord(creature);
 
 						json << "{\"agentId\":" << agent.GetUniqueID()
 						     << ",\"moniker\":\"" << JsonEscape(moniker) << "\""
 						     << ",\"name\":\"" << JsonEscape(name) << "\""
+						     << ",\"selfWord\":\"" << JsonEscape(selfWord) << "\""
 						     << ",\"family\":" << (int)classifier.Family()
 						     << ",\"genus\":" << (int)classifier.Genus()
 						     << ",\"species\":" << (int)classifier.Species();
 
 						if (life) {
 							const float glycogen = life->Health();
-							std::string lifeState = "unknown";
-							if (life->GetWhetherDead()) lifeState = "dead";
-							else if (life->GetWhetherUnconscious())
-								lifeState = "unconscious";
-							else if (life->GetWhetherDreaming())
-								lifeState = "dreaming";
-							else if (life->GetWhetherAsleep())
-								lifeState = "asleep";
-							else if (life->GetWhetherZombie())
-								lifeState = "zombie";
-							else if (life->GetWhetherAlert())
-								lifeState = "alert";
+							const std::string lifeState = CreatureLifeState(life);
 							json << ",\"health\":" << glycogen
 							     << ",\"healthMeaning\":\"glycogen concentration (legacy compatibility)\""
 							     << ",\"glycogenReserve\":" << glycogen
@@ -7059,6 +7156,7 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 							     << ",\"ageInTicks\":" << life->GetTickAge()
 							     << ",\"lifeState\":\"" << lifeState << "\""
 							     << ",\"dead\":" << (life->GetWhetherDead() ? "true" : "false");
+							WriteLifeStateMeaningJson(json, lifeState);
 						}
 
 						// Position
@@ -7079,13 +7177,17 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 						else json << "null";
 
 						// Drives
+						const std::vector<float> driveLevels =
+							CreatureDriveLevels(creature);
 						json << ",\"drives\":[";
 						for (int d = 0; d < NUMDRIVES; ++d) {
 							if (d > 0) json << ",";
-							json << creature.GetDriveLevel(d);
+							json << driveLevels[d];
 						}
 						json << "]";
-						json << ",\"highestDrive\":" << creature.GetHighestDrive();
+						const int highestDrive = creature.GetHighestDrive();
+						json << ",\"highestDrive\":" << highestDrive;
+						WriteDriveSummaryJson(json, driveLevels, highestDrive);
 
 						// Compact attention, decision, and action state for
 						// same-tick comparison. Full neural details remain on
@@ -7164,8 +7266,13 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 								int limit = std::min((int)chems.size(), 5);
 								for (int i = 0; i < limit; ++i) {
 									if (i > 0) json << ",";
+									const std::string chemicalName =
+										CatalogueChemicalName(chems[i].id);
 									json << "{\"id\":" << chems[i].id
-									     << ",\"concentration\":" << chems[i].conc << "}";
+									     << ",\"name\":";
+									if (chemicalName.empty()) json << "null";
+									else json << "\"" << JsonEscape(chemicalName) << "\"";
+									json << ",\"concentration\":" << chems[i].conc << "}";
 								}
 							}
 						} catch (...) {}
@@ -7190,8 +7297,13 @@ auto decompileSVRuleByBytes = [](const uint8_t* data) -> std::string {
 									if (chemicalIndex > 0) json << ",";
 									const int chemicalId =
 										selectedChemicalIds[chemicalIndex];
+									const std::string chemicalName =
+										CatalogueChemicalName(chemicalId);
 									json << "{\"id\":" << chemicalId
-										<< ",\"concentration\":"
+										<< ",\"name\":";
+									if (chemicalName.empty()) json << "null";
+									else json << "\"" << JsonEscape(chemicalName) << "\"";
+									json << ",\"concentration\":"
 										<< bio->GetChemical(chemicalId)
 										<< "}";
 								}
@@ -7490,14 +7602,15 @@ void DebugServer::Poll() {
 void DebugServer::Stop() {
 	if (!myImpl) return;
 
-	// Stop UDP relay
+	// Stop UDP relay. The socket is non-blocking, so the relay notices the
+	// flag within one poll; close only after it has stopped reading.
 	myImpl->udpRunning = false;
+	if (myImpl->udpThread.joinable())
+		myImpl->udpThread.join();
 	if (myImpl->udpSocket >= 0) {
 		close(myImpl->udpSocket);
 		myImpl->udpSocket = -1;
 	}
-	if (myImpl->udpThread.joinable())
-		myImpl->udpThread.join();
 
 	myImpl->PushApiRecord(
 		"server_shutdown",

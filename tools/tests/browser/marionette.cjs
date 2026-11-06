@@ -125,7 +125,18 @@ class Browser {
 
   // A real pointer click. Fails if anything else would receive it.
   async click(selector) {
-    const point = await this.centerOf(selector);
+    // Polled content can arrive between the measurement and the pointer
+    // action and move the target (an evidence strip grows when its sample
+    // lands), so measure until the point stops moving.
+    let point = await this.centerOf(selector);
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await delay(50);
+      const again = await this.centerOf(selector);
+      const stable = Math.abs(again.x - point.x) < 1 &&
+        Math.abs(again.y - point.y) < 1;
+      point = again;
+      if (stable) break;
+    }
     if (!point.visible || !point.reachable) {
       throw new Error(
         selector + " is not clickable: " + JSON.stringify(point));
